@@ -2,6 +2,7 @@
 ## Projeto: [Front-end E-commerce](https://github.com/lucaohost/frontend-ecommerce)
 
 Este projeto foi hospedado utilizando [Github Pages](https://pages.github.com/)
+Link: https://lucaohost.github.io/
 
 ### Pré Requisitos
 * [Npm](https://www.npmjs.com/)
