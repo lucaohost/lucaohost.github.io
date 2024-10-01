@@ -1,0 +1,65 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: black;
+    color: white;
+    font-family: monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.terminal {
+    width: 80%;
+    max-width: 800px;
+    height: 70%;
+    background-color: #222;
+    border-radius: 10px;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.output {
+    white-space: pre-wrap;
+}
+.path {
+    color: #4CAF50;
+}
+
+.input-line {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.input {
+    outline: none;
+    border: none;
+    background: none;
+    color: white;
+    flex-grow: 1;
+    min-width: 10px;
+    margin: 0;
+    padding: 5px; /* Remove padding */
+    white-space: nowrap;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+a {
+    color: #4b71d8; /* Cor cinza clara */
+}
+
+a:hover {
+    color: #184a58; /* Cor mais escura ao passar o mouse */
+}
+
