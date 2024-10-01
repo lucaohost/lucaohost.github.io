@@ -8,14 +8,14 @@ const commands = {
     instagram: "<a href='https://instagram.com/lucaohost' target='_blank'>instagram.com/lucaohost</a>",
     twitter: "<a href='https://twitter.com/lucaohost' target='_blank'>twitter.com/lucaohost</a>",
     share: "Share this site: <a href='https://lucaohost.github.io' target='_blank'>lucaohost.github.io</a>",
-    "random-music": "<a href='https://lucaohost.github.io/random/music' target='_blank'>lucaohost.github.io/random/music</a>",
+    "random music": "<a href='https://lucaohost.github.io/random/music' target='_blank'>lucaohost.github.io/random/music</a>",
     social: function() {
         return `${this.github}\n${this.linkedin}\n${this.spotify}\n${this.instagram}\n${this.twitter}`;
     },
     clear: function() {
         terminalOutput.innerHTML = '';
     },
-    help: "#######################\n# Available Commmands #\n#######################\n# whoami, github, linkedin\n# spotify, instagram, twitter\n# share, social, clear, help\n# random-music",
+    help: "#######################\n# Available Commmands #\n#######################\n# whoami, github, linkedin\n# spotify, instagram, twitter\n# share, social, clear, help\n# random music",
     exit: function() {
         window.close();
     }

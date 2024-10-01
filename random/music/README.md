@@ -1,4 +1,4 @@
-# random-music
+# Random Music
 
 Perfect to put in the bookmarks bar  
 
