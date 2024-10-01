@@ -41,7 +41,7 @@ function processCommand(input) {
             appendOutput(commands[command]);
         }
     } else {
-        appendOutput(`Command not found: ${command}. Try help to see all Available Commmands`);
+        appendOutput(`Command not found. Try help to see all Available Commmands`);
     }
 }
 
