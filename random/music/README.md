@@ -2,4 +2,4 @@
 
 Perfect to put in the bookmarks bar  
 
-Try it: https://lucaxrl-random-music.netlify.com
+Try it: https://lucaohost.github.io/random/music/
