@@ -57,8 +57,8 @@ function appendOutput(text) {
 function onEnter(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        const input = inputField.innerText.trim();
-        appendOutput(`<span class="path">lucaohost@terminal:/home/lucahost$</span> ${input}`);
+        const input = inputField.innerText.trim().toLocaleLowerCase();
+        appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
         processCommand(input);
         inputField.innerText = '';
     }
