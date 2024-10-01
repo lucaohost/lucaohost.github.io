@@ -14,7 +14,7 @@ const commands = {
     clear: function() {
         terminalOutput.innerHTML = '';
     },
-    help: "***********************\n* Available Commmands *\n***********************\n> whoami, github, linkedin, spotify, instagram, twitter, share, social, clear, help, exit",
+    help: "***********************\n* Available Commmands *\n***********************\n> whoami, github, linkedin, spotify, instagram, twitter, share, social, clear, help",
     exit: function() {
         window.close();
     }
