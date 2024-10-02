@@ -45,7 +45,6 @@ body {
     flex-grow: 1;
     min-width: 10px;
     margin: 0;
-    padding: 5px; /* Remove padding */
     white-space: nowrap;
 }
 
