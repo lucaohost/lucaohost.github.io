@@ -15,15 +15,16 @@ const commands = {
     clear: function() {
         terminalOutput.innerHTML = '';
     },
-    help: "#######################\n# Available Commmands #\n#######################\n# whoami, github, linkedin\n# spotify, instagram, twitter\n# share, social, clear, help\n# random music",
+    help: "<img src='images/commands.png' alt='Terminal Commands' class='responsivity'/>",
+    helpDesc: "Type help to see all commands.",
     exit: function() {
         window.close();
     }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    appendOutput(commands["help"])
-    inputField.focus();  // Foca no campo de entrada automaticamente quando a página carregar
+    appendOutput(commands["helpDesc"])
+    inputField.focus();  // focus in the terminal after page loads
 });
 
 document.addEventListener('click', function() {
