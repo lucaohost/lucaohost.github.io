@@ -15,7 +15,17 @@ const commands = {
     clear: function() {
         terminalOutput.innerHTML = '';
     },
-    help: "<img src='images/commands.png' alt='Terminal Commands' class='responsivity'/>",
+    help: 
+            "-------------------------------\n" +
+            "|whoami │github      │linkedin│\n" +
+            "-------------------------------\n" +
+            "|spotify|instagram   |twitter │\n" +
+            "-------------------------------\n" +
+            "|share  │social      │clear   │\n" +
+            "-------------------------------\n" +
+            "|help   │random music│exit    |\n" +
+            "-------------------------------\n",
+            
     helpDesc: "Type help to see all commands.",
     exit: function() {
         window.close();
