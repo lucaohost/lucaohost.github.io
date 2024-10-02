@@ -15,8 +15,7 @@ const commands = {
     clear: function() {
         terminalOutput.innerHTML = '';
     },
-    help: 
-            "-------------------------------\n" +
+    help:   "-------------------------------\n" +
             "|whoami │github      │linkedin│\n" +
             "-------------------------------\n" +
             "|spotify|instagram   |twitter │\n" +
@@ -25,7 +24,6 @@ const commands = {
             "-------------------------------\n" +
             "|help   │random music│exit    |\n" +
             "-------------------------------\n",
-            
     helpDesc: "Type help to see all commands.",
     exit: function() {
         window.close();
