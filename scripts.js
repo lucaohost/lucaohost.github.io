@@ -15,15 +15,11 @@ const commands = {
     clear: function() {
         terminalOutput.innerHTML = '';
     },
-    help:   "-------------------------------\n" +
-            "|whoami │github      │linkedin│\n" +
-            "-------------------------------\n" +
-            "|spotify|instagram   |twitter │\n" +
-            "-------------------------------\n" +
-            "|share  │social      │clear   │\n" +
-            "-------------------------------\n" +
-            "|help   │random music│exit    |\n" +
-            "-------------------------------\n",
+    help: function() {
+        const items = ['whoami', 'social', 'share', 'help', 'clear', 'exit', 'rms', 'rmy', 'rmym'];
+        const cellSize = 8;
+        return buildTable(cellSize, items);
+    },
     helpDesc: "Type help to see all commands.",
     exit: function() {
         window.close();
@@ -75,3 +71,39 @@ function onEnter(event) {
 }
 
 inputField.addEventListener('keydown', onEnter);
+
+function buildTable(cellSize, items) {
+    const cols = 3;
+    const rows = Math.ceil(items.length / cols);
+
+    const createBorder = (left, middle, right) => {
+        return left + ('─'.repeat(cellSize) + middle).repeat(cols - 1) + '─'.repeat(cellSize) + right;
+    };
+
+    const createSeparator = () => createBorder('├', '┼', '┤');
+
+    const createRow = (rowItems) => {
+        return '│' + rowItems.map(item => {
+            const padding = cellSize - item.length;
+            const leftPadding = Math.floor(padding / 2);
+            const rightPadding = padding - leftPadding;
+            return ' '.repeat(leftPadding) + item + ' '.repeat(rightPadding);
+        }).join('│') + '│';
+    };
+
+    let table = createBorder('┌', '┬', '┐') + '\n';
+    for (let i = 0; i < rows; i++) {
+        const rowItems = items.slice(i * cols, (i + 1) * cols);
+        // Preenche colunas faltantes com espaços vazios
+        while (rowItems.length < cols) {
+            rowItems.push('');
+        }
+        table += createRow(rowItems) + '\n';
+        if (i < rows - 1) {
+            table += createSeparator() + '\n';
+        }
+    }
+    table += createBorder('└', '┴', '┘');
+
+    return table;
+}
