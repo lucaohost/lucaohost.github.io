@@ -43,7 +43,7 @@ document.addEventListener('click', function() {
 });
 
 function processCommand(input) {
-    const command = input.trim();
+    const command = input.trim().toLocaleLowerCase();
     if (commands[command]) {
         if (typeof commands[command] === 'function') {
             appendOutput(commands[command]());
@@ -51,7 +51,7 @@ function processCommand(input) {
             appendOutput(commands[command]);
         }
     } else {
-        appendOutput(`Command '${command}' not found.\nType help to see all Available Commmands`);
+        appendOutput(`Command '${input}' not found.\nType help to see all Available Commmands`);
     }
 }
 
@@ -67,7 +67,7 @@ function appendOutput(text) {
 function onEnter(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        const input = inputField.innerText.trim().toLocaleLowerCase();
+        const input = inputField.innerText.trim();
         appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
         processCommand(input);
         inputField.innerText = '';
