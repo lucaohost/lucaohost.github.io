@@ -11,6 +11,7 @@ const commands = {
     rmy: "Random Music on Youtube\n<a href='https://lucaohost.github.io/rmy' target='_blank'>https://lucaohost.github.io/rmy</a>",
     rms: "Random Music on Spotify\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
+    "*" : "<p style='text-align: justify;'>It's just a character to prevent the cell in the table from being empty.</p>",
     social: function() {
         return `${this.github}\n${this.linkedin}\n${this.spotify}\n${this.instagram}\n${this.twitter}`;
     },
@@ -76,15 +77,14 @@ function onEnter(event) {
 
 inputField.addEventListener('keydown', onEnter);
 
-function buildTable(items) {
-    const cols = 3;
+function buildTable(items, cols = 3) {
     const rows = Math.ceil(items.length / cols);
     let table = `\n<table style="border-collapse: collapse;"><tbody>`;
     for (let i = 0; i < rows; i++) {
         table += '<tr>';
         const rowItems = items.slice(i * cols, (i + 1) * cols);
         while (rowItems.length < cols) {
-            rowItems.push(''); // Fill table if necessary
+            rowItems.push('*'); // Fill the table if necessary
         }
         rowItems.forEach(item => {
             table += `
