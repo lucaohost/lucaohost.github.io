@@ -1,7 +1,7 @@
 const inputField = document.getElementById('input');
 const terminalOutput = document.getElementById('output');
 const commands = {
-    whoami: "Lucas: Hello, I am a software engineer from Brazil and I really enjoy solving problems with technology.",
+    whoami: "<p style='text-align: justify;'>Lucas: Hello, I am a software engineer from Brazil and I really enjoy solving problems with technology.</p>",
     github: "<a href='https://github.com/lucaohost' target='_blank'>https://github.com/lucaohost</a>",
     linkedin: "<a href='https://linkedin.com/in/lucas-reginatto-de-lima' target='_blank'>https://linkedin.com/lucaohost</a>",
     spotify: "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'>https://spotify.com/lucaohost</a>",
