@@ -13,7 +13,5 @@ Short URLs:
   - Random Music on Spotify
 - https://lucaohost.github.io/rmym
   - Random Music on Youtube Music
-- https://lucaohost.github.io/
-- https://lucaohost.github.io/random/music
 
 Perfect to put in the bookmarks bar.
