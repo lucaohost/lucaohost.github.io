@@ -1,6 +1,7 @@
 # Online CLI
 
 I really like CLIs, so I decided to create my own online CLI.  
+https://lucaohost.github.io/  
 
 ## Random Music
 This CLI contains commands to random musics, but if you prefer, you can access the links directly:
