@@ -19,8 +19,7 @@ const commands = {
     },
     help: function() {
         const items = ['whoami', 'social', 'share', 'rms', 'rmy', 'rmym', 'help', 'clear', 'exit'];
-        const cellSize = 8;
-        return buildTable(cellSize, items);
+        return buildTable(items);
     },
     helpDesc: "Type help to see all commands.",
     exit: function() {
@@ -76,37 +75,27 @@ function onEnter(event) {
 
 inputField.addEventListener('keydown', onEnter);
 
-function buildTable(cellSize, items) {
-    const cols = window.innerWidth < 600 ? 2 : 3;
-    const rows = Math.ceil(items.length / cols);
+function buildTable(items) {
+    const cols = 3; // Sempre use 3 colunas
+    const rows = Math.ceil(items.length / cols); // Calcular o número de linhas
 
-    const createBorder = (left, middle, right) => {
-        return left + ('─'.repeat(cellSize) + middle).repeat(cols - 1) + '─'.repeat(cellSize) + right;
-    };
+    // Criar o elemento da tabela com estilo ajustado
+    let table = `\n<table style="border-collapse: collapse;"><tbody>`;
 
-    const createSeparator = () => createBorder('├', '┼', '┤');
-
-    const createRow = (rowItems) => {
-        return '│' + rowItems.map(item => {
-            const padding = cellSize - item.length;
-            const leftPadding = Math.floor(padding / 2);
-            const rightPadding = padding - leftPadding;
-            return ' '.repeat(leftPadding) + item + ' '.repeat(rightPadding);
-        }).join('│') + '│';
-    };
-
-    let table = createBorder('┌', '┬', '┐') + '\n';
+    // Criar linhas da tabela
     for (let i = 0; i < rows; i++) {
+        table += '<tr>';
         const rowItems = items.slice(i * cols, (i + 1) * cols);
         while (rowItems.length < cols) {
-            rowItems.push('');
+            rowItems.push(''); // Preencher células vazias se necessário
         }
-        table += createRow(rowItems) + '\n';
-        if (i < rows - 1) {
-            table += createSeparator() + '\n';
-        }
+        rowItems.forEach(item => {
+            table += `
+                <td style="border: 1px solid white; padding: 8px; text-align: center; color: white;">${item}</td>`; // Bordas brancas
+        });
+        table += '</tr>';
     }
-    table += createBorder('└', '┴', '┘');
+    table += '</tbody></table>\n';
 
     return table;
 }
