@@ -19,7 +19,7 @@ const commands = {
     },
     help: function() {
         const items = ['whoami', 'social', 'share', 'rms', 'rmy', 'rmym', 'help', 'clear', 'exit'];
-        const cellSize = 8;
+        const cellSize = 6;
         return buildTable(cellSize, items);
     },
     helpDesc: "Type help to see all commands.",
@@ -66,9 +66,11 @@ function onEnter(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
         const input = inputField.innerText.trim();
-        appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
-        processCommand(input);
-        inputField.innerText = '';
+        if(input !== "") {
+            appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
+            processCommand(input);
+            inputField.innerText = '';
+        }
     }
 }
 
