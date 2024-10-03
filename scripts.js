@@ -19,7 +19,7 @@ const commands = {
     },
     help: function() {
         const items = ['whoami', 'social', 'share', 'rms', 'rmy', 'rmym', 'help', 'clear', 'exit'];
-        const cellSize = 6;
+        const cellSize = 8;
         return buildTable(cellSize, items);
     },
     helpDesc: "Type help to see all commands.",
@@ -77,7 +77,7 @@ function onEnter(event) {
 inputField.addEventListener('keydown', onEnter);
 
 function buildTable(cellSize, items) {
-    const cols = 3;
+    const cols = window.innerWidth < 600 ? 2 : 3;
     const rows = Math.ceil(items.length / cols);
 
     const createBorder = (left, middle, right) => {
@@ -98,7 +98,6 @@ function buildTable(cellSize, items) {
     let table = createBorder('┌', '┬', '┐') + '\n';
     for (let i = 0; i < rows; i++) {
         const rowItems = items.slice(i * cols, (i + 1) * cols);
-        // Preenche colunas faltantes com espaços vazios
         while (rowItems.length < cols) {
             rowItems.push('');
         }
