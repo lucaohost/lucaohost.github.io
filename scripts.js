@@ -8,7 +8,9 @@ const commands = {
     instagram: "<a href='https://instagram.com/lucaohost' target='_blank'>https://instagram.com/lucaohost</a>",
     twitter: "<a href='https://twitter.com/lucaohost' target='_blank'>https://twitter.com/lucaohost</a>",
     share: "Share this site: <a href='https://lucaohost.github.io' target='_blank'>https://lucaohost.github.io</a>",
-    rmy: "<a href='https://lucaohost.github.io/random/music' target='_blank'>https://lucaohost.github.io/random/music</a>",
+    // rmy: "Random Music Youtube\n<a href='https://lucaohost.github.io/rmy' target='_blank'>https://lucaohost.github.io/rmy</a>",
+    rmys: "Random Music Spotify\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rmy</a>",
+    // rmym: "Random Music Youtube Music\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmy</a>",
     social: function() {
         return `${this.github}\n${this.linkedin}\n${this.spotify}\n${this.instagram}\n${this.twitter}`;
     },
