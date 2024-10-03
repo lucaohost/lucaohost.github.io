@@ -1,5 +1,6 @@
 const inputField = document.getElementById('input');
 const terminalOutput = document.getElementById('output');
+const cli = document.getElementById('cli');
 const commands = {
     whoami: "<p style='text-align: justify;'>Lucas: Hello, I am a software engineer from Brazil and I really enjoy solving problems with technology.</p>",
     github: "<a href='https://github.com/lucaohost' target='_blank'>https://github.com/lucaohost</a>",
@@ -61,7 +62,7 @@ function appendOutput(text) {
         newLine.innerHTML = text;
         terminalOutput.appendChild(newLine);
     }
-    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    cli.scrollTop = terminalOutput.scrollHeight;
 }
 
 function onEnter(event) {
