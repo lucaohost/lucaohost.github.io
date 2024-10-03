@@ -13,7 +13,8 @@ const commands = {
     rmym: "Random Music on Youtube Music\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
     "*" : "<p style='text-align: justify;'>It's just a character to prevent the cell in the table from being empty.</p>",
     social: function() {
-        return `${this.github}\n${this.linkedin}\n${this.spotify}\n${this.instagram}\n${this.twitter}`;
+        let socialMidias = [this.github, this.linkedin, this.spotify, this.instagram, this.twitter];
+        return buildTable(socialMidias, 1);
     },
     clear: function() {
         terminalOutput.innerHTML = '';
