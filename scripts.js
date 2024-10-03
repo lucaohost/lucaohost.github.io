@@ -51,7 +51,7 @@ function processCommand(input) {
             appendOutput(commands[command]);
         }
     } else {
-        appendOutput(`Command '${input}' not found.\nType help to see all commands`);
+        appendOutput(`Command '${input}' not found.\n${commands["helpDesc"]}`);
     }
 }
 
