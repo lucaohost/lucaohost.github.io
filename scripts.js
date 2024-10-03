@@ -76,22 +76,18 @@ function onEnter(event) {
 inputField.addEventListener('keydown', onEnter);
 
 function buildTable(items) {
-    const cols = 3; // Sempre use 3 colunas
-    const rows = Math.ceil(items.length / cols); // Calcular o número de linhas
-
-    // Criar o elemento da tabela com estilo ajustado
+    const cols = 3;
+    const rows = Math.ceil(items.length / cols);
     let table = `\n<table style="border-collapse: collapse;"><tbody>`;
-
-    // Criar linhas da tabela
     for (let i = 0; i < rows; i++) {
         table += '<tr>';
         const rowItems = items.slice(i * cols, (i + 1) * cols);
         while (rowItems.length < cols) {
-            rowItems.push(''); // Preencher células vazias se necessário
+            rowItems.push(''); // Fill table if necessary
         }
         rowItems.forEach(item => {
             table += `
-                <td style="border: 1px solid white; padding: 8px; text-align: center; color: white;">${item}</td>`; // Bordas brancas
+                <td style="border: 1px solid white; padding: 8px; text-align: center; color: white;">${item}</td>`;
         });
         table += '</tr>';
     }
