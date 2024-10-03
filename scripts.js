@@ -63,6 +63,7 @@ function appendOutput(text) {
         terminalOutput.appendChild(newLine);
     }
     cli.scrollTop = terminalOutput.scrollHeight;
+    inputField.focus();
 }
 
 function onEnter(event) {
