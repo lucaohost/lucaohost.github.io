@@ -24,6 +24,7 @@ const commands = {
     helpDesc: "Type help to see all commands.",
     exit: function() {
         window.close();
+        window.history.back(); // if the windows didn't close, we back to the previous page
     }
 };
 
