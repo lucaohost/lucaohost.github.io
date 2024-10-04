@@ -91,7 +91,7 @@ function buildTable(items, cols = 3) {
         }
         rowItems.forEach(item => {
             table += `
-                <td style="border: 1px solid white; padding: 8px; text-align: center; color: white;">${item}</td>`;
+                <td style="border: 1px solid white; padding: 8px; text-align: left; color: white;">${item}</td>`;
         });
         table += '</tr>';
     }
