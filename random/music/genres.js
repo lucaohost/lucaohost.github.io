@@ -832,5 +832,8 @@ const genres = [
    "Pós-punk",
    "Future bass",
    "Post-rock",
-   "Forró eletrônico"
+   "Forró eletrônico",
+   "Funk Putaria",
+   "Funk Pesadão",
+   "Funk Proibidão"
 ];
