@@ -12,9 +12,10 @@ const commands = {
     rmy: "Random Music on Youtube:\n<a href='https://lucaohost.github.io/rmy' target='_blank'>https://lucaohost.github.io/rmy</a>",
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
+    youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
     "*" : "<p style='text-align: justify;'>It's just a character to prevent the cell in the table from being empty.</p>",
     social: function() {
-        let socialMidias = [this.github, this.linkedin, this.spotify, this.instagram, this.twitter];
+        let socialMidias = [this.github, this.linkedin, this.spotify, this.instagram, this.twitter, this.youtube];
         return buildTable(socialMidias, 1);
     },
     clear: function() {
