@@ -26,7 +26,7 @@ const commands = {
         return buildTable(items);
     },
     music: function() {
-        return "Playing random liked music:\n" + showRandomMusic("PHbL-0KJrMQ");
+        return "Playing random liked music:\n" + showRandomMusic();
     },
     helpDesc: "Type help to see all commands.",
     exit: function() {
@@ -104,7 +104,22 @@ function buildTable(items, cols = 3) {
     return table;
 }
 
-function showRandomMusic(videoId, width = 560, height = 315) {
+const likedMusics = [
+    { musicId: "o4TVH4imFfA", musicName: "Chris Bandi - Would Have Loved Her" },
+    { musicId: "4QIZE708gJ4", musicName: "Post Malone - I Had Some Help" },
+    { musicId: "pXRviuL6vMY", musicName: "Twenty One Pilots - Stressed Out" },
+    { musicId: "xGytDsqkQY8", musicName: "Semisonic - Closing Time" },
+    { musicId: "-oqAU5VxFWs", musicName: "Counting Crows - Mr. Jones" },
+    { musicId: "OnuuYcqhzCE", musicName: "Bleed It Out - Linkin Park" },
+    { musicId: "Dpv5G0747V4", musicName: "Young Folks - Peter Bjorn and John" },
+    { musicId: "odWKEfp2QMY", musicName: "Maneskin - THE LONELIEST" },
+    { musicId: "NfMegACVJQw", musicName: "Surf Curse - Freaks" },
+    { musicId: "kPBzTxZQG5Q", musicName: "3 Doors Down - Here Without You" },
+    { musicId: "O-fyNgHdmLI", musicName: "Creed - My Sacrifice" },
+];
+
+
+function showRandomMusic(width = 560, height = 315) {
     const iframe = document.createElement('iframe');
     iframe.width = width;
     iframe.height = height;
