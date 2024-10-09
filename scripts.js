@@ -22,8 +22,11 @@ const commands = {
         terminalOutput.innerHTML = '';
     },
     help: function() {
-        const items = ['whoami', 'social', 'share', 'rms', 'rmy', 'rmym', 'help', 'clear', 'exit'];
+        const items = ['whoami', 'social', 'share', 'music', 'help', 'clear', 'exit'];
         return buildTable(items);
+    },
+    music: function() {
+        return showRandomMusic("PHbL-0KJrMQ");
     },
     helpDesc: "Type help to see all commands.",
     exit: function() {
@@ -88,7 +91,7 @@ function buildTable(items, cols = 3) {
         table += '<tr>';
         const rowItems = items.slice(i * cols, (i + 1) * cols);
         while (rowItems.length < cols) {
-            rowItems.push('*'); // Fill the table if necessary
+            rowItems.push('-'); // Fill the table if necessary
         }
         rowItems.forEach(item => {
             table += `
@@ -99,4 +102,15 @@ function buildTable(items, cols = 3) {
     table += '</tbody></table>\n';
 
     return table;
+}
+
+function showRandomMusic(videoId, width = 560, height = 315) {
+    const iframe = document.createElement('iframe');
+    iframe.width = width;
+    iframe.height = height;
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    iframe.title = "YouTube video player";
+    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+    iframe.allowFullscreen = true;
+    return iframe.outerHTML;
 }
