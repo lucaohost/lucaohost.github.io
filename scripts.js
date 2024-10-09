@@ -26,7 +26,7 @@ const commands = {
         return buildTable(items);
     },
     music: function() {
-        return showRandomMusic("PHbL-0KJrMQ");
+        return "Playing random liked music:\n" + showRandomMusic("PHbL-0KJrMQ");
     },
     helpDesc: "Type help to see all commands.",
     exit: function() {

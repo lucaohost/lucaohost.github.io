@@ -62,3 +62,9 @@ a:hover {
     color: #184a58; /* Cor mais escura ao passar o mouse */
 }
 
+iframe {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    width: 100%;
+}
+  
