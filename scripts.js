@@ -120,6 +120,7 @@ const likedMusics = [
 
 
 function showRandomMusic(width = 560, height = 315) {
+    const videoId = "xGytDsqkQY8";
     const iframe = document.createElement('iframe');
     iframe.width = width;
     iframe.height = height;
