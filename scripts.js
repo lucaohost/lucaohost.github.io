@@ -120,13 +120,27 @@ const likedMusics = [
 
 
 function showRandomMusic(width = 560, height = 315) {
-    const videoId = "xGytDsqkQY8";
+    let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
+    if (playedPositions.length === likedMusics.length) {
+        localStorage.removeItem('playedPositions');
+        playedPositions = [];
+    }
+    
+    let randomIndex;
+    do {
+        randomIndex = Math.floor(Math.random() * likedMusics.length);
+    } while (playedPositions.includes(randomIndex));
+    playedPositions.push(randomIndex);
+    localStorage.setItem('playedPositions', JSON.stringify(playedPositions));
+
+    const selectedMusic = likedMusics[randomIndex];
     const iframe = document.createElement('iframe');
     iframe.width = width;
     iframe.height = height;
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    iframe.src = `https://www.youtube.com/embed/${selectedMusic.musicId}?autoplay=1`;
     iframe.title = "YouTube video player";
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
     iframe.allowFullscreen = true;
+
     return iframe.outerHTML;
 }
