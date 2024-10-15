@@ -125,11 +125,17 @@ function showRandomMusic(width = 560, height = 315) {
         localStorage.removeItem('playedPositions');
         playedPositions = [];
     }
-    
+
     let randomIndex;
+    let tries = 0;
     do {
         randomIndex = Math.floor(Math.random() * likedMusics.length);
-    } while (playedPositions.includes(randomIndex));
+        tries++;
+    } while (tries < 10 && playedPositions.includes(randomIndex));
+    if (tries === 10) {
+        playedPositions = [];
+    }
+    
     playedPositions.push(randomIndex);
     localStorage.setItem('playedPositions', JSON.stringify(playedPositions));
 
