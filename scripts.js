@@ -143,7 +143,7 @@ function showRandomMusic(width = 560, height = 315) {
     const iframe = document.createElement('iframe');
     iframe.width = width;
     iframe.height = height;
-    iframe.src = `www.youtube-nocookie.com/embed/${selectedMusic.musicId}?autoplay=1`;
+    iframe.src = `https://www.youtube.com/embed/${selectedMusic.musicId}?autoplay=1`;
     iframe.title = "YouTube video player";
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
     iframe.allowFullscreen = true;
