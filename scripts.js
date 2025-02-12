@@ -157,20 +157,7 @@ function buildTable(items, cols = 2) {
     return table;
 }
 
-const likedMusics = [
-    { musicId: "7cwTQ1psgGDuX1eBqrKonZ", musicName: "Chris Bandi - Would Have Loved Her" },
-    { musicId: "7221xIgOnuakPdLqT0F3nP", musicName: "Post Malone - I Had Some Help" },
-    { musicId: "3CRDbSIZ4r5MsZ0YwxuEkn", musicName: "Twenty One Pilots - Stressed Out" },
-    { musicId: "1A5V1sxyCLpKJezp75tUXn", musicName: "Semisonic - Closing Time" },
-    { musicId: "5DiXcVovI0FcY2s0icWWUu", musicName: "Counting Crows - Mr. Jones" },
-    { musicId: "0UFDKFqW2oGspYeYqo9wjA", musicName: "Bleed It Out - Linkin Park" },
-    { musicId: "4dyx5SzxPPaD8xQIid5Wjj", musicName: "Young Folks - Peter Bjorn and John" },
-    { musicId: "1Ame8XTX6QHY0l0ahqUhgv", musicName: "Maneskin - THE LONELIEST" },
-    { musicId: "7EkWXAI1wn8Ii883ecd9xr", musicName: "Surf Curse - Freaks" },
-    { musicId: "3NLrRZoMF0Lx6zTlYqeIo4", musicName: "3 Doors Down - Here Without You" },
-    { musicId: "2VSbEXqs6NbNiZSTcHlIDR", musicName: "Creed - My Sacrifice" },
-];
-
+// const music declared in songs.js and imported in index.html
 
 function showRandomMusic(width = 560, height = 315) {
     stopMusic();
