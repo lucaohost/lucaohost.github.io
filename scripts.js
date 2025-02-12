@@ -36,6 +36,7 @@ const commands = {
             'music', "Random Liked Song.",
             'liked', "My Liked Songs Playlist.",
             'rick', "Type and find out.",
+            'tgif', "Countdown to Friday.",
             'help', "Show all Commands.",
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
@@ -63,6 +64,19 @@ const commands = {
         htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
         htmlRick += '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/track/4PTG3Z6ehGkBFwjybzWkR8?utm_source=generator&theme=0" width="61%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
         return htmlRick;
+    },
+    tgif: function thankGodItsFriday() {
+        const now = new Date();
+        const nextFriday = new Date(now);
+        nextFriday.setDate(now.getDate() + (5 - now.getDay() + 7) % 7);
+        nextFriday.setHours(0, 0, 0, 0);
+    
+        const diff = nextFriday - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+        return `You can say "Thank God It's Friday" in ${days} day${days !== 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}, and ${minutes} minute${minutes !== 1 ? 's' : ''}.`;
     }
 };
 
