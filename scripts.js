@@ -36,7 +36,7 @@ const commands = {
             'music', "Random Liked Song.",
             'liked', "My Liked Songs Playlist.",
             'rick', "Type and find out.",
-            'tgif', "Countdown to Friday.",
+            'tgif', "Thank God It's Friday.",
             'help', "Show all Commands.",
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
@@ -53,16 +53,16 @@ const commands = {
         window.history.back(); // if the windows didn't close, we back to the previous page
     },
     liked: function() {
-        stopMusic();
+        stopMusic('liked');
         appendOutput(`My Liked Songs Playlist:\n`);
         inputField.innerText = '';
         return '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
     },
     rick: function () {
-        stopMusic();
+        stopMusic('rick');
         let htmlRick = "<p style='text-align: justify;'>You've been <a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolled</a>!</p>";
         htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
-        htmlRick += '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/track/4PTG3Z6ehGkBFwjybzWkR8?utm_source=generator&theme=0" width="61%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+        htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;"></audio>';
         return htmlRick;
     },
     tgif: function thankGodItsFriday() {
@@ -107,8 +107,8 @@ function processCommand(input) {
                 shareButton.addEventListener('click', function() {
                     if (navigator.share) {
                         navigator.share({
-                            title: 'Lucas Reginatto de Lima',
-                            text: 'Software Engineer',
+                            title: 'Online Terminal by lucaohost',
+                            text: 'Online Terminal by lucaohost',
                             url: 'https://lucaohost.github.io',
                         })
                         .then(() => console.log('Successful share'))
@@ -174,7 +174,7 @@ function buildTable(items, cols = 2) {
 // const music declared in songs.js and imported in index.html
 
 function showRandomMusic(width = 560, height = 315) {
-    stopMusic();
+    stopMusic('music');
     inputField.innerText = '';
     let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
     if (playedPositions.length === likedMusics.length) {
@@ -212,16 +212,13 @@ function showRandomMusic(width = 560, height = 315) {
     return spotifyIframe.outerHTML;
 }
 
-function stopMusic() {
+function stopMusic(command) {
     const alreadyHasPlayer = terminalOutput.querySelector('iframe');
     if (alreadyHasPlayer) {
         processCommand('clear');
-        appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
+        appendOutput(`<span class="path">lucaohost@bash:~$</span> ${command}`);
     }
-    const alreadyAudioPlayer = terminalOutput.querySelector('audio');
-    if (alreadyAudioPlayer) {
-        alreadyAudioPlayer.pause();
-    }
+    document.querySelectorAll('audio').forEach(audio => audio.pause());
 }
 
 function showSpotifyIframe() {
