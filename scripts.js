@@ -60,7 +60,7 @@ const commands = {
     rick: function () {
         stopMusic();
         let htmlRick = "<p style='text-align: justify;'>You've been <a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolled</a>!</p>";
-        htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='250' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
+        htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
         htmlRick += '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/track/4PTG3Z6ehGkBFwjybzWkR8?utm_source=generator&theme=0" width="61%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
         return htmlRick;
     }
@@ -214,7 +214,7 @@ function showSpotifyIframe() {
     // Edit width of spotify iframe and show
     // Setting in the html didnt work
     document.querySelectorAll(".spotifyIframe").forEach(iframe => {
-        iframe.style.width = "250px";
+        iframe.style.width = "290px";
         iframe.hidden = false;
     });
 }
