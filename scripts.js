@@ -5,7 +5,7 @@ const commands = {
     whoami: "<p style='text-align: justify;'>Lucas: Hello, I am a software engineer from Brazil and I really enjoy solving problems with technology.</p>",
     github: "<a href='https://github.com/lucaohost' target='_blank'>https://github.com/lucaohost</a>",
     linkedin: "<a href='https://linkedin.com/in/lucas-reginatto-de-lima' target='_blank'>https://linkedin.com/lucaohost</a>",
-    spotify: "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'>https://spotify.com/lucaohost</a>",
+    spotify: "<a href='https://open.spotify.com/user/blood.dota' target='_blank'>https://spotify.com/lucaohost</a>",
     instagram: "<a href='https://instagram.com/lucaohost' target='_blank'>https://instagram.com/lucaohost</a>",
     twitter: "<a href='https://twitter.com/lucaohost' target='_blank'>https://twitter.com/lucaohost</a>",
     share: "<p><button id='shareButton' style='margin-top: 10px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Share this Site!</button></p>",
@@ -30,12 +30,13 @@ const commands = {
         const items = [
             "Commands", "Description",
             'whoami', "Information about me.", 
+            'lucaohost', "Explains my username.",
             'social', "Show my social networks.",
             'share', "Share this site.",
             'music', "Random Liked Song.",
             'liked', "My Liked Songs Playlist.",
+            'rick', "Type and find out.",
             'help', "Show all Commands.",
-            'lucaohost', "Explains my username.",
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
         ];
@@ -51,14 +52,17 @@ const commands = {
         window.history.back(); // if the windows didn't close, we back to the previous page
     },
     liked: function() {
-        const alreadyHasPlayer = terminalOutput.querySelector('iframe');
-        if (alreadyHasPlayer) {
-            processCommand('clear');
-            appendOutput(`<span class="path">lucaohost@bash:~$</span> liked`);
-        }
+        stopMusic();
         appendOutput(`My Liked Songs Playlist:\n`);
         inputField.innerText = '';
-        return '<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+        return '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+    },
+    rick: function () {
+        stopMusic();
+        let htmlRick = "<p style='text-align: justify;'>You've been <a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolled</a>!</p>";
+        htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='250' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
+        htmlRick += '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/track/4PTG3Z6ehGkBFwjybzWkR8?utm_source=generator&theme=0" width="61%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+        return htmlRick;
     }
 };
 
@@ -79,6 +83,9 @@ function processCommand(input) {
     if (commands[command]) {
         if (typeof commands[command] === 'function') {
             appendOutput(commands[command]());
+            if (command === 'rick' || command === "music" || command === "liked") {
+                showSpotifyIframe();
+            }
         } else {
             appendOutput(commands[command]);
             if (command === 'share') {
@@ -96,6 +103,9 @@ function processCommand(input) {
                         alert('This feature is not supported in your browser.');
                     }
                 });
+            }
+            if (command === "liked") {
+                showSpotifyIframe();
             }
         }
     } else {
@@ -163,11 +173,7 @@ const likedMusics = [
 
 
 function showRandomMusic(width = 560, height = 315) {
-    const alreadyHasPlayer = terminalOutput.querySelector('iframe');
-    if (alreadyHasPlayer) {
-        processCommand('clear');
-        appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
-    }
+    stopMusic();
     inputField.innerText = '';
     let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
     if (playedPositions.length === likedMusics.length) {
@@ -192,8 +198,10 @@ function showRandomMusic(width = 560, height = 315) {
 
     const spotifyIframe = document.createElement('iframe');
     spotifyIframe.style.borderRadius = '12px';
+    spotifyIframe.classList.add('spotifyIframe');
     spotifyIframe.src = `https://open.spotify.com/embed/track/${selectedMusic.musicId}?utm_source=generator&theme=0`;
     spotifyIframe.width = '50%';
+    spotifyIframe.hidden = true;
     spotifyIframe.height = '152';
     spotifyIframe.frameBorder = '0';
     spotifyIframe.allowFullscreen = true;
@@ -201,4 +209,25 @@ function showRandomMusic(width = 560, height = 315) {
     spotifyIframe.loading = 'lazy';
 
     return spotifyIframe.outerHTML;
+}
+
+function stopMusic() {
+    const alreadyHasPlayer = terminalOutput.querySelector('iframe');
+    if (alreadyHasPlayer) {
+        processCommand('clear');
+        appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
+    }
+    const alreadyAudioPlayer = terminalOutput.querySelector('audio');
+    if (alreadyAudioPlayer) {
+        alreadyAudioPlayer.pause();
+    }
+}
+
+function showSpotifyIframe() {
+    // Edit width of spotify iframe and show
+    // Setting in the html didnt work
+    document.querySelectorAll(".spotifyIframe").forEach(iframe => {
+        iframe.style.width = "250px";
+        iframe.hidden = false;
+    });
 }
