@@ -14,7 +14,8 @@ const commands = {
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
     lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like <a id='localhostExplanation'>localhost</a>.</p>",
-    'localhost?': "<p style='text-align: justify;'>It's a hostname that refers to the local computer running the program.</p>",
+    'localhost?': "<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Localhost' target='_blank'>localhost</a> is a hostname that refers to the local computer running the program.</p>",
+    'rickrolled?': "<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolling</a> is a bait-and-switch internet meme involving an unexpected appearance of Rick Astley song 'Never Gonna Give You Up'.</p>",
     social: function() {
         let socialMidias = [
             "<a href='https://github.com/lucaohost' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/733/733553.png' alt='GitHub' width='24' height='24'></a>", this.github,
@@ -62,7 +63,7 @@ const commands = {
     },
     rick: function () {
         stopMusic('rick');
-        let htmlRick = "<p style='text-align: justify;'>You've been <a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolled</a>!</p>";
+        let htmlRick = "<p style='text-align: justify;'>You've been <a id='rickRolledExplanation'>Rickrolled</a>!</p>";
         htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
         htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;" preload="none"></audio>';
         return htmlRick;
@@ -128,8 +129,8 @@ function processCommand(input) {
             }
         } else {
             appendOutput(commands[command]);
-            addEvents(command);
         }
+        addEvents(command);
     } else {
         appendOutput(`Command '${input}' not found.\n${commands["helpDesc"]}`);
     }
@@ -308,6 +309,14 @@ function addEvents(command) {
         localhostExplanation.addEventListener('click', function() {
             appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
             processCommand('localhost?');
+            inputField.innerText = '';
+        });
+    }
+    if (command === "rick") {
+        const localhostExplanation = document.getElementById('rickRolledExplanation');
+        localhostExplanation.addEventListener('click', function() {
+            appendOutput(`<span class="path">lucaohost@bash:~$</span> rickrolled?`);
+            processCommand('rickrolled?');
             inputField.innerText = '';
         });
     }
