@@ -13,7 +13,8 @@ const commands = {
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
-    lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like localhost.</p>",
+    lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like <a id='localhostExplanation'>localhost</a>.</p>",
+    'localhost?': "<p style='text-align: justify;'>It's a hostname that refers to the local computer running the program.</p>",
     social: function() {
         let socialMidias = [
             "<a href='https://github.com/lucaohost' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/733/733553.png' alt='GitHub' width='24' height='24'></a>", this.github,
@@ -127,25 +128,7 @@ function processCommand(input) {
             }
         } else {
             appendOutput(commands[command]);
-            if (command === 'share') {
-                const shareButton = document.getElementById('shareButton');
-                shareButton.addEventListener('click', function() {
-                    if (navigator.share) {
-                        navigator.share({
-                            title: 'Online Terminal by lucaohost',
-                            text: 'Online Terminal by lucaohost',
-                            url: 'https://lucaohost.github.io',
-                        })
-                        .then(() => console.log('Successful share'))
-                        .catch((error) => console.log('Error sharing', error));
-                    } else {
-                        alert('This feature is not supported in your browser.');
-                    }
-                });
-            }
-            if (command === "liked") {
-                showSpotifyIframe();
-            }
+            addEvents(command);
         }
     } else {
         appendOutput(`Command '${input}' not found.\n${commands["helpDesc"]}`);
@@ -294,4 +277,38 @@ function buildTgifMsg(days, hours, minutes) {
         message += `${minutes} minute${minutes !== 1 ? 's' : ''}`;
     }
     return message + '.';    
+}
+
+function addShareButtonEvent() {
+    const shareButton = document.getElementById('shareButton');
+    shareButton.addEventListener('click', function() {
+        if (navigator.share) {
+            navigator.share({
+                title: 'Online Terminal by lucaohost',
+                text: 'Online Terminal by lucaohost',
+                url: 'https://lucaohost.github.io',
+            })
+            .then(() => console.log('Successful share'))
+            .catch((error) => console.log('Error sharing', error));
+        } else {
+            alert('This feature is not supported in your browser. You can copy the link in the address bar.');
+        }
+    });
+}
+
+function addEvents(command) {
+    if (command === 'share') {
+        addShareButtonEvent();
+    }
+    if (command === "liked") {
+        showSpotifyIframe();
+    }
+    if (command === "lucaohost") {
+        const localhostExplanation = document.getElementById('localhostExplanation');
+        localhostExplanation.addEventListener('click', function() {
+            appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
+            processCommand('localhost?');
+            inputField.innerText = '';
+        });
+    }
 }
