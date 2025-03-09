@@ -32,6 +32,9 @@ const commands = {
     exit: function() {
         window.close();
         window.history.back(); // if the windows didn't close, we back to the previous page
+    },
+    liked: function() {
+        return '<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
     }
 };
 
@@ -148,5 +151,16 @@ function showRandomMusic(width = 560, height = 315) {
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
     iframe.allowFullscreen = true;
 
+    const spotifyIframe = document.createElement('iframe');
+    spotifyIframe.style.borderRadius = '12px';
+    spotifyIframe.src = 'https://open.spotify.com/embed/track/7cwTQ1psgGDuX1eBqrKonZ?utm_source=generator&theme=0';
+    spotifyIframe.width = '50%';
+    spotifyIframe.height = '152';
+    spotifyIframe.frameBorder = '0';
+    spotifyIframe.allowFullscreen = true;
+    spotifyIframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    spotifyIframe.loading = 'lazy';
+
+    return spotifyIframe.outerHTML;
     return iframe.outerHTML;
 }
