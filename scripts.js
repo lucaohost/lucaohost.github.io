@@ -26,17 +26,20 @@ const commands = {
         return buildTable(items);
     },
     music: function() {
-        return "Playing random liked music:\n" + showRandomMusic();
+        return "Random liked music:\n" + showRandomMusic();
     },
     helpDesc: "Type help to see all commands.",
     exit: function() {
         window.close();
         window.history.back(); // if the windows didn't close, we back to the previous page
+    },
+    liked: function() {
+        return '<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
     }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    appendOutput(commands["helpDesc"])
+    appendOutput(commands["helpDesc"])     
     inputField.focus();  // focus in the terminal after page loads
 });
 
@@ -105,17 +108,17 @@ function buildTable(items, cols = 3) {
 }
 
 const likedMusics = [
-    { musicId: "o4TVH4imFfA", musicName: "Chris Bandi - Would Have Loved Her" },
-    { musicId: "4QIZE708gJ4", musicName: "Post Malone - I Had Some Help" },
-    { musicId: "pXRviuL6vMY", musicName: "Twenty One Pilots - Stressed Out" },
-    { musicId: "xGytDsqkQY8", musicName: "Semisonic - Closing Time" },
-    { musicId: "-oqAU5VxFWs", musicName: "Counting Crows - Mr. Jones" },
-    { musicId: "OnuuYcqhzCE", musicName: "Bleed It Out - Linkin Park" },
-    { musicId: "Dpv5G0747V4", musicName: "Young Folks - Peter Bjorn and John" },
-    { musicId: "odWKEfp2QMY", musicName: "Maneskin - THE LONELIEST" },
-    { musicId: "NfMegACVJQw", musicName: "Surf Curse - Freaks" },
-    { musicId: "kPBzTxZQG5Q", musicName: "3 Doors Down - Here Without You" },
-    { musicId: "O-fyNgHdmLI", musicName: "Creed - My Sacrifice" },
+    { musicId: "7cwTQ1psgGDuX1eBqrKonZ", musicName: "Chris Bandi - Would Have Loved Her" },
+    { musicId: "7221xIgOnuakPdLqT0F3nP", musicName: "Post Malone - I Had Some Help" },
+    { musicId: "3CRDbSIZ4r5MsZ0YwxuEkn", musicName: "Twenty One Pilots - Stressed Out" },
+    { musicId: "1A5V1sxyCLpKJezp75tUXn", musicName: "Semisonic - Closing Time" },
+    { musicId: "5DiXcVovI0FcY2s0icWWUu", musicName: "Counting Crows - Mr. Jones" },
+    { musicId: "0UFDKFqW2oGspYeYqo9wjA", musicName: "Bleed It Out - Linkin Park" },
+    { musicId: "4dyx5SzxPPaD8xQIid5Wjj", musicName: "Young Folks - Peter Bjorn and John" },
+    { musicId: "1Ame8XTX6QHY0l0ahqUhgv", musicName: "Maneskin - THE LONELIEST" },
+    { musicId: "7EkWXAI1wn8Ii883ecd9xr", musicName: "Surf Curse - Freaks" },
+    { musicId: "3NLrRZoMF0Lx6zTlYqeIo4", musicName: "3 Doors Down - Here Without You" },
+    { musicId: "2VSbEXqs6NbNiZSTcHlIDR", musicName: "Creed - My Sacrifice" },
 ];
 
 
@@ -140,13 +143,16 @@ function showRandomMusic(width = 560, height = 315) {
     localStorage.setItem('playedPositions', JSON.stringify(playedPositions));
 
     const selectedMusic = likedMusics[randomIndex];
-    const iframe = document.createElement('iframe');
-    iframe.width = width;
-    iframe.height = height;
-    iframe.src = `https://www.youtube.com/embed/${selectedMusic.musicId}?autoplay=1`;
-    iframe.title = "YouTube video player";
-    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-    iframe.allowFullscreen = true;
 
-    return iframe.outerHTML;
+    const spotifyIframe = document.createElement('iframe');
+    spotifyIframe.style.borderRadius = '12px';
+    spotifyIframe.src = `https://open.spotify.com/embed/track/${selectedMusic.musicId}?utm_source=generator&theme=0`;
+    spotifyIframe.width = '50%';
+    spotifyIframe.height = '152';
+    spotifyIframe.frameBorder = '0';
+    spotifyIframe.allowFullscreen = true;
+    spotifyIframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    spotifyIframe.loading = 'lazy';
+
+    return spotifyIframe.outerHTML;
 }
