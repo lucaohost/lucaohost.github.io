@@ -22,11 +22,11 @@ const commands = {
         terminalOutput.innerHTML = '';
     },
     help: function() {
-        const items = ['whoami', 'social', 'share', 'music', 'help', 'clear', 'exit'];
+        const items = ['whoami', 'social', 'share', 'music', 'liked', 'help', 'clear', 'exit'];
         return buildTable(items);
     },
     music: function() {
-        return "Random liked music:\n" + showRandomMusic();
+        return "Random Liked Song:\n" + showRandomMusic();
     },
     helpDesc: "Type help to see all commands.",
     exit: function() {
@@ -34,6 +34,11 @@ const commands = {
         window.history.back(); // if the windows didn't close, we back to the previous page
     },
     liked: function() {
+        processCommand('clear');
+        appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
+        appendOutput(`Warning: Forced clear to stop external music player.`);
+        appendOutput(`Liked Songs Playlist:\n`);
+        inputField.innerText = '';
         return '<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
     }
 };
@@ -123,6 +128,10 @@ const likedMusics = [
 
 
 function showRandomMusic(width = 560, height = 315) {
+    processCommand('clear');
+    appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
+    appendOutput(`Warning: Forced clear to stop external music player.`);
+    inputField.innerText = '';
     let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
     if (playedPositions.length === likedMusics.length) {
         localStorage.removeItem('playedPositions');
