@@ -15,7 +15,7 @@ const commands = {
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
     "*" : "<p style='text-align: justify;'>It's just a character to prevent the cell in the table from being empty.</p>",
     social: function() {
-        let socialMidias = [this.github, this.linkedin, this.spotify, this.instagram, this.twitter, this.youtube];
+        let socialMidias = [this.github, this.linkedin, this.youtube, this.spotify];
         return buildTable(socialMidias, 1);
     },
     clear: function() {
