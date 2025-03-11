@@ -14,8 +14,13 @@ const commands = {
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
     social: function() {
-        let socialMidias = [this.github, this.linkedin, this.youtube, this.spotify];
-        return buildTable(socialMidias, 1);
+        let socialMidias = [
+            "<a href='https://github.com/lucaohost' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/25/25231.png' alt='GitHub' width='24' height='24'></a>", this.github,
+            "<a href='https://linkedin.com/in/lucas-reginatto-de-lima' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/174/174857.png' alt='LinkedIn' width='24' height='24'></a>", this.linkedin,
+            "<a href='https://youtube.com/@lucasreginatto721' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png' alt='YouTube' width='24' height='24'></a>", this.youtube,
+            "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/174/174872.png' alt='Spotify' width='24' height='24'></a>", this.spotify
+        ];
+        return buildTable(socialMidias, 2);
     },
     clear: function() {
         terminalOutput.innerHTML = '';
