@@ -2,7 +2,7 @@ const inputField = document.getElementById('input');
 const terminalOutput = document.getElementById('output');
 const cli = document.getElementById('cli');
 const commands = {
-    whoami: "<p style='text-align: justify;'>Lucas: Hello, I am a software engineer from Brasil and I really enjoy solving problems with technology.</p>",
+    whoami: "<p style='text-align: justify;'>Lucas: Hello, I am a software engineer from Brazil and I really enjoy solving problems with technology.</p>",
     github: "<a href='https://github.com/lucaohost' target='_blank'>https://github.com/lucaohost</a>",
     linkedin: "<a href='https://linkedin.com/in/lucas-reginatto-de-lima' target='_blank'>https://linkedin.com/lucaohost</a>",
     spotify: "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'>https://spotify.com/lucaohost</a>",
@@ -13,7 +13,6 @@ const commands = {
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
-    "*" : "<p style='text-align: justify;'>It's just a character to prevent the cell in the table from being empty.</p>",
     social: function() {
         let socialMidias = [this.github, this.linkedin, this.youtube, this.spotify];
         return buildTable(socialMidias, 1);
@@ -22,13 +21,23 @@ const commands = {
         terminalOutput.innerHTML = '';
     },
     help: function() {
-        const items = ['whoami', 'social', 'share', 'music', 'liked', 'help', 'clear', 'exit'];
+        const items = [
+            "Commands", "Description",
+            'whoami', "Print brief information about me.", 
+            'social', "Show my social networks.",
+            'share', "Share this site.",
+            'music', "Show a random liked song.",
+            'liked', "Show my liked songs playlist.",
+            'help', "Show all commands.",
+            'clear', "Clear the terminal.",
+            'exit', "Close the terminal."
+        ];
         return buildTable(items);
     },
     music: function() {
         return "Random Liked Song:\n" + showRandomMusic();
     },
-    helpDesc: "Type help to see all commands.",
+    helpDesc: "Type 'help' to see all commands.",
     exit: function() {
         window.close();
         window.history.back(); // if the windows didn't close, we back to the previous page
@@ -46,7 +55,7 @@ const commands = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    appendOutput(commands["helpDesc"])     
+    appendOutput("Welcome to my online terminal! Type 'help' to see all commands.");
     inputField.focus();  // focus in the terminal after page loads
 });
 
@@ -94,7 +103,7 @@ function onEnter(event) {
 
 inputField.addEventListener('keydown', onEnter);
 
-function buildTable(items, cols = 3) {
+function buildTable(items, cols = 2) {
     const rows = Math.ceil(items.length / cols);
     let table = `\n<table style="border-collapse: collapse;"><tbody>`;
     for (let i = 0; i < rows; i++) {
