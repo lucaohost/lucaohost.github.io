@@ -13,6 +13,7 @@ const commands = {
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
+    lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like localhost.</p>",
     social: function() {
         let socialMidias = [
             "<a href='https://github.com/lucaohost' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/25/25231.png' alt='GitHub' width='24' height='24'></a>", this.github,
@@ -28,14 +29,15 @@ const commands = {
     help: function() {
         const items = [
             "Commands", "Description",
-            'whoami', "Print brief information about me.", 
+            'whoami', "Information about me.", 
             'social', "Show my social networks.",
             'share', "Share this site.",
-            'music', "Show a random liked song.",
-            'liked', "Show my liked songs playlist.",
-            'help', "Show all commands.",
-            'clear', "Clear the terminal.",
-            'exit', "Close the terminal."
+            'music', "Random Liked Song.",
+            'liked', "My Liked Songs Playlist.",
+            'help', "Show all Commands.",
+            'lucaohost', "Explains my username.",
+            'clear', "Clear the Terminal.",
+            'exit', "Close the Terminal."
         ];
         return buildTable(items);
     },
@@ -45,6 +47,7 @@ const commands = {
     helpDesc: "Type 'help' to see all commands.",
     exit: function() {
         window.close();
+        window.close(); // if the first windows.close, closed the spotify iframe
         window.history.back(); // if the windows didn't close, we back to the previous page
     },
     liked: function() {
