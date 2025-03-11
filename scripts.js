@@ -8,7 +8,7 @@ const commands = {
     spotify: "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'>https://spotify.com/lucaohost</a>",
     instagram: "<a href='https://instagram.com/lucaohost' target='_blank'>https://instagram.com/lucaohost</a>",
     twitter: "<a href='https://twitter.com/lucaohost' target='_blank'>https://twitter.com/lucaohost</a>",
-    share: "<p><button id='shareButton' style='margin-top: 10px; margin-bottom: 10px;'>Share this Site!</button></p>",
+    share: "<p><button id='shareButton' style='margin-top: 10px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Share this Site!</button></p>",
     rmy: "Random Music on Youtube:\n<a href='https://lucaohost.github.io/rmy' target='_blank'>https://lucaohost.github.io/rmy</a>",
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
@@ -60,7 +60,7 @@ const commands = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    appendOutput("Welcome to my online terminal! Type 'help' to see all commands.");
+    appendOutput("Welcome to my online terminal!\nType 'help' to see all commands.");
     inputField.focus();  // focus in the terminal after page loads
 });
 
