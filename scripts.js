@@ -8,7 +8,7 @@ const commands = {
     spotify: "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'>https://spotify.com/lucaohost</a>",
     instagram: "<a href='https://instagram.com/lucaohost' target='_blank'>https://instagram.com/lucaohost</a>",
     twitter: "<a href='https://twitter.com/lucaohost' target='_blank'>https://twitter.com/lucaohost</a>",
-    share: "Share this site: <a href='https://lucaohost.github.io' target='_blank'>https://lucaohost.github.io</a>",
+    share: "<p><button id='shareButton' style='margin-top: 10px; margin-bottom: 10px;'>Share this Site!</button></p>",
     rmy: "Random Music on Youtube:\n<a href='https://lucaohost.github.io/rmy' target='_blank'>https://lucaohost.github.io/rmy</a>",
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
@@ -73,6 +73,22 @@ function processCommand(input) {
             appendOutput(commands[command]());
         } else {
             appendOutput(commands[command]);
+            if (command === 'share') {
+                const shareButton = document.getElementById('shareButton');
+                shareButton.addEventListener('click', function() {
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'Lucas Reginatto de Lima',
+                            text: 'Software Engineer',
+                            url: 'https://lucaohost.github.io',
+                        })
+                        .then(() => console.log('Successful share'))
+                        .catch((error) => console.log('Error sharing', error));
+                    } else {
+                        alert('This feature is not supported in your browser.');
+                    }
+                });
+            }
         }
     } else {
         appendOutput(`Command '${input}' not found.\n${commands["helpDesc"]}`);
