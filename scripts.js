@@ -34,10 +34,12 @@ const commands = {
         window.history.back(); // if the windows didn't close, we back to the previous page
     },
     liked: function() {
-        processCommand('clear');
-        appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
-        appendOutput(`Warning: Forced clear to stop external music player.`);
-        appendOutput(`Liked Songs Playlist:\n`);
+        const alreadyHasPlayer = terminalOutput.querySelector('iframe');
+        if (alreadyHasPlayer) {
+            processCommand('clear');
+            appendOutput(`<span class="path">lucaohost@bash:~$</span> liked`);
+        }
+        appendOutput(`My Liked Songs Playlist:\n`);
         inputField.innerText = '';
         return '<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
     }
@@ -128,9 +130,11 @@ const likedMusics = [
 
 
 function showRandomMusic(width = 560, height = 315) {
-    processCommand('clear');
-    appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
-    appendOutput(`Warning: Forced clear to stop external music player.`);
+    const alreadyHasPlayer = terminalOutput.querySelector('iframe');
+    if (alreadyHasPlayer) {
+        processCommand('clear');
+        appendOutput(`<span class="path">lucaohost@bash:~$</span> music`);
+    }
     inputField.innerText = '';
     let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
     if (playedPositions.length === likedMusics.length) {
