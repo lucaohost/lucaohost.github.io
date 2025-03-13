@@ -62,7 +62,7 @@ const commands = {
         stopMusic('rick');
         let htmlRick = "<p style='text-align: justify;'>You've been <a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolled</a>!</p>";
         htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
-        htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;"></audio>';
+        htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;" preload="none"></audio>';
         return htmlRick;
     },
     tgif: function thankGodItsFriday() {
