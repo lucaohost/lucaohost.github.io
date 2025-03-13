@@ -76,7 +76,7 @@ const commands = {
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     
-        return `You can say "Thank God It's Friday" in ${days} day${days !== 1 ? 's' : ''}, ${hours} hour${hours !== 1 ? 's' : ''}, and ${minutes} minute${minutes !== 1 ? 's' : ''}.`;
+        return buildTgifMsg(days, hours, minutes);
     }
 };
 
@@ -248,4 +248,25 @@ function showSpotifyIframe() {
         iframe.style.width = "290px";
         iframe.hidden = false;
     });
+}
+
+function buildTgifMsg(days, hours, minutes) {
+    let message = `You can say "Thank God It's Friday in" `;
+    if (days > 0) {
+        message += `${days} day${days !== 1 ? 's' : ''}`;
+    }
+    if (hours > 0) {
+        if (minutes > 0) {
+            message += 'and ';
+        }
+        if (days > 0) {
+            message += ', ';
+        }	
+        message += `${hours} hour${hours !== 1 ? 's' : ''}`;
+    }
+    if (minutes > 0) {
+        if (days > 0 || hours > 0) message += ' and ';
+        message += `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    }
+    return message + '.';    
 }
