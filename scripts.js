@@ -226,13 +226,8 @@ function showRandomMusic(width = 560, height = 315) {
     spotifyIframe.style.borderRadius = '12px';
     spotifyIframe.classList.add('spotifyIframe');
     spotifyIframe.src = `https://open.spotify.com/embed/track/${selectedMusic.musicId}?utm_source=generator&theme=0`;
-    spotifyIframe.width = '50%';
     spotifyIframe.hidden = true;
     spotifyIframe.height = '152';
-    spotifyIframe.frameBorder = '0';
-    spotifyIframe.allowFullscreen = true;
-    spotifyIframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-    spotifyIframe.loading = 'lazy';
 
     return spotifyIframe.outerHTML;
 }
