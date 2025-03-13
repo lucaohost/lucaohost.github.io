@@ -281,10 +281,10 @@ function buildTgifMsg(days, hours, minutes) {
         message += `${days} day${days !== 1 ? 's' : ''}`;
     }
     if (hours > 0) {
-        if (minutes > 0) {
+        if (minutes > 0 && days > 0) {
             message += 'and ';
         }
-        if (days > 0) {
+        if (days > 0 && days > 0) {
             message += ', ';
         }	
         message += `${hours} hour${hours !== 1 ? 's' : ''}`;
