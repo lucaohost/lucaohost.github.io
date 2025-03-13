@@ -36,7 +36,7 @@ const commands = {
             'music', "Random Liked Song.",
             'liked', "All Liked Songs.",
             'rick', "Type and find out.",
-            'tgif', "Thank God It's Friday.",
+            'tgif', "Thank God It's Friday!",
             'help', "Show all Commands.",
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
