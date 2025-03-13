@@ -31,10 +31,10 @@ const commands = {
             "Commands", "Description",
             'whoami', "Information about me.", 
             'lucaohost', "Explains my username.",
-            'social', "Show my social networks.",
+            'social', "Social networks.",
             'share', "Share this site.",
             'music', "Random Liked Song.",
-            'liked', "My Liked Songs Playlist.",
+            'liked', "All Liked Songs.",
             'rick', "Type and find out.",
             'tgif', "Thank God It's Friday.",
             'help', "Show all Commands.",
@@ -81,7 +81,7 @@ const commands = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    appendOutput("Welcome to my online terminal!\nType 'help' to see all commands.");
+    appendOutput('Welcome to my online terminal!\nType "help" to see all commands.');
     inputField.focus();  // focus in the terminal after page loads
 });
 
@@ -162,7 +162,7 @@ function buildTable(items, cols = 2) {
         }
         rowItems.forEach(item => {
             table += `
-                <td style="border: 1px solid white; padding: 8px; text-align: left; color: white;">${item}</td>`;
+                <td style="border: 1px solid white; padding: 3px; text-align: left; color: white;">${item}</td>`;
         });
         table += '</tr>';
     }
