@@ -21,7 +21,7 @@ const commands = {
             "<a href='https://youtube.com/@lucasreginatto721' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png' alt='YouTube' width='24' height='24'></a>", this.youtube,
             "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/174/174872.png' alt='Spotify' width='24' height='24'></a>", this.spotify
         ];
-        return buildTable(socialMidias, 2);
+        return buildSocialTable(socialMidias, 2);
     },
     clear: function() {
         terminalOutput.innerHTML = '';
@@ -41,7 +41,7 @@ const commands = {
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
         ];
-        return buildTable(items);
+        return buildCommandTable(items);
     },
     music: function() {
         return "Random Liked Song:\n" + showRandomMusic();
@@ -151,7 +151,7 @@ function onEnter(event) {
 
 inputField.addEventListener('keydown', onEnter);
 
-function buildTable(items, cols = 2) {
+function buildSocialTable(items, cols = 2) {
     const rows = Math.ceil(items.length / cols);
     let table = `\n<table style="border-collapse: collapse;"><tbody>`;
     for (let i = 0; i < rows; i++) {
@@ -162,7 +162,32 @@ function buildTable(items, cols = 2) {
         }
         rowItems.forEach(item => {
             table += `
-                <td style="border: 1px solid white; padding: 3px; text-align: left; color: white;">${item}</td>`;
+                <td style="border: 2px solid black; padding: 5px; text-align: left; color: white;">${item}</td>`;
+        });
+        table += '</tr>';
+    }
+    table += '</tbody></table>\n';
+
+    return table;
+}
+
+function buildCommandTable(items, cols = 2) {
+    const rows = Math.ceil(items.length / cols);
+    let table = `\n<table style="border-collapse: collapse;"><thead><tr>`;
+    for (let i = 0; i < cols; i++) {
+        table += `<th style="border: 2px solid #4CAF50; padding: 5px; text-align: center; background-color: #333; color: #4CAF50;">${items[i]}</th>`;
+    }
+    table += `</tr></thead><tbody>`;
+    items = items.slice(cols); // Remove header items from the array
+    for (let i = 0; i < rows - 1; i++) {
+        table += '<tr>';
+        const rowItems = items.slice(i * cols, (i + 1) * cols);
+        while (rowItems.length < cols) {
+            rowItems.push('-'); // Fill the table if necessary
+        }
+        rowItems.forEach(item => {
+            table += `
+                <td style="border: 2px solid black; padding: 3px; padding-left: 10px; text-align: left; color: white;">${item}</td>`;
         });
         table += '</tr>';
     }
