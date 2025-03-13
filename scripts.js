@@ -37,6 +37,7 @@ const commands = {
             'liked', "All Liked Songs.",
             'rick', "Type and find out.",
             'tgif', "Thank God It's Friday!",
+            'kali', "Kali Linux photo.",
             'help', "Show all Commands.",
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
@@ -77,6 +78,30 @@ const commands = {
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     
         return buildTgifMsg(days, hours, minutes);
+    },
+    kali: function() {
+        // let usedImages = JSON.parse(localStorage.getItem('usedImages')) || [];
+        // if (usedImages.length === 6) {
+        //     localStorage.removeItem('usedImages');
+        //     usedImages = [];
+        // }
+        // let randomNumber;
+        // let tries = 0;
+        // do {
+        //     randomNumber = Math.floor(Math.random() * 6);
+        //     tries++;
+        // } while (tries < 10 && usedImages.includes(randomNumber));
+        // if (tries === 10) {
+        //     usedImages = [];
+        // }
+        // usedImages.push(randomNumber);
+        // localStorage.setItem('usedImages', JSON.stringify(usedImages));
+        // const imagePath = `images/kali-${randomNumber}-min.png`;
+
+        // for a while, I only have 1 good photo
+        imagePath = `images/kali-0-min.png`;
+        let html = "<p style='text-align: justify;'>That's my cat Kali Linux:</p>"
+        return html + `<img src='${imagePath}' alt='Kali Photo' width='150' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>`;
     }
 };
 
