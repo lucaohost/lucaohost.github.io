@@ -295,7 +295,7 @@ function buildTgifMsg(days, hours, minutes) {
 }
 
 function addShareButtonEvent() {
-    const shareButton = document.querySelectorAll('.shareButton')[document.querySelectorAll('.shareButton').length];
+    const shareButton = document.querySelectorAll('.shareButton')[document.querySelectorAll('.shareButton').length - 1];
     shareButton.addEventListener('click', function() {
         if (navigator.share) {
             navigator.share({
