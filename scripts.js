@@ -261,6 +261,20 @@ function showSpotifyIframe() {
 
 function buildTgifMsg(days, hours, minutes) {
     let message = `You can say "Thank God It's Friday in" `;
+
+    const today = new Date();
+    const day = today.getDay();
+
+    switch (day) {
+        case 5: // Friday
+            return `Now, you can say "Thank God it's Friday". At Monday we restart the countdown.`;
+        case 6: // Saturday
+            return `It's Saturday, enjoy your day!. At Monday we restart the countdown.`;
+        case 0: // Sunday
+            return `It's Sunday, take a good rest. Tomorrow, we restart the countdown.`;
+        break;
+    }
+
     if (days > 0) {
         message += `${days} day${days !== 1 ? 's' : ''}`;
     }
