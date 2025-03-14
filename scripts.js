@@ -8,14 +8,14 @@ const commands = {
     spotify: "<a href='https://open.spotify.com/user/blood.dota' target='_blank'>https://spotify.com/lucaohost</a>",
     instagram: "<a href='https://instagram.com/lucaohost' target='_blank'>https://instagram.com/lucaohost</a>",
     twitter: "<a href='https://twitter.com/lucaohost' target='_blank'>https://twitter.com/lucaohost</a>",
-    share: "<p><button id='shareButton' style='margin-top: 10px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Share this Site!</button></p>",
+    share: "<p><button class='shareButton' style='margin-top: 10px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Share this Site!</button></p>",
     rmy: "Random Music on Youtube:\n<a href='https://lucaohost.github.io/rmy' target='_blank'>https://lucaohost.github.io/rmy</a>",
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
-    lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like <a id='localhostExplanation'>localhost</a>.</p>",
+    lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like <a class='localhostExplanation'>localhost</a>.</p>",
     'localhost?': "<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Localhost' target='_blank'>localhost</a> is the local computer’s hostname, resolving to IP 127.0.0.1.</p>",
-    'rickrolled?': "<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolling</a> is a bait-and-switch internet meme involving an unexpected appearance of Rick Astley song 'Never Gonna Give You Up'.</p>",
+    'rickrolled?': <p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolling</a> is an internet meme where Rick Astley’s song "Never Gonna Give You Up" appears unexpectedly.".</p>`,
     social: function() {
         let socialMidias = [
             "<a href='https://github.com/lucaohost' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/733/733553.png' alt='GitHub' width='24' height='24'></a>", this.github,
@@ -63,7 +63,7 @@ const commands = {
     },
     rick: function () {
         stopMusic('rick');
-        let htmlRick = "<p style='text-align: justify;'>You've been <a id='rickRolledExplanation'>Rickrolled</a>!</p>";
+        let htmlRick = "<p style='text-align: justify;'>You've been <a class='rickRolledExplanation'>Rickrolled</a>!</p>";
         htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
         htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;" preload="none"></audio>';
         return htmlRick;
@@ -295,7 +295,7 @@ function buildTgifMsg(days, hours, minutes) {
 }
 
 function addShareButtonEvent() {
-    const shareButton = document.getElementById('shareButton');
+    const shareButton = document.querSelectAll('.shareButton')[document.querSelectAll('.shareButton').length];
     shareButton.addEventListener('click', function() {
         if (navigator.share) {
             navigator.share({
@@ -318,20 +318,17 @@ function addEvents(command) {
     if (command === "liked") {
         showSpotifyIframe();
     }
-    if (command === "lucaohost") {
-        const localhostExplanation = document.getElementById('localhostExplanation');
-        localhostExplanation.addEventListener('click', function() {
-            appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
-            processCommand('localhost?');
-            inputField.innerText = '';
-        });
-    }
-    if (command === "rick") {
-        const localhostExplanation = document.getElementById('rickRolledExplanation');
-        localhostExplanation.addEventListener('click', function() {
-            appendOutput(`<span class="path">lucaohost@bash:~$</span> rickrolled?`);
-            processCommand('rickrolled?');
-            inputField.innerText = '';
+    const commandMap = {
+        "lucaohost": "localhostExplanation",
+        "rick": "rickRolledExplanation"
+    };
+    if (commandMap[command]) {
+        document.querySelectorAll(`.${commandMap[command]}`).forEach(element => {
+            element.addEventListener('click', function() {
+                appendOutput(`<span class="path">lucaohost@bash:~$</span> ${command}?`);
+                processCommand(`${command}?`);
+                inputField.innerText = '';
+            });
         });
     }
 }
