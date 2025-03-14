@@ -318,15 +318,20 @@ function addEvents(command) {
     if (command === "liked") {
         showSpotifyIframe();
     }
-    const commandMap = {
-        "lucaohost?": "localhostExplanation",
-        "rickrolled?": "rickRolledExplanation"
-    };
-    if (commandMap[command]) {
-        document.querySelectorAll(`.${commandMap[command]}`).forEach(element => {
+    if (command === "rick") {
+        document.querySelectorAll(`.rickRolledExplanation`).forEach(element => {
             element.addEventListener('click', function() {
-                appendOutput(`<span class="path">lucaohost@bash:~$</span> ${command}?`);
-                processCommand(`${command}?`);
+                appendOutput(`<span class="path">lucaohost@bash:~$</span> rickrolled?`);
+                processCommand(`rickrolled?`);
+                inputField.innerText = '';
+            });
+        });
+    }
+    if (command === "lucaohost") {
+        document.querySelectorAll(`.localhostExplanation`).forEach(element => {
+            element.addEventListener('click', function() {
+                appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
+                processCommand(`localhost?`);
                 inputField.innerText = '';
             });
         });
