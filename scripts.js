@@ -47,9 +47,11 @@ const commands = {
         return buildCommandTable(items);
     },
     music: function() {
+        stopMusic('music');
         return "Random Liked Song:\n" + showRandomMusic();
     },
     'next music': function () {
+        stopMusic('next music');
         return "Random Liked Song:\n" + showRandomMusic();
     },
     helpDesc: "Type 'help' to see all commands.",
@@ -127,7 +129,7 @@ function processCommand(input) {
     if (commands[command]) {
         if (typeof commands[command] === 'function') {
             appendOutput(commands[command]());
-            if (command === 'rick' || command === "music" || command === "liked") {
+            if (command === 'rick' || command === "music" || command === "liked" || command === "next music") {
                 showSpotifyIframe();
             }
         } else {
@@ -211,7 +213,6 @@ function buildCommandTable(items, cols = 2) {
 // const music declared in songs.js and imported in index.html
 
 function showRandomMusic(width = 560, height = 315) {
-    stopMusic('music');
     inputField.innerText = '';
     let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
     if (playedPositions.length === likedMusics.length) {
