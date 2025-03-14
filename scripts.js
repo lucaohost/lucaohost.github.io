@@ -343,7 +343,7 @@ function addEvents(command) {
         document.querySelectorAll(`.nextMusic`).forEach(element => {
             element.addEventListener('click', function() {
                 appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
-                processCommand(`next music);
+                processCommand('next music');
                 inputField.innerText = '';
             });
         });
