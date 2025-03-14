@@ -295,7 +295,7 @@ function buildTgifMsg(days, hours, minutes) {
 }
 
 function addShareButtonEvent() {
-    const shareButton = document.querSelectAll('.shareButton')[document.querSelectAll('.shareButton').length];
+    const shareButton = document.querySelectorAll('.shareButton')[document.querySelectorAll('.shareButton').length];
     shareButton.addEventListener('click', function() {
         if (navigator.share) {
             navigator.share({
@@ -319,8 +319,8 @@ function addEvents(command) {
         showSpotifyIframe();
     }
     const commandMap = {
-        "lucaohost": "localhostExplanation",
-        "rick": "rickRolledExplanation"
+        "lucaohost?": "localhostExplanation",
+        "rickrolled?": "rickRolledExplanation"
     };
     if (commandMap[command]) {
         document.querySelectorAll(`.${commandMap[command]}`).forEach(element => {
