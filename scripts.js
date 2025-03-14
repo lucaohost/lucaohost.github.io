@@ -339,7 +339,7 @@ function addEvents(command) {
             });
         });
     }
-    if (command === "music") {
+    if (command === "music" || command === 'next music') {
         document.querySelectorAll(`.nextMusic`).forEach(element => {
             element.addEventListener('click', function() {
                 appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
