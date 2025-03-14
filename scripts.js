@@ -15,7 +15,7 @@ const commands = {
     youtube: "<a href='https://youtube.com/@lucasreginatto721' target='_blank'>https://youtube.com/lucaohost</a>",
     lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like <a class='localhostExplanation'>localhost</a>.</p>",
     'localhost?': "<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Localhost' target='_blank'>localhost</a> is the local computer’s hostname, resolving to IP 127.0.0.1.</p>",
-    'rickrolled?': `<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolling</a> is an meme where Rick’s song "Never Gonna Give You Up" appears unexpectedly.</p>`,
+    'rickrolled?': `<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolling</a> is a meme where Rick’s song "Never Gonna Give You Up" appears unexpectedly.</p>`,
     social: function() {
         let socialMidias = [
             "<a href='https://github.com/lucaohost' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/733/733553.png' alt='GitHub' width='24' height='24'></a>", this.github,
@@ -47,6 +47,9 @@ const commands = {
         return buildCommandTable(items);
     },
     music: function() {
+        return "Random Liked Song:\n" + showRandomMusic();
+    },
+    'next music': function () {
         return "Random Liked Song:\n" + showRandomMusic();
     },
     helpDesc: "Type 'help' to see all commands.",
@@ -237,8 +240,8 @@ function showRandomMusic(width = 560, height = 315) {
     spotifyIframe.src = `https://open.spotify.com/embed/track/${selectedMusic.musicId}?utm_source=generator&theme=0`;
     spotifyIframe.hidden = true;
     spotifyIframe.height = '152';
-
-    return spotifyIframe.outerHTML;
+    const nextButton = `<p><button class='nextMusic' style='margin-top: 10px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Next</button></p>`;
+    return spotifyIframe.outerHTML + nextButton;
 }
 
 function stopMusic(command) {
@@ -332,6 +335,15 @@ function addEvents(command) {
             element.addEventListener('click', function() {
                 appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
                 processCommand(`localhost?`);
+                inputField.innerText = '';
+            });
+        });
+    }
+    if (command === "music") {
+        document.querySelectorAll(`.nextMusic`).forEach(element => {
+            element.addEventListener('click', function() {
+                appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
+                processCommand(`next music);
                 inputField.innerText = '';
             });
         });
