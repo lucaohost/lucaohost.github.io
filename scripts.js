@@ -83,8 +83,9 @@ const commands = {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
     
-        return buildTgifMsg(days, hours, minutes);
+        return buildTgifMsg(days, hours, minutes, seconds);
     },
     kali: function() {
         imagePath = `images/kali-0-min.png`;
@@ -243,9 +244,7 @@ function showSpotifyIframe() {
     });
 }
 
-function buildTgifMsg(days, hours, minutes) {
-    let message = `You can say "Thank God It's Friday in" `;
-
+function buildTgifMsg(days, hours, minutes, seconds) {
     const today = new Date();
     const day = today.getDay();
 
@@ -253,29 +252,34 @@ function buildTgifMsg(days, hours, minutes) {
         case 5: // Friday
             return `Now, you can say "Thank God it's Friday".<br>At Monday we restart the countdown.`;
         case 6: // Saturday
-            return `It's Saturday, enjoy your day!.<br>At Monday we restart the countdown.`;
+            return `It's Saturday, enjoy your day!<br>At Monday we restart the countdown.`;
         case 0: // Sunday
             return `It's Sunday, take a good rest.<br>Tomorrow, we restart the countdown.`;
         break;
     }
-
+    let message = `You can say "Thank God It's Friday in" `;
     if (days > 0) {
         message += `${days} day${days !== 1 ? 's' : ''}`;
     }
     if (hours > 0) {
-        if (minutes > 0 && days > 0) {
-            message += 'and ';
-        }
-        if (days > 0 && days > 0) {
+        if (days > 0) {
             message += ', ';
-        }	
+        }
         message += `${hours} hour${hours !== 1 ? 's' : ''}`;
     }
     if (minutes > 0) {
-        if (days > 0 || hours > 0) message += ' and ';
+        if (days > 0 || hours > 0) {
+            message += ', ';
+        }
         message += `${minutes} minute${minutes !== 1 ? 's' : ''}`;
     }
-    return message + '.';    
+    if (seconds > 0) {
+        if (days > 0 || hours > 0 || minutes > 0) {
+            message += ' and ';
+        }
+        message += `${seconds} second${seconds !== 1 ? 's' : ''}`;
+    }
+    return message + '.';  
 }
 
 function addShareButtonEvent() {
