@@ -297,6 +297,7 @@ function addShareButtonEvent() {
             alert('This feature is not supported in your browser. You can copy the link in the address bar.');
         }
     });
+    shareButton.click();
 }
 
 function addEvents(command) {
