@@ -71,7 +71,7 @@ const commands = {
         let htmlRick = "<p style='text-align: justify;'>You've been <a class='rickRolledExplanation'>Rickrolled</a>!</p>";
         const rickCounter = localStorage.getItem('rickCounter') || 0;
         if (rickCounter > 1) {
-            htmlRick += `<p style='text-align: justify;'>Again? You've been Rickrolling ${rickCounter} times.</p>`;
+            htmlRick += `<p style='text-align: justify;'>A true fan! You've been Rickrolling ${rickCounter} times.</p>`;
         }
         localStorage.setItem('rickCounter', parseInt(rickCounter) + 1);
         htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
