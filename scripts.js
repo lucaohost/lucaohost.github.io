@@ -227,7 +227,7 @@ function showRandomMusic(width = 560, height = 315) {
     spotifyIframe.src = `https://open.spotify.com/embed/track/${selectedMusic.musicId}?utm_source=generator&theme=0`;
     spotifyIframe.hidden = true;
     spotifyIframe.height = '152';
-    const nextButton = `<p><button class='nextMusic' style='margin-top: 10px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Next</button></p>`;
+    const nextButton = `<p><button class='nextMusic' style='margin-top: 0px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Next</button></p>`;
     return spotifyIframe.outerHTML + nextButton;
 }
 
