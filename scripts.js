@@ -54,7 +54,7 @@ const commands = {
         stopMusic('next music');
         return "Random Liked Song:\n" + showRandomMusic();
     },
-    helpDesc: "Type 'help' to see all commands.",
+    helpDesc: `Type "help" to see all commands.`,
     exit: function() {
         window.close();
         window.close(); // if the first windows.close, closed the spotify iframe
@@ -118,7 +118,7 @@ function processCommand(input) {
         }
         addEvents(command);
     } else {
-        appendOutput(`Command '${input}' not found.\n${commands["helpDesc"]}`);
+        appendOutput(`Command "${input}" not found.\n${commands["helpDesc"]}`);
     }
 }
 
