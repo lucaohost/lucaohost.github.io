@@ -256,7 +256,7 @@ function buildTgifMsg(days, hours, minutes, seconds) {
 
     switch (day) {
         case 5: // Friday
-            return `Now, you can say "Thank God it's Friday".<br>At Monday we restart the countdown.`;
+            return `Thank God it's Friday!.<br>At Monday we restart the countdown.`;
         case 6: // Saturday
             return `It's Saturday, enjoy your day!<br>At Monday we restart the countdown.`;
         case 0: // Sunday
