@@ -83,7 +83,7 @@ const commands = {
         const now = new Date();
         const nextFriday = new Date(now);
         nextFriday.setDate(now.getDate() + (5 - now.getDay() + 7) % 7);
-        nextFriday.setHours(0, 0, 0, 0);
+        nextFriday.setHours(18, 0, 0, 0);
     
         const diff = nextFriday - now;
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -263,7 +263,7 @@ function buildTgifMsg(days, hours, minutes, seconds) {
             return `It's Sunday, take a good rest.<br>Tomorrow, we restart the countdown.`;
         break;
     }
-    let message = `You can say "Thank God It's Friday in" `;
+    let message = `You can say "Thank God It's Friday" in:\n`;
     if (days > 0) {
         message += `${days} day${days !== 1 ? 's' : ''}`;
     }
