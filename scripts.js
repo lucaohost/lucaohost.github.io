@@ -256,35 +256,35 @@ function buildTgifMsg(days, hours, minutes, seconds) {
 
     switch (day) {
         case 5: // Friday
-            return `Thank God it's Friday!.<br>At Monday we restart the countdown.`;
+            if (today.getHours() >= 18) {
+                return `Thank God it's Friday!.<br>At Monday we restart the countdown.`;
+            }
         case 6: // Saturday
             return `It's Saturday, enjoy your day!<br>At Monday we restart the countdown.`;
         case 0: // Sunday
             return `It's Sunday, take a good rest.<br>Tomorrow, we restart the countdown.`;
         break;
     }
-    let message = `You can say "Thank God It's Friday" in:\n`;
+    let message = `Thank God It's Friday" in:\n`;
     if (days > 0) {
-        message += `${days} day${days !== 1 ? 's' : ''}`;
+        message += `${days}d`;
     }
     if (hours > 0) {
         if (days > 0) {
             message += ', ';
         }
-        message += `${hours} hour${hours !== 1 ? 's' : ''}`;
+        message += `${hours}h`;
     }
     if (minutes > 0) {
         if (days > 0 || hours > 0) {
             message += ', ';
         }
-        message += `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+        message += `${minutes}m`;
     }
-    if (seconds > 0) {
-        if (days > 0 || hours > 0 || minutes > 0) {
-            message += ' and ';
-        }
-        message += `${seconds} second${seconds !== 1 ? 's' : ''}`;
+    if (days > 0 || hours > 0 || minutes > 0) {
+        message += ' and ';
     }
+    message += `${seconds}s`;
     return message + '.';  
 }
 
