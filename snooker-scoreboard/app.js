@@ -82,8 +82,9 @@ function validatePins(pins, selectedPlayers) {
             
             // Check each entered PIN against the player PINs
             for (const pin of pins) {
-                if (pin && playerPins.includes(pin)) {
-                    validPins.push(pin);
+                pinEncoded = sha256(pin);
+                if (pinEncoded && playerPins.includes(pinEncoded)) {
+                    validPins.push(pinEncoded);
                 }
             }
             
@@ -202,3 +203,14 @@ function showToast(message, type = 'success') {
 document.addEventListener('DOMContentLoaded', () => {
     loadPlayers();
 });
+
+async function sha256(message) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
+
+  
