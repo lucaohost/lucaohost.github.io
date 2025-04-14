@@ -1,108 +1,204 @@
-// Firebase SDK
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+// Initialize Firebase (replace with your config)
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD8L3X9vsq2tExPXiWRBLgOu90HWj6LMqg",
-  authDomain: "snooker-scoreboard-9bd49.firebaseapp.com",
-  projectId: "snooker-scoreboard-9bd49",
-  storageBucket: "snooker-scoreboard-9bd49.firebasestorage.app",
-  messagingSenderId: "563361708567",
-  appId: "1:563361708567:web:3a0b623280fb19915c3a52",
-  measurementId: "G-PWXHWTL1SX"
-};
+    apiKey: "AIzaSyD8L3X9vsq2tExPXiWRBLgOu90HWj6LMqg",
+    authDomain: "snooker-scoreboard-9bd49.firebaseapp.com",
+    projectId: "snooker-scoreboard-9bd49",
+    storageBucket: "snooker-scoreboard-9bd49.firebasestorage.app",
+    messagingSenderId: "563361708567",
+    appId: "1:563361708567:web:3a0b623280fb19915c3a52",
+    measurementId: "G-PWXHWTL1SX"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
 
-// Elementos
-const playersTable = document.getElementById('playersTable');
-const pinModal = document.getElementById('pinModal');
-const pinForm = document.getElementById('pinForm');
-const cancelBtn = document.getElementById('cancelBtn');
+// DOM elements
+const playersTable = document.getElementById('players-table');
+const playerSelects = document.querySelectorAll('.form-select');
+const pinInputs = document.querySelectorAll('.pin-input');
+const matchForm = document.getElementById('match-form');
+const toast = new bootstrap.Toast(document.getElementById('toast'));
+const toastMessage = document.getElementById('toast-message');
 
-let selectedPlayerId = null;
-let selectedAction = null;
+// Load players data and populate table/selects
+function loadPlayers() {
+    database.ref('players').once('value').then((snapshot) => {
+        const playersData = snapshot.val();
+        const playersArray = Object.values(playersData).map(player => {
+            return {
+                ...player,
+                losses: player.games - player.wins,
+                percentage: ((player.wins / player.games) * 100).toFixed(2) + '%'
+            };
+        });
 
-function renderTable(players) {
-  playersTable.innerHTML = '';
+        // Sort by percentage (descending)
+        playersArray.sort((a, b) => {
+            const aPerc = parseFloat(a.percentage);
+            const bPerc = parseFloat(b.percentage);
+            return bPerc - aPerc;
+        });
 
-  // Converter para array e calcular aproveitamento
-  const playersArray = Object.entries(players).map(([id, player]) => {
-    const { name, wins, games } = player;
-    const losses = games - wins;
-    const percentage = ((wins / games) * 100 || 0);
-    return { id, name, wins, games, losses, percentage };
-  });
+        // Clear table
+        playersTable.innerHTML = '';
 
-  // Ordenar do maior para o menor aproveitamento
-  playersArray.sort((a, b) => b.percentage - a.percentage);
+        // Populate table
+        playersArray.forEach(player => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${player.name}</td>
+                <td>${player.wins}</td>
+                <td>${player.games}</td>
+                <td>${player.losses}</td>
+                <td>${player.percentage}</td>
+            `;
+            playersTable.appendChild(row);
+        });
 
-  playersArray.forEach(player => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td class="p-2">${player.name}</td>
-      <td class="p-2 text-center">${player.wins}</td>
-      <td class="p-2 text-center">${player.games}</td>
-      <td class="p-2 text-center">${player.losses}</td>
-      <td class="p-2 text-center">${player.percentage.toFixed(2)}%</td>
-      <td class="p-2 text-center">
-        <button class="bg-green-500 text-white px-2 py-1 rounded" data-id="${player.id}" data-action="win">+</button>
-      </td>
-      <td class="p-2 text-center">
-        <button class="bg-red-500 text-white px-2 py-1 rounded" data-id="${player.id}" data-action="loss">-</button>
-      </td>
-    `;
-    playersTable.appendChild(row);
-  });
-
-  document.querySelectorAll('button[data-action]').forEach(btn =>
-    btn.addEventListener('click', () => {
-      selectedPlayerId = btn.dataset.id;
-      selectedAction = btn.dataset.action;
-      pinModal.classList.remove('hidden');
-    })
-  );
+        // Populate player selects
+        const playerOptions = playersArray.map(player => 
+            `<option value="${player.name.toLowerCase()}">${player.name}</option>`
+        ).join('');
+        
+        playerSelects.forEach(select => {
+            // Keep the current value if one is selected
+            const currentValue = select.value;
+            select.innerHTML = select.querySelector('option[value=""]').outerHTML + playerOptions;
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        });
+    });
 }
 
-async function fetchPlayers() {
-  const snapshot = await get(ref(db, 'players'));
-  if (snapshot.exists()) renderTable(snapshot.val());
+// Validate PINs
+function validatePins(pins, selectedPlayers) {
+    return new Promise((resolve) => {
+        database.ref('pins').once('value').then((snapshot) => {
+            const pinsData = snapshot.val();
+            const validPins = [];
+            const playerPins = selectedPlayers.map(player => pinsData[player]);
+            
+            // Check each entered PIN against the player PINs
+            for (const pin of pins) {
+                if (pin && playerPins.includes(pin)) {
+                    validPins.push(pin);
+                }
+            }
+            
+            resolve(validPins.length === selectedPlayers.length);
+        });
+    });
 }
 
-pinForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const [pin1, pin2, pin3] = Array.from(pinForm.elements).slice(0, 3).map(input => input.value);
-  const pinSet = new Set([pin1, pin2, pin3]);
-
-  if (pinSet.size !== 3) return alert('Os PINs devem ser diferentes!');
-
-  const pinsSnapshot = await get(ref(db, 'pins'));
-  const pins = pinsSnapshot.val();
-
-  const validPins = Object.values(pins);
-  if ([pin1, pin2, pin3].every(pin => validPins.includes(pin))) {
-    const playerRef = ref(db, 'players/' + selectedPlayerId);
-    const snapshot = await get(playerRef);
-    if (!snapshot.exists()) return;
-
-    const data = snapshot.val();
-    const updates = {
-      games: data.games + 1,
-      wins: selectedAction === 'win' ? data.wins + 1 : data.wins
-    };
-
-    await update(playerRef, updates);
-    pinModal.classList.add('hidden');
-    pinForm.reset();
-    fetchPlayers();
-  } else {
-    alert('PINs inválidos.');
-  }
+// Handle form submission
+matchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Get selected players
+    const team1Player1 = document.querySelector('.team1-player1').value;
+    const team1Player2 = document.querySelector('.team1-player2').value;
+    const team2Player1 = document.querySelector('.team2-player1').value;
+    const team2Player2 = document.querySelector('.team2-player2').value;
+    
+    // Validate at least one player per team
+    if (!team1Player1 || !team2Player1) {
+        showToast('Cada time deve ter pelo menos um jogador!', 'danger');
+        return;
+    }
+    
+    // Get PINs
+    const pins = Array.from(pinInputs)
+        .map(input => input.value.trim())
+        .filter(pin => pin !== '');
+    
+    if (pins.length < 3) {
+        showToast('Pelo menos 3 PINs são necessários!', 'danger');
+        return;
+    }
+    
+    // Get all selected players
+    const selectedPlayers = [
+        team1Player1, 
+        team1Player2, 
+        team2Player1, 
+        team2Player2
+    ].filter(player => player !== '');
+    
+    // Validate PINs
+    const pinsValid = await validatePins(pins, selectedPlayers);
+    
+    if (!pinsValid) {
+        showToast('Necessário 3 PINs válidos dos jogadores envolvidos.', 'danger');
+        return;
+    }
+    
+    // Update player stats
+    try {
+        // Team 1 (winners)
+        await updatePlayerStats(team1Player1, true);
+        if (team1Player2) await updatePlayerStats(team1Player2, true);
+        
+        // Team 2 (losers)
+        await updatePlayerStats(team2Player1, false);
+        if (team2Player2) await updatePlayerStats(team2Player2, false);
+        
+        showToast('Partida registrada com sucesso!', 'success');
+        matchForm.reset();
+        bootstrap.Modal.getInstance(document.getElementById('addMatchModal')).hide();
+        loadPlayers();
+    } catch (error) {
+        showToast('Erro ao registrar partida: ' + error.message, 'danger');
+    }
 });
 
-cancelBtn.addEventListener('click', () => {
-  pinModal.classList.add('hidden');
-});
+// Update player stats in Firebase
+function updatePlayerStats(playerId, isWinner) {
+    return new Promise((resolve, reject) => {
+        const playerRef = database.ref(`players/${playerId}`);
+        
+        playerRef.transaction((player) => {
+            if (player) {
+                player.games = (player.games || 0) + 1;
+                if (isWinner) {
+                    player.wins = (player.wins || 0) + 1;
+                }
+            }
+            return player;
+        }, (error, committed) => {
+            if (error) {
+                reject(error);
+            } else if (!committed) {
+                reject(new Error('Jogador não encontrado'));
+            } else {
+                resolve();
+            }
+        });
+    });
+}
 
-fetchPlayers();
+// Show toast notification
+function showToast(message, type = 'success') {
+    toastMessage.textContent = message;
+    const toastEl = document.getElementById('toast');
+    
+    // Remove previous color classes
+    toastEl.classList.remove('bg-success', 'bg-danger', 'bg-primary');
+    
+    // Add appropriate color class
+    if (type === 'success') {
+        toastEl.classList.add('bg-success');
+    } else if (type === 'danger') {
+        toastEl.classList.add('bg-danger');
+    } else {
+        toastEl.classList.add('bg-primary');
+    }
+    
+    toast.show();
+}
+
+// Initialize the app
+document.addEventListener('DOMContentLoaded', () => {
+    loadPlayers();
+});

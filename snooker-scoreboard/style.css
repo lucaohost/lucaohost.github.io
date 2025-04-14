@@ -1,0 +1,33 @@
+body {
+    background-color: #f8f9fa;
+    padding-bottom: 60px;
+}
+
+.container {
+    max-width: 800px;
+}
+
+.table th {
+    white-space: nowrap;
+}
+
+.toast {
+    max-width: 350px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .table th, .table td {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    h1 {
+        font-size: 1.75rem;
+    }
+}
+
+/* Make sure selects don't overflow on mobile */
+.form-select {
+    max-width: 100%;
+}
