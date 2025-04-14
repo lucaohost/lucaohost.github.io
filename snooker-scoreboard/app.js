@@ -3,14 +3,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD8L3X9vsq2tExPXiWRBLgOu90HWj6LMqg",
-    authDomain: "snooker-scoreboard-9bd49.firebaseapp.com",
-    projectId: "snooker-scoreboard-9bd49",
-    storageBucket: "snooker-scoreboard-9bd49.firebasestorage.app",
-    messagingSenderId: "563361708567",
-    appId: "1:563361708567:web:3a0b623280fb19915c3a52",
-    measurementId: "G-PWXHWTL1SX"
-  };
+  apiKey: "AIzaSyD8L3X9vsq2tExPXiWRBLgOu90HWj6LMqg",
+  authDomain: "snooker-scoreboard-9bd49.firebaseapp.com",
+  projectId: "snooker-scoreboard-9bd49",
+  storageBucket: "snooker-scoreboard-9bd49.firebasestorage.app",
+  messagingSenderId: "563361708567",
+  appId: "1:563361708567:web:3a0b623280fb19915c3a52",
+  measurementId: "G-PWXHWTL1SX"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -26,23 +26,31 @@ let selectedAction = null;
 
 function renderTable(players) {
   playersTable.innerHTML = '';
-  Object.entries(players).forEach(([id, player]) => {
+
+  // Converter para array e calcular aproveitamento
+  const playersArray = Object.entries(players).map(([id, player]) => {
     const { name, wins, games } = player;
     const losses = games - wins;
-    const percentage = ((wins / games) * 100 || 0).toFixed(2) + '%';
+    const percentage = ((wins / games) * 100 || 0);
+    return { id, name, wins, games, losses, percentage };
+  });
 
+  // Ordenar do maior para o menor aproveitamento
+  playersArray.sort((a, b) => b.percentage - a.percentage);
+
+  playersArray.forEach(player => {
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td class="p-2">${name}</td>
-      <td class="p-2 text-center">${wins}</td>
-      <td class="p-2 text-center">${games}</td>
-      <td class="p-2 text-center">${losses}</td>
-      <td class="p-2 text-center">${percentage}</td>
+      <td class="p-2">${player.name}</td>
+      <td class="p-2 text-center">${player.wins}</td>
+      <td class="p-2 text-center">${player.games}</td>
+      <td class="p-2 text-center">${player.losses}</td>
+      <td class="p-2 text-center">${player.percentage.toFixed(2)}%</td>
       <td class="p-2 text-center">
-        <button class="bg-green-500 text-white px-2 py-1 rounded" data-id="${id}" data-action="win">+</button>
+        <button class="bg-green-500 text-white px-2 py-1 rounded" data-id="${player.id}" data-action="win">+</button>
       </td>
       <td class="p-2 text-center">
-        <button class="bg-red-500 text-white px-2 py-1 rounded" data-id="${id}" data-action="loss">-</button>
+        <button class="bg-red-500 text-white px-2 py-1 rounded" data-id="${player.id}" data-action="loss">-</button>
       </td>
     `;
     playersTable.appendChild(row);
@@ -96,4 +104,5 @@ pinForm.addEventListener('submit', async (e) => {
 cancelBtn.addEventListener('click', () => {
   pinModal.classList.add('hidden');
 });
+
 fetchPlayers();
