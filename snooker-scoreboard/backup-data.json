@@ -1,0 +1,23 @@
+{
+    "players": {
+      "tamara": { "name": "Tamara", "wins": 5, "games": 7 },
+      "thais": { "name": "Thais", "wins": 6, "games": 9 },
+      "valdir": { "name": "Valdir", "wins": 5, "games": 8 },
+      "mayara": { "name": "Mayara", "wins": 3, "games": 6 },
+      "paulo": { "name": "Paulo", "wins": 5, "games": 10 },
+      "lucao": { "name": "Lucão", "wins": 5, "games": 11 },
+      "zanini": { "name": "Zanini", "wins": 3, "games": 9 },
+      "raquel": { "name": "Raquel", "wins": 3, "games": 11 }
+    },
+    "pins": {
+      "tamara": "1111",
+      "thais": "2222",
+      "valdir": "3333",
+      "mayara": "4444",
+      "paulo": "5555",
+      "lucao": "6666",
+      "zanini": "7777",
+      "raquel": "8888"
+    }
+  }
+  

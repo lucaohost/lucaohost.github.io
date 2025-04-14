@@ -1,0 +1,45 @@
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ranking de Vitórias</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 p-4">
+  <div class="max-w-md mx-auto">
+    <h1 class="text-2xl font-bold mb-4 text-center">Ranking de Jogadores</h1>
+    <table class="w-full bg-white shadow-md rounded">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="p-2">Nome</th>
+          <th class="p-2">Vitórias</th>
+          <th class="p-2">Jogos</th>
+          <th class="p-2">Derrotas</th>
+          <th class="p-2">%</th>
+          <th class="p-2">+1</th>
+          <th class="p-2">-1</th>
+        </tr>
+      </thead>
+      <tbody id="playersTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Modal -->
+  <div id="pinModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white p-6 rounded w-full max-w-sm">
+      <h2 class="text-xl mb-4">Confirme com 3 PINs</h2>
+      <form id="pinForm">
+        <input type="password" placeholder="PIN 1" required class="w-full mb-2 p-2 border rounded" />
+        <input type="password" placeholder="PIN 2" required class="w-full mb-2 p-2 border rounded" />
+        <input type="password" placeholder="PIN 3" required class="w-full mb-4 p-2 border rounded" />
+        <div class="flex justify-between">
+          <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Confirmar</button>
+          <button type="button" id="cancelBtn" class="bg-gray-400 text-white px-4 py-2 rounded">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
