@@ -73,16 +73,16 @@ function loadPlayers() {
 }
 
 // Validate PINs
-function validatePins(pins, selectedPlayers) {
+async function validatePins(pins, selectedPlayers) {
     return new Promise((resolve) => {
-        database.ref('pins').once('value').then((snapshot) => {
+        database.ref('pins').once('value').then(async (snapshot) => {
             const pinsData = snapshot.val();
             const validPins = [];
             const playerPins = selectedPlayers.map(player => pinsData[player]);
             
             // Check each entered PIN against the player PINs
             for (const pin of pins) {
-                pinEncoded = sha256(pin);
+                let pinEncoded = await sha256(pin);
                 if (pinEncoded && playerPins.includes(pinEncoded)) {
                     validPins.push(pinEncoded);
                 }
