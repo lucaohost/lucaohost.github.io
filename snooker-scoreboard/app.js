@@ -149,6 +149,7 @@ matchForm.addEventListener('submit', async (e) => {
         if (team2Player2) await updatePlayerStats(team2Player2, false);
         
         showToast('Partida registrada com sucesso!', 'success');
+        setTimeout(captureAndShare, 1500); // Chama a função de compartilhar após 1.5 segundos
         matchForm.reset();
         bootstrap.Modal.getInstance(document.getElementById('addMatchModal')).hide();
         loadPlayers();
@@ -217,3 +218,40 @@ async function sha256(message) {
 }
 
   
+// Adicione no início do arquivo, com as outras seleções de DOM
+const shareBtn = document.getElementById('share-btn');
+
+// Função para capturar a tela e compartilhar
+async function captureAndShare() {
+    try {
+        // Usando html2canvas para capturar a tela
+        const canvas = await html2canvas(document.querySelector('.container'));
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Verifica se a API de compartilhamento está disponível
+        if (navigator.share) {
+            // Converte data URL para blob
+            const blob = await (await fetch(dataUrl)).blob();
+            const file = new File([blob], 'ranking-snooker.png', { type: 'image/png' });
+            
+            await navigator.share({
+                title: 'Ranking de Jogadores - Snooker',
+                text: 'Confira o ranking atual de jogadores de snooker!',
+                files: [file]
+            });
+        } else {
+            // Fallback para download se a API de compartilhamento não estiver disponível
+            const link = document.createElement('a');
+            link.download = 'ranking-snooker.png';
+            link.href = dataUrl;
+            link.click();
+            showToast('Imagem do ranking baixada!', 'info');
+        }
+    } catch (error) {
+        console.error('Erro ao compartilhar:', error);
+        showToast('Erro ao compartilhar: ' + error.message, 'danger');
+    }
+}
+
+// Adicione o evento de clique ao botão de compartilhar
+shareBtn.addEventListener('click', captureAndShare);

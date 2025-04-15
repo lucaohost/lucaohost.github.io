@@ -31,3 +31,14 @@ body {
 .form-select {
     max-width: 100%;
 }
+
+#share-btn {
+    background-color: #0b5ed7; /* Azul mais escuro */
+    border-color: #0b5ed7;
+    color: white;
+}
+
+#share-btn:hover {
+    background-color: #0b5ed7;
+    border-color: #0b5ed7;
+}
