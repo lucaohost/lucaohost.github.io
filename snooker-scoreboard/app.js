@@ -81,10 +81,13 @@ async function validatePins(pins, selectedPlayers) {
             const playerPins = selectedPlayers.map(player => pinsData[player]);
             
             // Check each entered PIN against the player PINs
-            for (const pin of pins) {
-                let pinEncoded = await sha256(pin);
+            for (const pinIndex in pins) {
+                let pinEncoded = await sha256(pins[pinIndex]);
                 if (pinEncoded && playerPins.includes(pinEncoded)) {
                     validPins.push(pinEncoded);
+                } else {
+                    showToast(`Pin número ${parseInt(pinIndex) + 1} inválido.`, 'danger');
+                    return
                 }
             }
             
