@@ -155,13 +155,13 @@ body {
 }
 
 /* Buttons */
-#share-btn {
+.btn-style {
     background-color: var(--primary-blue);
     border-color: var(--primary-blue);
     color: var(--white);
 }
 
-#share-btn:hover {
+.btn-style:hover {
     background-color: var(--primary-blue-hover);
     border-color: var(--primary-blue-border);
 }
@@ -290,4 +290,43 @@ body.dark-mode .toast-header {
     .container {
         padding: 15px;
     }
+}
+
+/* Add these to your existing CSS */
+
+/* Improved text visibility in dark mode */
+body.dark-mode .modal-title,
+body.dark-mode .modal-body h6 {
+    color: var(--text-dark);
+}
+
+/* Better table lines in dark mode */
+body.dark-mode .table td {
+    border-top: 1px solid #3a3a3a;
+}
+
+/* Prettier share button */
+.btn-style {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-style:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-style i {
+    font-size: 18px;
+}
+
+/* Ensure toast text is visible */
+body.dark-mode .toast-body {
+    color: var(--white);
 }

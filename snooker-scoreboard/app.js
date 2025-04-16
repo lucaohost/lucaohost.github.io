@@ -221,35 +221,51 @@ async function sha256(message) {
 // Adicione no início do arquivo, com as outras seleções de DOM
 const shareBtn = document.getElementById('share-btn');
 
-// Função para capturar a tela e compartilhar
 async function captureAndShare() {
     try {
-        // Usando html2canvas para capturar a tela
-        const canvas = await html2canvas(document.querySelector('.container'));
+        // Hide the share button temporarily
+        shareBtn.style.visibility = 'hidden';
+        
+        // Capture the container
+        const container = document.querySelector('.container');
+        const canvas = await html2canvas(container, {
+            scale: 2, // Higher quality
+            logging: false,
+            useCORS: true,
+            allowTaint: true
+        });
+        
+        // Show the button again
+        shareBtn.style.visibility = 'visible';
+        
         const dataUrl = canvas.toDataURL('image/png');
         
-        // Verifica se a API de compartilhamento está disponível
         if (navigator.share) {
-            // Converte data URL para blob
             const blob = await (await fetch(dataUrl)).blob();
-            const file = new File([blob], 'ranking-snooker.png', { type: 'image/png' });
+            const file = new File([blob], 'snooker-ranking.png', { 
+                type: 'image/png' 
+            });
             
             await navigator.share({
-                title: 'Ranking de Jogadores - Snooker',
-                text: 'Confira o ranking atual de jogadores de snooker!',
+                title: 'Ranking Sinuca 2025/2',
+                text: 'Confira o ranking da Sinuca 2025 Temporada 2!',
                 files: [file]
             });
         } else {
-            // Fallback para download se a API de compartilhamento não estiver disponível
+            // Fallback for browsers without share API
             const link = document.createElement('a');
-            link.download = 'ranking-snooker.png';
+            link.download = 'snooker-ranking-' + new Date().toISOString().slice(0, 10) + '.png';
             link.href = dataUrl;
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
             showToast('Imagem do ranking baixada!', 'info');
         }
     } catch (error) {
         console.error('Erro ao compartilhar:', error);
         showToast('Erro ao compartilhar: ' + error.message, 'danger');
+    } finally {
+        shareBtn.style.visibility = 'visible';
     }
 }
 
@@ -290,4 +306,5 @@ document.addEventListener('DOMContentLoaded', function() {
             body.classList.remove('dark-mode');
         }
     });
+    shareBtn.addEventListener('click', captureAndShare);
 });
