@@ -72,6 +72,8 @@ body {
     color: var(--text-light);
     background-color: var(--table-bg-light);
     border-collapse: collapse;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .table td {
