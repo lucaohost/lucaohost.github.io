@@ -149,7 +149,7 @@ matchForm.addEventListener('submit', async (e) => {
         if (team2Player2) await updatePlayerStats(team2Player2, false);
         
         showToast('Partida registrada com sucesso!', 'success');
-        setTimeout(captureAndShare, 1500); // Chama a função de compartilhar após 1.5 segundos
+        setTimeout(captureAndShare(`[Vitóra+1( ${team1Player1} ${team1Player2} ) && Derrota+1( ${team2Player1} ${team2Player2} )]`), 1500); // Chama a função de compartilhar após 1.5 segundos
         matchForm.reset();
         bootstrap.Modal.getInstance(document.getElementById('addMatchModal')).hide();
         loadPlayers();
@@ -221,7 +221,7 @@ async function sha256(message) {
 // Adicione no início do arquivo, com as outras seleções de DOM
 const shareBtn = document.getElementById('share-btn');
 
-async function captureAndShare() {
+async function captureAndShare(shareMsg = "Ranking Sinuca 2025/2") {
     try {
         
         // Capture the container
@@ -242,8 +242,8 @@ async function captureAndShare() {
             });
             
             await navigator.share({
-                title: 'Ranking Sinuca 2025/2',
-                text: 'Confira o ranking da Sinuca 2025 Temporada 2!',
+                title: shareMsg,
+                text: shareMsg,
                 files: [file]
             });
         } else {
