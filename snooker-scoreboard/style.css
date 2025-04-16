@@ -20,6 +20,7 @@
     --shadow-dark: rgba(0,0,0,0.3);
     --table-bg-dark: #1e1e1e;
     --table-row-dark: #252525;
+    --table-row-alt-dark: #1e1e1e;
     --table-header-dark: #2a2a2a;
     --table-border-dark: #444;
     --table-hover-dark: #333;
@@ -190,6 +191,10 @@ body.dark-mode .table {
     border-color: var(--table-border-dark);
 }
 
+body.dark-mode .table thead {
+    background-color: var(--table-header-dark);
+}
+
 body.dark-mode .table th {
     background-color: var(--table-header-dark);
     color: var(--white);
@@ -198,6 +203,8 @@ body.dark-mode .table th {
 
 body.dark-mode .table td {
     border-top: 1px solid var(--table-border-dark);
+    background-color: var(--table-row-dark);
+    color: var(--white);
 }
 
 body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
@@ -205,11 +212,12 @@ body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
 }
 
 body.dark-mode .table-striped tbody tr:nth-of-type(even) {
-    background-color: var(--table-bg-dark);
+    background-color: var(--table-row-alt-dark);
 }
 
 body.dark-mode .table-hover tbody tr:hover {
     background-color: var(--table-hover-dark);
+    color: var(--text-dark);
 }
 
 body.dark-mode .toggle-track {
@@ -264,8 +272,6 @@ body.dark-mode .toast {
 }
 
 body.dark-mode .toast-header {
-    background-color: var(--toast-header-dark);
-    color: var(--white);
     border-color: var(--table-border-dark);
 }
 
@@ -291,11 +297,6 @@ body.dark-mode .toast-header {
 body.dark-mode .modal-title,
 body.dark-mode .modal-body h6 {
     color: var(--text-dark);
-}
-
-/* Better table lines in dark mode */
-body.dark-mode .table td {
-    border-top: 1px solid #3a3a3a;
 }
 
 /* Prettier share button */
