@@ -253,5 +253,41 @@ async function captureAndShare() {
     }
 }
 
-// Adicione o evento de clique ao botão de compartilhar
-shareBtn.addEventListener('click', captureAndShare);
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButton = document.getElementById('darkModeToggle');
+    const body = document.body;
+    
+    // Check for saved preference or use system preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const currentMode = localStorage.getItem('darkMode') || (prefersDark ? 'enabled' : 'disabled');
+    
+    // Initialize
+    if (currentMode === 'enabled') {
+        body.classList.add('dark-mode');
+    }
+    
+    // Toggle function
+    toggleButton.addEventListener('click', function() {
+        body.classList.toggle('dark-mode');
+        
+        const isDark = body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+        
+        // Dispatch event for other components to listen to
+        document.dispatchEvent(new CustomEvent('colorSchemeChanged', {
+            detail: { isDark }
+        }));
+    });
+    
+    // Watch for system preference changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        const newMode = e.matches ? 'enabled' : 'disabled';
+        localStorage.setItem('darkMode', newMode);
+        
+        if (newMode === 'enabled') {
+            body.classList.add('dark-mode');
+        } else {
+            body.classList.remove('dark-mode');
+        }
+    });
+});
