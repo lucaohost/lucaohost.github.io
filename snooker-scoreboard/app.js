@@ -223,8 +223,6 @@ const shareBtn = document.getElementById('share-btn');
 
 async function captureAndShare() {
     try {
-        // Hide the share button temporarily
-        shareBtn.style.visibility = 'hidden';
         
         // Capture the container
         const container = document.querySelector('.container');
@@ -234,9 +232,6 @@ async function captureAndShare() {
             useCORS: true,
             allowTaint: true
         });
-        
-        // Show the button again
-        shareBtn.style.visibility = 'visible';
         
         const dataUrl = canvas.toDataURL('image/png');
         
@@ -264,8 +259,6 @@ async function captureAndShare() {
     } catch (error) {
         console.error('Erro ao compartilhar:', error);
         showToast('Erro ao compartilhar: ' + error.message, 'danger');
-    } finally {
-        shareBtn.style.visibility = 'visible';
     }
 }
 

@@ -144,18 +144,6 @@ body {
     max-width: 100%;
 }
 
-/* Buttons */
-.btn-style {
-    background-color: var(--primary-blue);
-    border-color: var(--primary-blue);
-    color: var(--white);
-}
-
-.btn-style:hover {
-    background-color: var(--primary-blue-hover);
-    border-color: var(--primary-blue-border);
-}
-
 /* Modal */
 .modal-header {
     border-bottom: 1px solid var(--table-border-light);
@@ -325,11 +313,17 @@ body.dark-mode .modal-body h6 {
     border-radius: 8px;
     transition: all 0.3s ease;
     font-weight: 500;
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: var(--white);
 }
 
 .btn-style:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    background-color: var(--primary-blue-hover);
+    border-color: var(--primary-blue-border);
+    color: var(--white);
 }
 
 .btn-style i {
