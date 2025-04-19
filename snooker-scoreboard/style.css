@@ -268,7 +268,7 @@ body.dark-mode .toast-header {
 /* Responsive */
 @media (max-width: 576px) {
     .table th, .table td {
-        padding: 1rem;
+        padding: 0.5rem;
         font-size: 0.875rem;
     }
     
