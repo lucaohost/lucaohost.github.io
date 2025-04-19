@@ -1,14 +1,14 @@
 // Initialize Firebase (replace with your config)
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD8L3X9vsq2tExPXiWRBLgOu90HWj6LMqg",
-    authDomain: "snooker-scoreboard-9bd49.firebaseapp.com",
-    projectId: "snooker-scoreboard-9bd49",
-    storageBucket: "snooker-scoreboard-9bd49.firebasestorage.app",
-    messagingSenderId: "563361708567",
-    appId: "1:563361708567:web:3a0b623280fb19915c3a52",
-    measurementId: "G-PWXHWTL1SX"
-  };
+    apiKey: "AIzaSyBsP4YSbp3qeK-ViyVXhWp8Jf3KetimveU",
+    authDomain: "snooker-scoreboard2.firebaseapp.com",
+    databaseURL: "https://snooker-scoreboard2-default-rtdb.firebaseio.com",
+    projectId: "snooker-scoreboard2",
+    storageBucket: "snooker-scoreboard2.firebasestorage.app",
+    messagingSenderId: "695835616380",
+    appId: "1:695835616380:web:17fc21b1d88f26c63055f9"
+};
 
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
