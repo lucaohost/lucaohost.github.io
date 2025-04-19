@@ -261,10 +261,14 @@ body.dark-mode .toast-header {
     border-color: var(--table-border-dark);
 }
 
+.table th, .table td {
+    padding: 1rem;
+}
+
 /* Responsive */
 @media (max-width: 576px) {
     .table th, .table td {
-        padding: 0.5rem;
+        padding: 1rem;
         font-size: 0.875rem;
     }
     
