@@ -36,7 +36,7 @@ const commands = {
             'social', "Social networks.",
             'share', "Share this site.",
             'music', "Random Liked Song.",
-            'liked', "All Liked Songs.",
+            'liked', "Last 100 Liked Songs.",
             'rick', "Type and find out.",
             'tgif', "Thank God It's Friday!",
             'kali', "Kali Linux photo.",
@@ -62,7 +62,7 @@ const commands = {
     },
     liked: function() {
         stopMusic('liked');
-        appendOutput(`My Liked Songs Playlist:\n`);
+        appendOutput(`My Last 100 Liked Songs:\n`);
         inputField.innerText = '';
         return '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
     },
