@@ -266,7 +266,7 @@ function buildTgifMsg(days, hours, minutes, seconds) {
             return `It's Sunday, take a good rest.<br>Tomorrow, we restart the countdown.`;
         break;
     }
-    let message = `Thank God It's Friday" in:\n`;
+    let message = `Thank God It's Friday in:\n`;
     if (days > 0) {
         message += `${days}d`;
     }
