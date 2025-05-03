@@ -129,6 +129,12 @@ matchForm.addEventListener('submit', async (e) => {
         matchForm.reset();
         bootstrap.Modal.getInstance(document.getElementById('addMatchModal')).hide();
         loadPlayers();
+        setTimeout(() => {
+            const winners = [team1Player1, team1Player2].filter(player => player).join(' e ');
+            const losers = [team2Player1, team2Player2].filter(player => player).join(' e ');
+            const shareMessage = `Vencedores: ${winners}\nPerdedores: ${losers}`;
+            captureAndShare(shareMessage);
+        }, 1500);
     } catch (error) {
         showToast('Erro ao registrar partida: ' + error.message, 'danger');
     }
