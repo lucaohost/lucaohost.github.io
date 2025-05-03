@@ -257,5 +257,5 @@ document.addEventListener('DOMContentLoaded', function() {
             body.classList.remove('dark-mode');
         }
     });
-    shareBtn.addEventListener('click', captureAndShare);
+    shareBtn.addEventListener('click', () => captureAndShare('Ranking Sinuca'));
 });
