@@ -193,7 +193,7 @@ async function sha256(message) {
 
 const shareBtn = document.getElementById('share-btn');
 
-async function captureAndShare(shareMsg = "Ranking Sinuca 2025/2") {
+async function captureAndShare(shareMsg = "Ranking Sinuca") {
     try {
         const container = document.querySelector('.container');
         const canvas = await html2canvas(container, {
