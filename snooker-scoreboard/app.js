@@ -19,11 +19,18 @@ const toastMessage = document.getElementById('toast-message');
 function loadPlayers() {
     database.ref('players').once('value').then((snapshot) => {
         const playersData = snapshot.val();
+        const maxWins = Math.max(...Object.values(playersData).map(player => player.wins));
         const playersArray = Object.values(playersData).map(player => {
+            // Player need to have half of the most wins to compete
+            if (player.wins < Math.floor(maxWins / 2)) {
+                player.percentage = '0%'
+            } else {
+                player.percentage = ((player.wins / player.games) * 100).toFixed(2) + '%';
+            }
             return {
                 ...player,
                 losses: player.games - player.wins,
-                percentage: ((player.wins / player.games) * 100).toFixed(2) + '%'
+                percentage: player.percentage
             };
         });
 
