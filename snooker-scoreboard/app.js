@@ -81,6 +81,7 @@ async function validatePins(pins, selectedPlayers) {
                     validPins.push(pinEncoded);
                 } else {
                     showToast(`Pin número ${parseInt(pinIndex) + 1} inválido.`, 'danger');
+                    matchForm.querySelector('button[type="submit"]').disabled = false;
                     return
                 }
             }
@@ -90,6 +91,7 @@ async function validatePins(pins, selectedPlayers) {
     });
 }
 matchForm.addEventListener('submit', async (e) => {
+    matchForm.querySelector('button[type="submit"]').disabled = true;
     e.preventDefault();
     
     const team1Player1 = document.querySelector('.team1-player1').value;
@@ -121,6 +123,7 @@ matchForm.addEventListener('submit', async (e) => {
     const pinsValid = await validatePins(pins, selectedPlayers);
     
     if (!pinsValid) {
+        matchForm.querySelector('button[type="submit"]').disabled = false;
         showToast('Necessário 3 PINs válidos dos jogadores envolvidos.', 'danger');
         return;
     }
@@ -141,8 +144,10 @@ matchForm.addEventListener('submit', async (e) => {
             const losers = [team2Player1, team2Player2].filter(player => player).join(' e ');
             const shareMessage = `Vencedores: ${winners}\nPerdedores: ${losers}`;
             captureAndShare(shareMessage);
+            matchForm.querySelector('button[type="submit"]').disabled = false;
         }, 1500);
     } catch (error) {
+        matchForm.querySelector('button[type="submit"]').disabled = false;
         showToast('Erro ao registrar partida: ' + error.message, 'danger');
     }
 });
