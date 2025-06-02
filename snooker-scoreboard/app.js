@@ -1,4 +1,4 @@
-// It's the free firebase version, it's useless try DDoS, save your time
+// It's the free firebase version, it's useless try DDoS, save your time.
 const firebaseConfig = {
     apiKey: "AIzaSyBsP4YSbp3qeK-ViyVXhWp8Jf3KetimveU",
     authDomain: "snooker-scoreboard2.firebaseapp.com",
@@ -16,35 +16,56 @@ const pinInputs = document.querySelectorAll('.pin-input');
 const matchForm = document.getElementById('match-form');
 const toast = new bootstrap.Toast(document.getElementById('toast'));
 const toastMessage = document.getElementById('toast-message');
+
 function loadPlayers() {
-    database.ref('players').once('value').then((snapshot) => {
+        database.ref('players').once('value').then((snapshot) => {
         const playersData = snapshot.val();
         const maxWins = Math.max(...Object.values(playersData).map(player => player.wins));
+        const minWins = Math.floor(maxWins / 2);
+        
         const playersArray = Object.values(playersData).map(player => {
-            // Player need to have half of the most wins to compete
-            if (player.wins < Math.floor(maxWins / 2)) {
-                player.percentage = '0%'
-            } else {
-                player.percentage = ((player.wins / player.games) * 100).toFixed(2) + '%';
-            }
+            player.qualified = player.wins >= minWins;
+            
+            player.percentage = ((player.wins / player.games) * 100).toFixed(2) + '%';
+                     
             return {
                 ...player,
                 losses: player.games - player.wins,
-                percentage: player.percentage
+                percentage: player.percentage,
+                qualified: player.qualified
             };
         });
 
-        playersArray.sort((a, b) => {
+        const qualifiedPlayers = playersArray.filter(p => p.qualified);
+        const unclassifiedPlayers = playersArray.filter(p => !p.qualified);
+        
+        qualifiedPlayers.sort((a, b) => {
             const aPerc = parseFloat(a.percentage);
             const bPerc = parseFloat(b.percentage);
             return bPerc - aPerc;
         });
+        
+        unclassifiedPlayers.sort((a, b) => {
+            const aPerc = parseFloat(a.percentage);
+            const bPerc = parseFloat(b.percentage);
+            return bPerc - aPerc;
+        });
+        
+        const sortedPlayers = [...qualifiedPlayers, ...unclassifiedPlayers];
 
         playersTable.innerHTML = '';
 
-        playersArray.forEach(player => {
+        let position = 1;
+        sortedPlayers.forEach(player => {
             const row = document.createElement('tr');
+            if (!player.qualified) {
+                row.classList.add('unclassified');
+            } else{
+                row.classList.add('classified');
+            }
+            
             row.innerHTML = `
+                <td>${position++}</td>
                 <td>${player.name}</td>
                 <td>${player.wins}</td>
                 <td>${player.games}</td>

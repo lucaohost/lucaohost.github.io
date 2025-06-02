@@ -1,6 +1,3 @@
-/* ==================== */
-/* DARK MODE TOGGLE CSS */
-/* ==================== */
 :root {
     /* Light Mode Colors */
     --bg-light: #f8f9fa;
@@ -11,6 +8,7 @@
     --table-header-light: #f8f9fa;
     --table-border-light: #dee2e6;
     --table-stripe-light: rgba(0, 0, 0, 0.05);
+    --table-unclassified-light: rgb(235 122 122 / 94%);
     --table-hover-light: rgba(0, 0, 0, 0.075);
 
     /* Dark Mode Colors */
@@ -20,6 +18,7 @@
     --shadow-dark: rgba(0,0,0,0.3);
     --table-bg-dark: #1e1e1e;
     --table-row-dark: #252525;
+    --table-unclassified-dark: rgb(96, 27, 27, 0.94);
     --table-row-alt-dark: #1e1e1e;
     --table-header-dark: #2a2a2a;
     --table-border-dark: #444;
@@ -87,6 +86,10 @@ body {
 
 .table-hover tbody tr:hover {
     background-color: var(--table-hover-light);
+}
+
+.table tr.unclassified td {
+    background-color: var(--table-unclassified-light);
 }
 
 /* Toggle */
@@ -187,18 +190,22 @@ body.dark-mode .table th {
     border-bottom-color: var(--table-border-dark);
 }
 
-body.dark-mode .table td {
+body.dark-mode .table tr td {
     border-top: 1px solid var(--table-border-dark);
     background-color: var(--table-row-dark);
     color: var(--white);
 }
 
-body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+body.dark-mode .table-striped tbody tr.classified:nth-of-type(odd) {
     background-color: var(--table-row-dark);
 }
 
-body.dark-mode .table-striped tbody tr:nth-of-type(even) {
+body.dark-mode .table-striped tbody tr.classified:nth-of-type(even) {
     background-color: var(--table-row-alt-dark);
+}
+
+body.dark-mode .table tr.unclassified td {
+    background-color: var(--table-unclassified-dark);
 }
 
 body.dark-mode .table-hover tbody tr:hover {
@@ -343,4 +350,21 @@ input[type="password"]::placeholder {
 
 option[value=""]:not(:focus) {
     color: gray;
+}
+
+tbody td:first-child {
+    font-weight: bold;
+    text-align: center;
+}
+
+@media (max-width: 576px) {
+    .alert {
+        font-size: 0.8rem;
+        padding: 0.75rem;
+    }
+}
+
+#info-classification {
+    font-size: 0.7rem;
+    margin-left: 0.7rem;
 }
