@@ -105,6 +105,14 @@ document.addEventListener('DOMContentLoaded', function() {
     inputField.focus();  // focus in the terminal after page loads
 });
 
+document.addEventListener('click', function(event) {
+    const selection = window.getSelection().toString();
+    if (!selection && !event.target.closest('.nextMusic')) {
+        inputField.focus();
+    }
+});
+
+
 function processCommand(input) {
     const command = input.trim().toLocaleLowerCase();
     if (commands[command]) {
