@@ -105,13 +105,6 @@ document.addEventListener('DOMContentLoaded', function() {
     inputField.focus();  // focus in the terminal after page loads
 });
 
-document.addEventListener('click', function() {
-    const selection = window.getSelection().toString();
-    if (!selection) {
-        inputField.focus();
-    }
-});
-
 function processCommand(input) {
     const command = input.trim().toLocaleLowerCase();
     if (commands[command]) {
@@ -136,7 +129,6 @@ function appendOutput(text) {
         terminalOutput.appendChild(newLine);
     }
     cli.scrollTop = terminalOutput.scrollHeight;
-    inputField.focus();
 }
 
 function onEnter(event) {
