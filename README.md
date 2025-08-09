@@ -16,3 +16,10 @@ Short URLs:
   - Random Music on YouTube Music
 
 Perfect for placing in the bookmarks bar.
+
+# How to Run
+- Open the project on VSCode;
+- Right button on index.html;
+- Click the option "Open with Live Server";
+- Access the locally on http://localhost:5500/ on browser;
+- Maybe it will be necessary some VSCode extension, I don't remember.
