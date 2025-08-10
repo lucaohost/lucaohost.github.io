@@ -298,3 +298,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     shareBtn.addEventListener('click', () => captureAndShare('Ranking Sinuca'));
 });
+
+pinInputs.forEach((input, idx) => {
+    input.addEventListener('input', function () {
+        if (this.value.length === 4 && idx < pinInputs.length - 1) {
+            pinInputs[idx + 1].focus();
+        }
+    });
+});
