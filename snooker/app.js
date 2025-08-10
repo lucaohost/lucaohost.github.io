@@ -29,7 +29,7 @@ function loadPlayers() {
             player.percentage = ((player.wins / player.games) * 100).toFixed(2) + '%';
 
             if (player.name === 'Valdir' || player.name === 'Tamara') {
-                player.percentage = 'WO';
+                player.percentage = 'W.O';
                 player.qualified = false;
             }
                      
@@ -42,8 +42,8 @@ function loadPlayers() {
         });
 
         const qualifiedPlayers = playersArray.filter(p => p.qualified);
-        const unclassifiedPlayers = playersArray.filter(p => !p.qualified && p.percentage !== 'WO');
-        const woPlayers = playersArray.filter(p => p.percentage === 'WO');
+        const unclassifiedPlayers = playersArray.filter(p => !p.qualified && p.percentage !== 'W.O');
+        const woPlayers = playersArray.filter(p => p.percentage === 'W.O');
 
         qualifiedPlayers.sort((a, b) => {
             const aPerc = parseFloat(a.percentage);
