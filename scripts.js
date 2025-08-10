@@ -25,6 +25,7 @@ const commands = {
         ];
         return buildSocialTable(socialMidias, 2);
     },
+    snooker: "Snooker Scoreboard:\n<a href='https://lucaohost.github.io/snooker' target='_blank'>https://lucaohost.github.io/snooker</a>",
     clear: function() {
         terminalOutput.innerHTML = '';
     },
@@ -40,6 +41,7 @@ const commands = {
             'rick', "Type and find out.",
             'tgif', "Thank God It's Friday!",
             'kali', "Kali Linux photo.",
+            'snooker', "Snooker Scoreboard.",
             'help', "Show all Commands.",
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
