@@ -731,11 +731,43 @@ body.dark-mode .table tr.bronze-medal td {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
 }
 
 .buttons-container .btn-style {
-    margin: 0.25rem;
+    margin: 0;
+    flex: 0 1 auto;
+    min-width: 160px;
+    white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+    .buttons-container {
+        gap: 1rem;
+        justify-content: center;
+    }
+    
+    .buttons-container .btn-style {
+        min-width: 180px;
+    }
+}
+
+@media (min-width: 992px) {
+    .buttons-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .buttons-container .btn-style {
+        width: 100%;
+        min-width: 0;
+    }
 }
 
 /* Reports page styles */
