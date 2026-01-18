@@ -1,0 +1,33 @@
+{
+  "rules": {
+    "players": {
+      ".read": true,
+      ".write": true
+    },
+    "pins": {
+      ".read": true,
+      ".write": true
+    },
+    "seasons": {
+      ".read": true,
+      ".write": true,
+      "$season": {
+        ".read": true,
+        ".write": true,
+        "players": {
+          ".read": true,
+          ".write": true
+        },
+        "pins": {
+          ".read": true,
+          ".write": true
+        },
+        "matches": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    }
+  }
+}
+
