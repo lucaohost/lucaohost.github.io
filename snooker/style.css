@@ -776,6 +776,15 @@ body.dark-mode .report-section .card {
 
 .report-section .card-text {
     font-size: 1rem;
+    color: var(--text-light);
+}
+
+body.dark-mode .report-section .card-text {
+    color: var(--text-dark) !important;
+}
+
+body.dark-mode .report-section .card-text strong {
+    color: var(--text-dark) !important;
 }
 
 @media (max-width: 576px) {

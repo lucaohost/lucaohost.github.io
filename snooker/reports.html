@@ -642,21 +642,38 @@
             });
             
             const tbody = document.getElementById('weekly-stats-body');
+            
+            // Create array with all stats for sorting
+            const statsArray = [];
             Object.entries(weeklyStats).forEach(([player, weeks]) => {
                 Object.entries(weeks).forEach(([week, stats]) => {
                     const total = stats.wins + stats.losses;
-                    const winRate = total > 0 ? ((stats.wins / total) * 100).toFixed(2) + '%' : '0.00%';
-                    
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><strong>${player}</strong></td>
-                        <td>${week}</td>
-                        <td class="text-success">${stats.wins}</td>
-                        <td class="text-danger">${stats.losses}</td>
-                        <td><strong>${winRate}</strong></td>
-                    `;
-                    tbody.appendChild(row);
+                    const winRate = total > 0 ? ((stats.wins / total) * 100) : 0;
+                    statsArray.push({
+                        player,
+                        week,
+                        wins: stats.wins,
+                        losses: stats.losses,
+                        winRate
+                    });
                 });
+            });
+            
+            // Sort by win rate (descending)
+            statsArray.sort((a, b) => b.winRate - a.winRate);
+            
+            // Create rows
+            statsArray.forEach(stat => {
+                const winRateStr = stat.winRate > 0 ? stat.winRate.toFixed(2) + '%' : '0.00%';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${stat.player}</strong></td>
+                    <td>${stat.week}</td>
+                    <td class="text-success">${stat.wins}</td>
+                    <td class="text-danger">${stat.losses}</td>
+                    <td><strong>${winRateStr}</strong></td>
+                `;
+                tbody.appendChild(row);
             });
             
             if (tbody.children.length === 0) {
