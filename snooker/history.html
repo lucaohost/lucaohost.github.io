@@ -4,6 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Histórico de Partidas - Ranking Sinuca</title>
+    <script>
+        // Prevent flash - apply theme immediately before any CSS loads
+        (function() {
+            try {
+                const currentMode = localStorage.getItem('darkMode');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const shouldBeDark = currentMode === 'enabled' || (!currentMode && prefersDark);
+                
+                if (shouldBeDark) {
+                    document.documentElement.className = 'dark-mode';
+                    const style = document.createElement('style');
+                    style.id = 'prevent-flash';
+                    style.textContent = `
+                        html, html.dark-mode, body, body.dark-mode { 
+                            background-color: #121212 !important; 
+                            color: #e0e0e0 !important; 
+                        }
+                        html.dark-mode h1, body.dark-mode h1 { color: #e0e0e0 !important; }
+                    `;
+                    document.head.insertBefore(style, document.head.firstChild);
+                } else {
+                    const style = document.createElement('style');
+                    style.id = 'prevent-flash';
+                    style.textContent = `
+                        html, body { 
+                            background-color: #f8f9fa !important; 
+                            color: #212529 !important; 
+                        }
+                        h1 { color: #212529 !important; }
+                    `;
+                    document.head.insertBefore(style, document.head.firstChild);
+                }
+            } catch(e) {}
+        })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -143,26 +178,85 @@
         document.addEventListener('DOMContentLoaded', function() {
             const toggleButton = document.getElementById('darkModeToggle');
             const body = document.body;
+            const html = document.documentElement;
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const currentMode = localStorage.getItem('darkMode') || (prefersDark ? 'enabled' : 'disabled');
             if (currentMode === 'enabled') {
                 body.classList.add('dark-mode');
+                html.classList.add('dark-mode');
+            } else {
+                body.classList.remove('dark-mode');
+                html.classList.remove('dark-mode');
             }
+            
             toggleButton.addEventListener('click', function() {
                 body.classList.toggle('dark-mode');
+                html.classList.toggle('dark-mode');
                 
                 const isDark = body.classList.contains('dark-mode');
                 localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+                
+                // Update the prevent-flash style when theme changes
+                const preventFlashStyle = document.getElementById('prevent-flash');
+                if (preventFlashStyle) {
+                    if (isDark) {
+                        preventFlashStyle.textContent = `
+                            html, html.dark-mode, body, body.dark-mode { 
+                                background-color: #121212 !important; 
+                                color: #e0e0e0 !important; 
+                            }
+                            html.dark-mode h1, body.dark-mode h1 { color: #e0e0e0 !important; }
+                        `;
+                    } else {
+                        preventFlashStyle.textContent = `
+                            html, body { 
+                                background-color: #f8f9fa !important; 
+                                color: #212529 !important; 
+                            }
+                            h1 { color: #212529 !important; }
+                        `;
+                    }
+                }
+                
+                document.dispatchEvent(new CustomEvent('colorSchemeChanged', {
+                    detail: { isDark }
+                }));
             });
             
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
                 const newMode = e.matches ? 'enabled' : 'disabled';
                 localStorage.setItem('darkMode', newMode);
                 
-                if (newMode === 'enabled') {
+                const isDark = newMode === 'enabled';
+                
+                if (isDark) {
                     body.classList.add('dark-mode');
+                    html.classList.add('dark-mode');
                 } else {
                     body.classList.remove('dark-mode');
+                    html.classList.remove('dark-mode');
+                }
+                
+                // Update the prevent-flash style when theme changes
+                const preventFlashStyle = document.getElementById('prevent-flash');
+                if (preventFlashStyle) {
+                    if (isDark) {
+                        preventFlashStyle.textContent = `
+                            html, html.dark-mode, body, body.dark-mode { 
+                                background-color: #121212 !important; 
+                                color: #e0e0e0 !important; 
+                            }
+                            html.dark-mode h1, body.dark-mode h1 { color: #e0e0e0 !important; }
+                        `;
+                    } else {
+                        preventFlashStyle.textContent = `
+                            html, body { 
+                                background-color: #f8f9fa !important; 
+                                color: #212529 !important; 
+                            }
+                            h1 { color: #212529 !important; }
+                        `;
+                    }
                 }
             });
             

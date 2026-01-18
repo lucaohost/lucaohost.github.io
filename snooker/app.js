@@ -159,10 +159,10 @@ function loadPlayers() {
                 }
             } else {
                 // 2026: Keep disqualification colors
-                if (!player.qualified) {
-                    row.classList.add('unclassified');
+            if (!player.qualified) {
+                row.classList.add('unclassified');
                 } else {
-                    row.classList.add('classified');
+                row.classList.add('classified');
                 }
             }
             
@@ -187,17 +187,17 @@ function loadPlayers() {
 
 function updatePlayerSelects(playersArray) {
     const playerSelects = document.querySelectorAll('.team1-player1, .team1-player2, .team2-player1, .team2-player2');
-    const playerOptions = playersArray.map(player => 
+        const playerOptions = playersArray.map(player => 
         `<option value="${player.id || player.name.toLowerCase()}">${player.name}</option>`
-    ).join('');
-    
-    playerSelects.forEach(select => {
-        const currentValue = select.value;
-        select.innerHTML = select.querySelector('option[value=""]').outerHTML + playerOptions;
-        if (currentValue) {
-            select.value = currentValue;
-        }
-    });
+        ).join('');
+        
+        playerSelects.forEach(select => {
+            const currentValue = select.value;
+            select.innerHTML = select.querySelector('option[value=""]').outerHTML + playerOptions;
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        });
 }
 
 function updateEditPlayerSelect(playersArray) {
@@ -374,13 +374,27 @@ addPlayerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const playerName = document.getElementById('new-player-name').value.trim();
     const playerPassword = document.getElementById('new-player-password').value.trim();
+    const adminPassword = document.getElementById('admin-password-add').value.trim();
     
     if (!playerName || !playerPassword || playerPassword.length !== 4) {
         showToast('Nome e senha de 4 dígitos são obrigatórios!', 'danger');
         return;
     }
     
+    if (!adminPassword) {
+        showToast('Senha admin é obrigatória!', 'danger');
+        return;
+    }
+    
     try {
+        // Validate admin password
+        const adminPasswordHash = await sha256(adminPassword);
+        const expectedAdminHash = await sha256('godsmode');
+        if (adminPasswordHash !== expectedAdminHash) {
+            showToast('Senha admin incorreta!', 'danger');
+            return;
+        }
+        
         const playersPath = getPlayersPath();
         const pinsPath = getPinsPath();
         
@@ -428,12 +442,16 @@ const editPlayerForm = document.getElementById('edit-player-form');
 editPlayerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const playerId = document.getElementById('edit-player-name').value;
-    const oldPassword = document.getElementById('old-player-password').value.trim();
+    const oldPasswordOrAdmin = document.getElementById('old-player-password').value.trim();
     const newPassword = document.getElementById('new-edit-player-password').value.trim();
-    const masterPassword = document.getElementById('master-password').value.trim();
     
     if (!playerId || !newPassword || newPassword.length !== 4) {
         showToast('Jogador e nova senha de 4 dígitos são obrigatórios!', 'danger');
+        return;
+    }
+    
+    if (!oldPasswordOrAdmin) {
+        showToast('Senha antiga ou senha admin é obrigatória!', 'danger');
         return;
     }
     
@@ -445,25 +463,23 @@ editPlayerForm.addEventListener('submit', async (e) => {
         
         let isValid = false;
         
-        // Check master password
-        if (masterPassword) {
-            const masterPasswordHash = await sha256(masterPassword);
-            const expectedMasterHash = await sha256('godsmode');
-            if (masterPasswordHash === expectedMasterHash) {
-                isValid = true;
-            }
-        }
+        // Check if it's admin password
+        const inputHash = await sha256(oldPasswordOrAdmin);
+        const expectedAdminHash = await sha256('godsmode');
         
-        // Check old password if not using master password
-        if (!isValid && oldPassword) {
-            const oldPasswordHash = await sha256(oldPassword);
+        if (inputHash === expectedAdminHash) {
+            // It's the admin password
+            isValid = true;
+        } else if (oldPasswordOrAdmin.length === 4) {
+            // Check if it's the old player password (4 digits)
+            const oldPasswordHash = await sha256(oldPasswordOrAdmin);
             if (oldPasswordHash === currentPasswordHash) {
                 isValid = true;
             }
         }
         
         if (!isValid) {
-            showToast('Senha antiga incorreta ou senha mestra inválida!', 'danger');
+            showToast('Senha antiga incorreta ou senha admin inválida!', 'danger');
             return;
         }
         
@@ -618,16 +634,45 @@ async function captureAndShare(shareMsg = "Ranking Sinuca") {
 document.addEventListener('DOMContentLoaded', function() {
     const toggleButton = document.getElementById('darkModeToggle');
     const body = document.body;
+    const html = document.documentElement;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const currentMode = localStorage.getItem('darkMode') || (prefersDark ? 'enabled' : 'disabled');
     if (currentMode === 'enabled') {
         body.classList.add('dark-mode');
+        html.classList.add('dark-mode');
+    } else {
+        body.classList.remove('dark-mode');
+        html.classList.remove('dark-mode');
     }
     toggleButton.addEventListener('click', function() {
         body.classList.toggle('dark-mode');
+        html.classList.toggle('dark-mode');
         
         const isDark = body.classList.contains('dark-mode');
         localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+        
+        // Update the prevent-flash style when theme changes
+        const preventFlashStyle = document.getElementById('prevent-flash');
+        if (preventFlashStyle) {
+            if (isDark) {
+                preventFlashStyle.textContent = `
+                    html, html.dark-mode, body, body.dark-mode { 
+                        background-color: #121212 !important; 
+                        color: #e0e0e0 !important; 
+                    }
+                    html.dark-mode h1, body.dark-mode h1 { color: #e0e0e0 !important; }
+                `;
+            } else {
+                preventFlashStyle.textContent = `
+                    html, body { 
+                        background-color: #f8f9fa !important; 
+                        color: #212529 !important; 
+                    }
+                    h1 { color: #212529 !important; }
+                `;
+            }
+        }
+        
         document.dispatchEvent(new CustomEvent('colorSchemeChanged', {
             detail: { isDark }
         }));
@@ -637,10 +682,36 @@ document.addEventListener('DOMContentLoaded', function() {
         const newMode = e.matches ? 'enabled' : 'disabled';
         localStorage.setItem('darkMode', newMode);
         
-        if (newMode === 'enabled') {
+        const isDark = newMode === 'enabled';
+        
+        if (isDark) {
             body.classList.add('dark-mode');
+            html.classList.add('dark-mode');
         } else {
             body.classList.remove('dark-mode');
+            html.classList.remove('dark-mode');
+        }
+        
+        // Update the prevent-flash style when theme changes
+        const preventFlashStyle = document.getElementById('prevent-flash');
+        if (preventFlashStyle) {
+            if (isDark) {
+                preventFlashStyle.textContent = `
+                    html, html.dark-mode, body, body.dark-mode { 
+                        background-color: #121212 !important; 
+                        color: #e0e0e0 !important; 
+                    }
+                    html.dark-mode h1, body.dark-mode h1 { color: #e0e0e0 !important; }
+                `;
+            } else {
+                preventFlashStyle.textContent = `
+                    html, body { 
+                        background-color: #f8f9fa !important; 
+                        color: #212529 !important; 
+                    }
+                    h1 { color: #212529 !important; }
+                `;
+            }
         }
     });
     
