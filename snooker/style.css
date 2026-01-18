@@ -368,3 +368,39 @@ tbody td:first-child {
     font-size: 0.7rem;
     margin-left: 0.7rem;
 }
+
+/* Medal colors for 2025 season */
+.table tr.gold-medal td {
+    background-color: #ffd700 !important;
+    color: #000;
+}
+
+.table tr.silver-medal td {
+    background-color: #c0c0c0 !important;
+    color: #000;
+}
+
+.table tr.bronze-medal td {
+    background-color: #cd7f32 !important;
+    color: #fff;
+}
+
+body.dark-mode .table tr.gold-medal td {
+    background-color: #ffd700 !important;
+    color: #000;
+}
+
+body.dark-mode .table tr.silver-medal td {
+    background-color: #c0c0c0 !important;
+    color: #000;
+}
+
+body.dark-mode .table tr.bronze-medal td {
+    background-color: #cd7f32 !important;
+    color: #fff;
+}
+
+/* Season selector styling */
+#season-select {
+    min-width: 120px;
+}

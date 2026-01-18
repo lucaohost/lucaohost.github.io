@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migrar Jogadores - 2025 para 2026</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Migrar Jogadores de 2025 para 2026</h1>
+        <p>Este script irá criar todos os jogadores de 2025 em 2026 (exceto Marcelo, Valdir e Tamara) e adicionar Nadjane.</p>
+        <button id="migrate-btn" class="btn btn-primary">Iniciar Migração</button>
+        <p class="mt-3"><small><strong>Nota:</strong> Você também pode abrir o console do navegador (F12) e executar <code>migratePlayers()</code> diretamente.</small></p>
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBsP4YSbp3qeK-ViyVXhWp8Jf3KetimveU",
+            authDomain: "snooker-scoreboard2.firebaseapp.com",
+            projectId: "snooker-scoreboard2",
+            storageBucket: "snooker-scoreboard2.firebasestorage.app",
+            messagingSenderId: "695835616380",
+            appId: "1:695835616380:web:17fc21b1d88f26c63055f9"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        async function sha256(message) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        function addStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            statusDiv.appendChild(div);
+        }
+
+        function addResult(message) {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.textContent = message;
+            resultsDiv.appendChild(div);
+        }
+
+        document.getElementById('migrate-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('migrate-btn');
+            btn.disabled = true;
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('results').innerHTML = '';
+
+            try {
+                addStatus('Carregando jogadores de 2025...', 'info');
+                
+                // Load players from 2025
+                const players2025Snapshot = await database.ref('players').once('value');
+                const players2025Data = players2025Snapshot.val() || {};
+                
+                // Load pins from 2025
+                const pins2025Snapshot = await database.ref('pins').once('value');
+                const pins2025Data = pins2025Snapshot.val() || {};
+
+                addStatus(`Encontrados ${Object.keys(players2025Data).length} jogadores em 2025`, 'info');
+
+                // Filter out Marcelo, Valdir and Tamara
+                const excludedNames = ['marcelo', 'valdir', 'tamara'];
+                const playersToMigrate = Object.entries(players2025Data).filter(([key, player]) => {
+                    const nameLower = (player.name || key).toLowerCase();
+                    return !excludedNames.includes(nameLower) && !excludedNames.includes(key.toLowerCase());
+                });
+
+                addStatus(`Migrando ${playersToMigrate.length} jogadores (excluindo Marcelo, Valdir e Tamara)...`, 'info');
+
+                // Check existing players in 2026
+                const players2026Snapshot = await database.ref('seasons/2026/players').once('value');
+                const existingPlayers2026 = players2026Snapshot.val() || {};
+                const existingPlayerIds = Object.keys(existingPlayers2026).map(id => id.toLowerCase());
+
+                // Migrate players
+                let migratedCount = 0;
+                let skippedCount = 0;
+                for (const [playerId, playerData] of playersToMigrate) {
+                    const playerId2026 = (playerData.name || playerId).toLowerCase();
+                    
+                    // Skip if already exists
+                    if (existingPlayerIds.includes(playerId2026)) {
+                        addResult(`⊘ Pulado (já existe): ${playerData.name || playerId}`);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    const playerData2026 = {
+                        name: playerData.name || playerId,
+                        wins: 0,
+                        games: 0,
+                        season: 2026
+                    };
+
+                    await database.ref(`seasons/2026/players/${playerId2026}`).set(playerData2026);
+                    addResult(`✓ Migrado: ${playerData.name || playerId} (estatísticas zeradas)`);
+                    migratedCount++;
+
+                    // Try to copy PIN if exists
+                    if (pins2025Data[playerId]) {
+                        await database.ref(`seasons/2026/pins/${playerId2026}`).set(pins2025Data[playerId]);
+                        addResult(`  └─ PIN copiado`);
+                    } else {
+                        addResult(`  └─ ⚠ PIN não encontrado em 2025 (precisa definir manualmente)`);
+                    }
+                }
+
+                addStatus(`Migração: ${migratedCount} criados, ${skippedCount} já existentes`, 'info');
+
+                // Add Nadjane
+                const nadjaneId = 'nadjane';
+                const existing2026Check = await database.ref(`seasons/2026/players/${nadjaneId}`).once('value');
+                
+                if (!existing2026Check.val()) {
+                    addStatus('Adicionando jogadora Nadjane...', 'info');
+                    const nadjanePassword = 'jane';
+                    const nadjanePasswordHash = await sha256(nadjanePassword);
+                    
+                    const nadjaneData = {
+                        name: 'Nadjane',
+                        wins: 0,
+                        games: 0,
+                        season: 2026
+                    };
+
+                    await database.ref(`seasons/2026/players/${nadjaneId}`).set(nadjaneData);
+                    await database.ref(`seasons/2026/pins/${nadjaneId}`).set(nadjanePasswordHash);
+                    addResult(`✓ Adicionada: Nadjane com senha "jane"`);
+                } else {
+                    addResult(`⊘ Nadjane já existe em 2026 (pulada)`);
+                }
+
+                addStatus('Migração concluída com sucesso!', 'success');
+            } catch (error) {
+                addStatus('Erro durante a migração: ' + error.message, 'error');
+                console.error('Erro:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
+
