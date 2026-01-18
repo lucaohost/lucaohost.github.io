@@ -716,6 +716,48 @@ tbody td:first-child {
 #info-classification {
     font-size: 0.7rem;
     margin-left: 0.7rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+#info-classification:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode #info-classification:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#info-classification .info-title {
+    font-weight: 500;
+    user-select: none;
+}
+
+#info-classification .info-full-text {
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+    padding-left: 1.5rem;
+    list-style-type: disc;
+}
+
+#info-classification .info-full-text li {
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+#info-classification .info-full-text li a {
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+#info-classification .info-full-text li a:hover {
+    opacity: 0.8;
+}
+
+body.dark-mode #info-classification .info-full-text li a {
+    color: var(--text-dark);
 }
 
 /* Medal colors for 2025 season - harmonized with site theme */

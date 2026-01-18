@@ -746,6 +746,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Toggle buttons visibility on page load
     toggleButtonsBySeason();
+    
+    // Info classification expand/collapse
+    const infoClassification = document.getElementById('info-classification');
+    if (infoClassification) {
+        infoClassification.addEventListener('click', function() {
+            const fullText = this.querySelector('.info-full-text');
+            if (fullText) {
+                const isHidden = fullText.style.display === 'none';
+                fullText.style.display = isHidden ? 'block' : 'none';
+            }
+        });
+    }
 });
 
 pinInputs.forEach((input, idx) => {
