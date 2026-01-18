@@ -622,7 +622,8 @@ body.dark-mode .modal-body h6 {
     color: var(--text-dark);
 }
 
-.btn-style {
+.btn-style,
+a.btn-style {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -634,6 +635,12 @@ body.dark-mode .modal-body h6 {
     background-color: var(--primary-blue);
     border-color: var(--primary-blue);
     color: var(--white);
+    text-decoration: none;
+}
+
+a.btn-style:hover {
+    color: var(--white);
+    text-decoration: none;
 }
 
 .btn-style:hover {
@@ -729,4 +736,58 @@ body.dark-mode .table tr.bronze-medal td {
 
 .buttons-container .btn-style {
     margin: 0.25rem;
+}
+
+/* Reports page styles */
+.report-section {
+    margin-bottom: 2rem;
+}
+
+.report-section h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--table-border-light);
+}
+
+body.dark-mode .report-section h3 {
+    border-bottom-color: var(--table-border-dark);
+    color: var(--text-dark);
+}
+
+.report-section .card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .report-section .card {
+    background-color: var(--container-dark);
+    border-color: var(--table-border-dark);
+}
+
+.report-section .card-body {
+    padding: 1rem;
+}
+
+.report-section .card-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.report-section .card-text {
+    font-size: 1rem;
+}
+
+@media (max-width: 576px) {
+    .report-section h3 {
+        font-size: 1.1rem;
+    }
+    
+    .report-section .card-title {
+        font-size: 1rem;
+    }
+    
+    .report-section .card-text {
+        font-size: 0.9rem;
+    }
 }
