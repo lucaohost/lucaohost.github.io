@@ -109,11 +109,6 @@ function loadPlayers() {
             player.percentage = player.games > 0 
                 ? ((player.wins / player.games) * 100).toFixed(2) + '%'
                 : '0.00%';
-
-            if (player.name === 'Valdir' || player.name === 'Tamara') {
-                player.percentage = 'W.O';
-                player.qualified = false;
-            }
                      
             return {
                 ...player,
@@ -661,6 +656,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: #e0e0e0 !important; 
                     }
                     html.dark-mode h1, body.dark-mode h1 { color: #e0e0e0 !important; }
+                    html.dark-mode .container, body.dark-mode .container { 
+                        background-color: #1e1e1e !important; 
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important; 
+                    }
                 `;
             } else {
                 preventFlashStyle.textContent = `
@@ -669,6 +668,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: #212529 !important; 
                     }
                     h1 { color: #212529 !important; }
+                    .container { 
+                        background-color: white !important; 
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important; 
+                    }
                 `;
             }
         }
@@ -702,6 +705,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: #e0e0e0 !important; 
                     }
                     html.dark-mode h1, body.dark-mode h1 { color: #e0e0e0 !important; }
+                    html.dark-mode .container, body.dark-mode .container { 
+                        background-color: #1e1e1e !important; 
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important; 
+                    }
                 `;
             } else {
                 preventFlashStyle.textContent = `
@@ -710,6 +717,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         color: #212529 !important; 
                     }
                     h1 { color: #212529 !important; }
+                    .container { 
+                        background-color: white !important; 
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important; 
+                    }
                 `;
             }
         }
