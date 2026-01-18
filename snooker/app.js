@@ -18,6 +18,12 @@ const toastMessage = document.getElementById('toast-message');
 const seasonSelect = document.getElementById('season-select');
 const historyBtn = document.getElementById('history-btn');
 
+// Buttons to hide/show based on season
+const addMatchBtn = document.querySelector('[data-bs-target="#addMatchModal"]');
+const addPlayerBtn = document.querySelector('[data-bs-target="#addPlayerModal"]');
+const editPlayerBtn = document.querySelector('[data-bs-target="#editPlayerModal"]');
+const reportsBtn = document.querySelector('a[href="reports.html"]');
+
 // Current season (default 2026)
 let currentSeason = parseInt(localStorage.getItem('currentSeason')) || 2026;
 seasonSelect.value = currentSeason;
@@ -47,6 +53,39 @@ function getMatchesPath() {
     }
 }
 
+// Function to toggle buttons visibility based on season
+function toggleButtonsBySeason() {
+    const is2025 = currentSeason === 2025;
+    const displayValue = is2025 ? 'none' : '';
+    
+    // Hide/show buttons based on season
+    if (addMatchBtn) addMatchBtn.style.display = displayValue;
+    if (addPlayerBtn) addPlayerBtn.style.display = displayValue;
+    if (editPlayerBtn) editPlayerBtn.style.display = displayValue;
+    if (reportsBtn) reportsBtn.style.display = displayValue;
+    
+    // History button - only show for 2026
+    if (historyBtn) {
+        if (currentSeason === 2026) {
+            historyBtn.style.display = 'inline-block';
+        } else {
+            historyBtn.style.display = 'none';
+        }
+    }
+    
+    // Center share button when it's alone (2025 season)
+    const buttonsContainer = document.querySelector('.buttons-container');
+    if (buttonsContainer) {
+        if (is2025) {
+            buttonsContainer.style.justifyContent = 'center';
+            buttonsContainer.classList.add('single-button');
+        } else {
+            buttonsContainer.style.justifyContent = '';
+            buttonsContainer.classList.remove('single-button');
+        }
+    }
+}
+
 // Season selector event listener
 seasonSelect.addEventListener('change', (e) => {
     currentSeason = parseInt(e.target.value);
@@ -55,14 +94,8 @@ seasonSelect.addEventListener('change', (e) => {
     // Clear table immediately
     playersTable.innerHTML = '<tr><td colspan="6" class="text-center">Carregando...</td></tr>';
     
-    // Show/hide history button based on season
-    if (historyBtn) {
-        if (currentSeason === 2026) {
-            historyBtn.style.display = 'inline-block';
-        } else {
-            historyBtn.style.display = 'none';
-        }
-    }
+    // Toggle buttons visibility
+    toggleButtonsBySeason();
     
     // Load players for new season
     loadPlayers();
@@ -705,14 +738,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial load
     loadPlayers();
     
-    // Show/hide history button based on initial season
-    if (historyBtn) {
-        if (currentSeason === 2026) {
-            historyBtn.style.display = 'inline-block';
-        } else {
-            historyBtn.style.display = 'none';
-        }
-    }
+    // Toggle buttons visibility on page load
+    toggleButtonsBySeason();
 });
 
 pinInputs.forEach((input, idx) => {

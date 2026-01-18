@@ -126,19 +126,20 @@
         </div>
         <h1 class="text-center my-4">Relatórios - Temporada 2026</h1>
         
-        <div class="text-center mb-3">
-            <a href="index.html" class="btn btn-style">
-                <i class="fas fa-arrow-left"></i> Voltar ao Ranking
-            </a>
-        </div>
-        
-        <div class="text-center mb-4">
-            <label for="period-select" class="me-2"><strong>Período:</strong></label>
-            <select id="period-select" class="form-select d-inline-block" style="width: auto; display: inline-block;">
-                <option value="">Selecione um período</option>
-                <option value="last-match">Última Sinuca</option>
-                <option value="full-season">Toda Temporada</option>
-            </select>
+        <div class="text-center mb-4 reports-controls">
+            <div class="mb-3">
+                <a href="index.html" class="btn btn-style">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Ranking
+                </a>
+            </div>
+            <div>
+                <label for="period-select" class="me-2"><strong>Período:</strong></label>
+                <select id="period-select" class="form-select d-inline-block" style="width: auto; display: inline-block;">
+                    <option value="">Selecione um período</option>
+                    <option value="last-match">Última Sinuca</option>
+                    <option value="full-season">Toda Temporada</option>
+                </select>
+            </div>
         </div>
         
         <div id="report-content" style="display: none;">

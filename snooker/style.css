@@ -538,6 +538,27 @@ body.dark-mode .toast-header {
         max-width: 200px;
     }
     
+    .text-center.mb-4 {
+        margin-bottom: 1rem !important;
+    }
+    
+    .text-center.mb-4 label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .text-center.mb-4 .form-select {
+        width: 100% !important;
+        max-width: 250px;
+    }
+    
+    /* Reports page button layout on mobile */
+    .text-center.mb-3 .btn-style {
+        width: 100%;
+        max-width: 250px;
+    }
+    
     .alert {
         font-size: 0.8rem;
         padding: 0.75rem;
@@ -743,6 +764,12 @@ body.dark-mode .table tr.bronze-medal td {
     white-space: nowrap;
 }
 
+.buttons-container.single-button {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
 @media (min-width: 768px) {
     .buttons-container {
         gap: 1rem;
@@ -771,6 +798,22 @@ body.dark-mode .table tr.bronze-medal td {
 }
 
 /* Reports page styles */
+.reports-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+@media (min-width: 576px) {
+    .reports-controls {
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 2rem;
+    }
+}
+
 .report-section {
     margin-bottom: 2rem;
 }
