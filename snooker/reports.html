@@ -136,7 +136,7 @@
                 <label for="period-select" class="me-2"><strong>Período:</strong></label>
                 <select id="period-select" class="form-select d-inline-block" style="width: auto; display: inline-block;">
                     <option value="">Selecione um período</option>
-                    <option value="last-match">Última Sinuca</option>
+                    <option value="last-match" selected>Última Sinuca</option>
                     <option value="full-season">Toda Temporada</option>
                 </select>
             </div>
@@ -258,6 +258,10 @@
                     document.getElementById('no-data-message').style.display = 'none';
                 }
             });
+            
+            // Auto-load last-match report on page load
+            periodSelect.value = 'last-match';
+            generateReport('last-match');
         });
         
         async function generateReport(period) {
