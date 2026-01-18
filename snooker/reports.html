@@ -143,7 +143,7 @@
         
         <div id="report-content" style="display: none;">
             <div class="report-section mb-4">
-                <h3 class="mb-3"><i class="fas fa-users"></i> Aproveitamento Individual</h3>
+                <h3 class="mb-3"><i class="fas fa-users"></i> Aproveitamento no Período</h3>
                 <div id="individual-stats" class="table-responsive">
                     <table class="table table-striped">
                         <thead class="table-dark">
@@ -190,25 +190,6 @@
             <div class="report-section mb-4">
                 <h3 class="mb-3"><i class="fas fa-fire"></i> Maiores Sequências</h3>
                 <div id="streaks-content"></div>
-            </div>
-            
-            <div class="report-section mb-4">
-                <h3 class="mb-3"><i class="fas fa-calendar-week"></i> Aproveitamento do Período</h3>
-                <div id="weekly-stats" class="table-responsive">
-                    <table class="table table-striped">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Jogador</th>
-                                <th>Semana</th>
-                                <th>Vitórias</th>
-                                <th>Derrotas</th>
-                                <th>Aproveitamento</th>
-                            </tr>
-                        </thead>
-                        <tbody id="weekly-stats-body">
-                        </tbody>
-                    </table>
-                </div>
             </div>
         </div>
         
@@ -289,7 +270,6 @@
                 document.getElementById('worst-duo-losses').innerHTML = '';
                 document.getElementById('duo-frequency-body').innerHTML = '';
                 document.getElementById('streaks-content').innerHTML = '';
-                document.getElementById('weekly-stats-body').innerHTML = '';
                 
                 const matchesPath = getMatchesPath();
                 const matchesSnapshot = await database.ref(matchesPath).once('value');
@@ -343,7 +323,6 @@
                 generateWorstDuo(filteredMatches);
                 generateDuoFrequency(filteredMatches);
                 generateStreaks(filteredMatches);
-                generateWeeklyStats(filteredMatches, playersData);
                 
             } catch (error) {
                 console.error('Erro ao gerar relatório:', error);
@@ -610,84 +589,6 @@
             document.getElementById('streaks-content').innerHTML = streaksHTML;
         }
         
-        function generateWeeklyStats(matches, playersData) {
-            // Group matches by week
-            const weeklyStats = {};
-            
-            matches.forEach(match => {
-                const matchDate = new Date(match.date || match.timestamp);
-                const year = matchDate.getFullYear();
-                const week = getWeekNumber(matchDate);
-                const weekKey = `${year}-W${week.toString().padStart(2, '0')}`;
-                
-                const winners = Array.isArray(match.winners) ? match.winners : [match.winners];
-                const losers = Array.isArray(match.losers) ? match.losers : [match.losers];
-                
-                [...winners, ...losers].forEach(player => {
-                    if (!weeklyStats[player]) {
-                        weeklyStats[player] = {};
-                    }
-                    if (!weeklyStats[player][weekKey]) {
-                        weeklyStats[player][weekKey] = { wins: 0, losses: 0 };
-                    }
-                });
-                
-                winners.forEach(winner => {
-                    weeklyStats[winner][weekKey].wins++;
-                });
-                
-                losers.forEach(loser => {
-                    weeklyStats[loser][weekKey].losses++;
-                });
-            });
-            
-            const tbody = document.getElementById('weekly-stats-body');
-            
-            // Create array with all stats for sorting
-            const statsArray = [];
-            Object.entries(weeklyStats).forEach(([player, weeks]) => {
-                Object.entries(weeks).forEach(([week, stats]) => {
-                    const total = stats.wins + stats.losses;
-                    const winRate = total > 0 ? ((stats.wins / total) * 100) : 0;
-                    statsArray.push({
-                        player,
-                        week,
-                        wins: stats.wins,
-                        losses: stats.losses,
-                        winRate
-                    });
-                });
-            });
-            
-            // Sort by win rate (descending)
-            statsArray.sort((a, b) => b.winRate - a.winRate);
-            
-            // Create rows
-            statsArray.forEach(stat => {
-                const winRateStr = stat.winRate > 0 ? stat.winRate.toFixed(2) + '%' : '0.00%';
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td><strong>${stat.player}</strong></td>
-                    <td>${stat.week}</td>
-                    <td class="text-success">${stat.wins}</td>
-                    <td class="text-danger">${stat.losses}</td>
-                    <td><strong>${winRateStr}</strong></td>
-                `;
-                tbody.appendChild(row);
-            });
-            
-            if (tbody.children.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhum dado semanal disponível.</td></tr>';
-            }
-        }
-        
-        function getWeekNumber(date) {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-        }
     </script>
 </body>
 </html>
