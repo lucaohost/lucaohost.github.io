@@ -401,13 +401,13 @@ body.dark-mode .toast-header {
     }
     
     .table th, .table td {
-        padding: 0.35rem 0.2rem;
-        font-size: 0.7rem;
+        padding: 0.5rem 0.3rem;
+        font-size: 0.8rem;
     }
     
     .table th {
-        font-size: 0.65rem;
-        padding: 0.4rem 0.2rem;
+        font-size: 0.75rem;
+        padding: 0.6rem 0.3rem;
     }
     
     /* Ranking table - fixed layout and column widths */
@@ -422,14 +422,14 @@ body.dark-mode .toast-header {
     /* Ranking table column widths */
     .table:has(#players-table) th:nth-child(1),
     .table:has(#players-table) td:nth-child(1) {
-        min-width: 28px;
-        width: 28px;
+        min-width: 32px;
+        width: 32px;
     }
     
     .table:has(#players-table) th:nth-child(2),
     .table:has(#players-table) td:nth-child(2) {
         min-width: 0;
-        max-width: 100px;
+        max-width: 110px;
         word-break: break-word;
     }
     
@@ -439,16 +439,35 @@ body.dark-mode .toast-header {
     .table:has(#players-table) td:nth-child(4),
     .table:has(#players-table) th:nth-child(5),
     .table:has(#players-table) td:nth-child(5) {
-        min-width: 38px;
-        width: 38px;
+        min-width: 42px;
+        width: 42px;
         text-align: center;
     }
     
     .table:has(#players-table) th:nth-child(6),
     .table:has(#players-table) td:nth-child(6) {
-        min-width: 42px;
-        width: 42px;
+        min-width: 48px;
+        width: 48px;
         text-align: center;
+    }
+    
+    /* Color styles for wins/losses - only for classified players */
+    .table:has(#players-table) tr:not(.unclassified) td:nth-child(3) {
+        color: #198754;
+        font-weight: 500;
+    }
+    
+    .table:has(#players-table) tr:not(.unclassified) td:nth-child(5) {
+        color: #dc3545;
+        font-weight: 500;
+    }
+    
+    body.dark-mode .table:has(#players-table) tr:not(.unclassified) td:nth-child(3) {
+        color: #75b798;
+    }
+    
+    body.dark-mode .table:has(#players-table) tr:not(.unclassified) td:nth-child(5) {
+        color: #ea868f;
     }
 
     .dark-mode-toggle {
@@ -768,6 +787,12 @@ body.dark-mode .table tr.bronze-medal td {
     display: flex;
     justify-content: center;
     width: 100%;
+}
+
+.buttons-container.single-button .btn-style {
+    flex: 0 0 auto;
+    min-width: 180px;
+    max-width: 220px;
 }
 
 @media (min-width: 768px) {

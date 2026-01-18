@@ -175,6 +175,8 @@ function loadPlayers() {
         sortedPlayers.forEach(player => {
             const row = document.createElement('tr');
             
+            let isUnclassified = false;
+            
             // Color scheme based on season
             if (currentSeason === 2025) {
                 // 2025: Only Gold/Silver/Bronze for top 3, no disqualification colors
@@ -187,19 +189,23 @@ function loadPlayers() {
                 }
             } else {
                 // 2026: Keep disqualification colors
-            if (!player.qualified) {
-                row.classList.add('unclassified');
+                if (!player.qualified) {
+                    row.classList.add('unclassified');
+                    isUnclassified = true;
                 } else {
-                row.classList.add('classified');
+                    row.classList.add('classified');
                 }
             }
+            
+            const winsClass = !isUnclassified ? 'text-success' : '';
+            const lossesClass = !isUnclassified ? 'text-danger' : '';
             
             row.innerHTML = `
                 <td>${position++}</td>
                 <td>${player.name}</td>
-                <td>${player.wins}</td>
+                <td class="${winsClass}">${player.wins}</td>
                 <td>${player.games}</td>
-                <td>${player.losses}</td>
+                <td class="${lossesClass}">${player.losses}</td>
                 <td>${player.percentage}</td>
             `;
             playersTable.appendChild(row);
