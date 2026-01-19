@@ -419,67 +419,41 @@ body.dark-mode .toast-header {
         table-layout: fixed;
     }
     
-    /* Ranking table - improved padding for mobile */
-    .table:has(#players-table) th,
-    .table:has(#players-table) td {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-    }
-    
-    .table:has(#players-table) th:first-child,
-    .table:has(#players-table) td:first-child {
-        padding-left: 0.5rem;
-        padding-right: 0.3rem;
-    }
-    
     /* Ranking table column widths */
     .table:has(#players-table) th:nth-child(1),
     .table:has(#players-table) td:nth-child(1) {
-        min-width: 32px;
-        width: 32px;
+        width: 10%;
+        text-align: center;
     }
     
     .table:has(#players-table) th:nth-child(2),
     .table:has(#players-table) td:nth-child(2) {
-        min-width: 0;
-        max-width: 65px;
+        width: 25%;
         word-break: break-word;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
     }
     
     .table:has(#players-table) th:nth-child(3),
     .table:has(#players-table) td:nth-child(3) {
-        min-width: 42px;
-        width: 42px;
+        width: 15%;
         text-align: center;
-        padding-left: 0.7rem;
-        padding-right: 0.7rem;
     }
     
     .table:has(#players-table) th:nth-child(4),
     .table:has(#players-table) td:nth-child(4) {
-        min-width: 42px;
-        width: 42px;
+        width: 15%;
         text-align: center;
     }
     
     .table:has(#players-table) th:nth-child(5),
     .table:has(#players-table) td:nth-child(5) {
-        min-width: 42px;
-        width: 42px;
+        width: 17%;
         text-align: center;
-        padding-left: 0.7rem;
-        padding-right: 0.7rem;
     }
     
     .table:has(#players-table) th:nth-child(6),
     .table:has(#players-table) td:nth-child(6) {
-        min-width: 48px;
-        width: 48px;
+        width: 18%;
         text-align: center;
-        padding-left: 0.7rem;
-        padding-right: 0.5rem;
     }
     
     /* Color styles for wins/losses - only for classified players */
@@ -800,10 +774,10 @@ body.dark-mode #info-classification .info-full-text li a {
 }
 
 .table tr.silver-medal td {
-    background: linear-gradient(135deg, #bdc3c7 0%, #ecf0f1 100%) !important;
+    background: linear-gradient(135deg, #a8a8a8 0%, #8a8a8a 100%) !important;
     color: #212529 !important;
     font-weight: 600 !important;
-    border-left: 3px solid #95a5a6 !important;
+    border-left: 3px solid #707070 !important;
 }
 
 .table tr.bronze-medal td {
