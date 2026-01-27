@@ -387,7 +387,7 @@
             matches.forEach(match => {
                 const winners = Array.isArray(match.winners) ? match.winners : [match.winners];
                 if (winners.length === 2) {
-                    const duo = winners.sort().join(' e ');
+                    const duo = [...winners].sort().join(' e ');
                     duoWins[duo] = (duoWins[duo] || 0) + 1;
                 }
             });
@@ -413,7 +413,7 @@
             matches.forEach(match => {
                 const losers = Array.isArray(match.losers) ? match.losers : [match.losers];
                 if (losers.length === 2) {
-                    const duo = losers.sort().join(' e ');
+                    const duo = [...losers].sort().join(' e ');
                     duoLosses[duo] = (duoLosses[duo] || 0) + 1;
                 }
             });
@@ -436,16 +436,17 @@
         function generateDuoFrequency(matches) {
             const duoFrequency = {};
             
-            matches.forEach(match => {
-                const team1 = Array.isArray(match.winners) ? match.winners : [match.winners];
-                const team2 = Array.isArray(match.losers) ? match.losers : [match.losers];
+            matches.forEach((match, index) => {
+                const team1 = Array.isArray(match.winners) ? match.winners.map(p => p.trim()) : [match.winners?.trim()];
+                const team2 = Array.isArray(match.losers) ? match.losers.map(p => p.trim()) : [match.losers?.trim()];
                 
-                // Both teams
-                if (team1.length === 2 && team2.length === 2) {
-                    const duo1 = team1.sort().join(' e ');
-                    const duo2 = team2.sort().join(' e ');
-                    
+                // Count each duo independently
+                if (team1.length === 2) {
+                    const duo1 = [...team1].sort().join(' e ');
                     duoFrequency[duo1] = (duoFrequency[duo1] || 0) + 1;
+                }
+                if (team2.length === 2) {
+                    const duo2 = [...team2].sort().join(' e ');
                     duoFrequency[duo2] = (duoFrequency[duo2] || 0) + 1;
                 }
             });
@@ -512,7 +513,7 @@
                 
                 // Duo streaks
                 if (winners.length === 2) {
-                    const duoWin = winners.sort().join(' e ');
+                    const duoWin = [...winners].sort().join(' e ');
                     duoCurrentLossStreak[duoWin] = 0;
                     duoCurrentWinStreak[duoWin] = (duoCurrentWinStreak[duoWin] || 0) + 1;
                     if (duoCurrentWinStreak[duoWin] > (duoWinStreaks[duoWin] || 0)) {
@@ -521,7 +522,7 @@
                 }
                 
                 if (losers.length === 2) {
-                    const duoLoss = losers.sort().join(' e ');
+                    const duoLoss = [...losers].sort().join(' e ');
                     duoCurrentWinStreak[duoLoss] = 0;
                     duoCurrentLossStreak[duoLoss] = (duoCurrentLossStreak[duoLoss] || 0) + 1;
                     if (duoCurrentLossStreak[duoLoss] > (duoLossStreaks[duoLoss] || 0)) {
@@ -530,60 +531,75 @@
                 }
             });
             
-            // Find max streaks
-            const maxPlayerWinStreak = Object.entries(playerWinStreaks).sort((a, b) => b[1] - a[1])[0];
-            const maxPlayerLossStreak = Object.entries(playerLossStreaks).sort((a, b) => b[1] - a[1])[0];
-            const maxDuoWinStreak = Object.entries(duoWinStreaks).sort((a, b) => b[1] - a[1])[0];
-            const maxDuoLossStreak = Object.entries(duoLossStreaks).sort((a, b) => b[1] - a[1])[0];
+            // Find max streaks - get all players/duos with the same max value
+            const sortedPlayerWinStreaks = Object.entries(playerWinStreaks).sort((a, b) => b[1] - a[1]);
+            const sortedPlayerLossStreaks = Object.entries(playerLossStreaks).sort((a, b) => b[1] - a[1]);
+            const sortedDuoWinStreaks = Object.entries(duoWinStreaks).sort((a, b) => b[1] - a[1]);
+            const sortedDuoLossStreaks = Object.entries(duoLossStreaks).sort((a, b) => b[1] - a[1]);
+            
+            // Get all tied at max
+            const maxPlayerWinValue = sortedPlayerWinStreaks[0]?.[1] || 0;
+            const maxPlayerLossValue = sortedPlayerLossStreaks[0]?.[1] || 0;
+            const maxDuoWinValue = sortedDuoWinStreaks[0]?.[1] || 0;
+            const maxDuoLossValue = sortedDuoLossStreaks[0]?.[1] || 0;
+            
+            const tiedPlayerWinStreaks = sortedPlayerWinStreaks.filter(([_, v]) => v === maxPlayerWinValue);
+            const tiedPlayerLossStreaks = sortedPlayerLossStreaks.filter(([_, v]) => v === maxPlayerLossValue);
+            const tiedDuoWinStreaks = sortedDuoWinStreaks.filter(([_, v]) => v === maxDuoWinValue);
+            const tiedDuoLossStreaks = sortedDuoLossStreaks.filter(([_, v]) => v === maxDuoLossValue);
             
             let streaksHTML = '<div class="row">';
             
-            if (maxPlayerWinStreak) {
+            if (tiedPlayerWinStreaks.length > 0 && maxPlayerWinValue > 0) {
+                const playerNames = tiedPlayerWinStreaks.map(([name, _]) => name).join(', ');
                 streaksHTML += `
                     <div class="col-md-6 mb-3">
                         <div class="card border-success">
                             <div class="card-body">
                                 <h5 class="card-title text-success"><i class="fas fa-fire"></i> Maior Sequência de Vitórias (Solo)</h5>
-                                <p class="card-text"><strong>${maxPlayerWinStreak[0]}</strong> - ${maxPlayerWinStreak[1]} vitória(s) consecutiva(s)</p>
+                                <p class="card-text"><strong>${playerNames}</strong> - ${maxPlayerWinValue} vitória(s) consecutiva(s)</p>
                             </div>
                         </div>
                     </div>
                 `;
             }
             
-            if (maxPlayerLossStreak) {
+            if (tiedPlayerLossStreaks.length > 0 && maxPlayerLossValue > 0) {
+                const playerNames = tiedPlayerLossStreaks.map(([name, _]) => name).join(', ');
                 streaksHTML += `
                     <div class="col-md-6 mb-3">
                         <div class="card border-danger">
                             <div class="card-body">
                                 <h5 class="card-title text-danger"><i class="fas fa-skull"></i> Maior Sequência de Derrotas (Solo)</h5>
-                                <p class="card-text"><strong>${maxPlayerLossStreak[0]}</strong> - ${maxPlayerLossStreak[1]} derrota(s) consecutiva(s)</p>
+                                <p class="card-text"><strong>${playerNames}</strong> - ${maxPlayerLossValue} derrota(s) consecutiva(s)</p>
                             </div>
                         </div>
                     </div>
                 `;
             }
             
-            if (maxDuoWinStreak) {
+            if (tiedDuoWinStreaks.length > 0 && maxDuoWinValue > 0) {
+                const duoNames = tiedDuoWinStreaks.map(([name, _]) => name).join(', ');
                 streaksHTML += `
                     <div class="col-md-6 mb-3">
                         <div class="card border-success">
                             <div class="card-body">
                                 <h5 class="card-title text-success"><i class="fas fa-fire"></i> Maior Sequência de Vitórias (Dupla)</h5>
-                                <p class="card-text"><strong>${maxDuoWinStreak[0]}</strong> - ${maxDuoWinStreak[1]} vitória(s) consecutiva(s)</p>
+                                <p class="card-text"><strong>${duoNames}</strong> - ${maxDuoWinValue} vitória(s) consecutiva(s)</p>
                             </div>
                         </div>
                     </div>
                 `;
             }
             
-            if (maxDuoLossStreak) {
+            if (tiedDuoLossStreaks.length > 0 && maxDuoLossValue > 0) {
+                const duoNames = tiedDuoLossStreaks.map(([name, _]) => name).join(', ');
                 streaksHTML += `
                     <div class="col-md-6 mb-3">
                         <div class="card border-danger">
                             <div class="card-body">
                                 <h5 class="card-title text-danger"><i class="fas fa-skull"></i> Maior Sequência de Derrotas (Dupla)</h5>
-                                <p class="card-text"><strong>${maxDuoLossStreak[0]}</strong> - ${maxDuoLossStreak[1]} derrota(s) consecutiva(s)</p>
+                                <p class="card-text"><strong>${duoNames}</strong> - ${maxDuoLossValue} derrota(s) consecutiva(s)</p>
                             </div>
                         </div>
                     </div>

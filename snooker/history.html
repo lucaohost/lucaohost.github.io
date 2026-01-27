@@ -213,8 +213,8 @@
                         minute: '2-digit'
                     });
                     
-                    const winners = Array.isArray(match.winners) ? match.winners.join(' e ') : match.winners || '';
-                    const losers = Array.isArray(match.losers) ? match.losers.join(' e ') : match.losers || '';
+                    const winners = Array.isArray(match.winners) ? [...match.winners].sort().join(' e ') : match.winners || '';
+                    const losers = Array.isArray(match.losers) ? [...match.losers].sort().join(' e ') : match.losers || '';
 
                     row.innerHTML = `
                         <td>${matches.length - index}</td>
