@@ -770,6 +770,10 @@ body.dark-mode #info-classification .info-full-text li a {
     background: linear-gradient(135deg, #f4d03f 0%, #f7dc6f 100%) !important;
     color: #212529 !important;
     font-weight: 600 !important;
+    border-left: none !important;
+}
+
+.table tr.gold-medal td:first-child {
     border-left: 3px solid #f1c40f !important;
 }
 
@@ -777,12 +781,7 @@ body.dark-mode #info-classification .info-full-text li a {
     background: linear-gradient(135deg, #a8a8a8 0%, #8a8a8a 100%) !important;
     color: #212529 !important;
     font-weight: 600 !important;
-    border-left: 3px solid #707070 !important;
-    border-top: 1px solid #858585 !important;
-}
-
-.table tr.silver-medal td + td {
-    border-left: 1px solid #858585 !important;
+    border-left: none !important;
 }
 
 .table tr.silver-medal td:first-child {
@@ -793,6 +792,10 @@ body.dark-mode #info-classification .info-full-text li a {
     background: linear-gradient(135deg, #d68910 0%, #f39c12 100%) !important;
     color: #212529 !important;
     font-weight: 600 !important;
+    border-left: none !important;
+}
+
+.table tr.bronze-medal td:first-child {
     border-left: 3px solid #d68910 !important;
 }
 
