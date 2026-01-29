@@ -630,6 +630,64 @@ async function sha256(message) {
 
 const shareBtn = document.getElementById('share-btn');
 
+// Backup function to download all data from Firebase
+async function downloadBackup() {
+    try {
+        showToast('Gerando backup...', 'primary');
+        
+        const backupData = {
+            exportDate: new Date().toISOString(),
+            seasons: {}
+        };
+        
+        // Fetch 2025 data (old structure)
+        const [players2025, pins2025] = await Promise.all([
+            database.ref('players').once('value'),
+            database.ref('pins').once('value')
+        ]);
+        
+        backupData.seasons['2025'] = {
+            players: players2025.val() || {},
+            pins: pins2025.val() || {}
+        };
+        
+        // Fetch 2026 data (new structure)
+        const [players2026, pins2026, matches2026] = await Promise.all([
+            database.ref('seasons/2026/players').once('value'),
+            database.ref('seasons/2026/pins').once('value'),
+            database.ref('seasons/2026/matches').once('value')
+        ]);
+        
+        backupData.seasons['2026'] = {
+            players: players2026.val() || {},
+            pins: pins2026.val() || {},
+            matches: matches2026.val() || {}
+        };
+        
+        // Create JSON string with formatted data
+        const jsonData = JSON.stringify(backupData, null, 2);
+        
+        // Create blob and download
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+        link.download = `snooker-backup-${timestamp}.json`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        URL.revokeObjectURL(url);
+        
+        showToast('Backup baixado com sucesso!', 'success');
+    } catch (error) {
+        console.error('Erro ao gerar backup:', error);
+        showToast('Erro ao gerar backup: ' + error.message, 'danger');
+    }
+}
+
 async function captureAndShare(shareMsg = "Ranking Sinuca") {
     try {
         const container = document.querySelector('.container');
@@ -747,8 +805,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Toggle buttons visibility on page load
     toggleButtonsBySeason();
     
-    // Info classification expand/collapse
+    // Info classification expand/collapse and secret backup button
     const infoClassification = document.getElementById('info-classification');
+    const backupBtn = document.getElementById('backup-btn');
+    let classificationClickCount = 0;
+    
     if (infoClassification) {
         infoClassification.addEventListener('click', function() {
             const fullText = this.querySelector('.info-full-text');
@@ -756,7 +817,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isHidden = fullText.style.display === 'none';
                 fullText.style.display = isHidden ? 'block' : 'none';
             }
+            
+            // Secret backup button activation
+            classificationClickCount++;
+            if (classificationClickCount >= 5 && backupBtn) {
+                backupBtn.style.display = 'inline-block';
+            }
         });
+    }
+    
+    // Backup button event listener
+    if (backupBtn) {
+        backupBtn.addEventListener('click', downloadBackup);
     }
 });
 

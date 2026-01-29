@@ -825,6 +825,30 @@ body.dark-mode .table tr.bronze-medal td {
     min-width: 120px;
 }
 
+/* Backup button styling */
+#backup-btn {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+#backup-btn:hover {
+    background-color: #e0a800 !important;
+    border-color: #d39e00 !important;
+    color: #212529 !important;
+}
+
+body.dark-mode #backup-btn {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+body.dark-mode #backup-btn:hover {
+    background-color: #e0a800 !important;
+    border-color: #d39e00 !important;
+}
+
 /* Buttons container styling */
 .buttons-container {
     display: flex;
