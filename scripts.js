@@ -77,8 +77,8 @@ const commands = {
         if (rickCounter > 1) {
             htmlRick += `<p style='text-align: justify;'>A true fan! You've been Rickrolling ${rickCounter} times.</p>`;
         }
-        htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' width='290' height='250' style='margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
-        htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;" preload="none"></audio>';
+        htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' style='max-width: 100%; height: auto; margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
+        htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 100%; max-width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;" preload="none"></audio>';
         return htmlRick;
     },
     tgif: function thankGodItsFriday() {
@@ -247,7 +247,8 @@ function showSpotifyIframe() {
     // Edit width of spotify iframe and show
     // Setting in the html didnt work
     document.querySelectorAll(".spotifyIframe").forEach(iframe => {
-        iframe.style.width = "290px";
+        iframe.style.width = "100%";
+        iframe.style.maxWidth = "100%";
         iframe.hidden = false;
     });
 }

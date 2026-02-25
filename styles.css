@@ -12,20 +12,24 @@ body {
     justify-content: center;
     align-items: center;
     height: 100dvh;
+    overflow-x: hidden;
 }
 
 .terminal {
-    width: 80%;
+    width: 100%;
     max-width: 800px;
     height: 70%;
     background-color: #222;
     border-radius: 10px;
     padding: 20px;
     overflow-y: auto;
+    overflow-x: auto;
 }
 
 .output {
     white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 .path {
     color: #4CAF50;
@@ -67,5 +71,27 @@ iframe {
     margin-bottom: 5px;
     width: 100%;
     border: none;
+}
+
+.output table {
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+}
+
+.output th,
+.output td {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.output img {
+    max-width: 100%;
+    height: auto;
+}
+
+.output audio {
+    width: 100%;
+    max-width: 290px;
 }
   
