@@ -164,9 +164,32 @@ function buildSocialTable(items, cols = 2) {
         while (rowItems.length < cols) {
             rowItems.push('-'); // Fill the table if necessary
         }
-        rowItems.forEach(item => {
+        rowItems.forEach((item, index) => {
+            const isIconColumn = index === 0;
+            const commonStyles = [
+                'border: 2px solid black',
+                'padding: 5px',
+                'color: white'
+            ];
+
+            if (isIconColumn) {
+                // First column: small, centered icon
+                commonStyles.push(
+                    'width: 40px',
+                    'max-width: 40px',
+                    'text-align: center',
+                    'white-space: nowrap'
+                );
+            } else {
+                // Second column: keep link on a single line
+                commonStyles.push(
+                    'text-align: left',
+                    'white-space: nowrap'
+                );
+            }
+
             table += `
-                <td style="border: 2px solid black; padding: 5px; text-align: left; color: white;">${item}</td>`;
+                <td style="${commonStyles.join('; ')};">${item}</td>`;
         });
         table += '</tr>';
     }
