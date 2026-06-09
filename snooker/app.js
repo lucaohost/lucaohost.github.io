@@ -30,19 +30,11 @@ seasonSelect.value = currentSeason;
 
 // Get database paths based on season
 function getPlayersPath() {
-    if (currentSeason === 2025) {
-        return 'players'; // Old database path
-    } else {
-        return `seasons/${currentSeason}/players`; // New database path for 2026+
-    }
+    return `seasons/${currentSeason}/players`;
 }
 
 function getPinsPath() {
-    if (currentSeason === 2025) {
-        return 'pins'; // Old database path
-    } else {
-        return `seasons/${currentSeason}/pins`; // New database path for 2026+
-    }
+    return `seasons/${currentSeason}/pins`;
 }
 
 function getMatchesPath() {
