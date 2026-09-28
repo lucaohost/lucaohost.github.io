@@ -132,13 +132,49 @@ function processCommand(input) {
     }
 }
 
+function isMobileCli() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function pinMobileCli() {
+    if (!isMobileCli()) {
+        cli.style.height = '';
+        cli.style.maxHeight = '';
+        document.body.style.height = '';
+        document.body.style.transform = '';
+        return;
+    }
+
+    const viewport = window.visualViewport;
+    const height = viewport ? viewport.height : window.innerHeight;
+    const offsetTop = viewport ? viewport.offsetTop : 0;
+    document.body.style.height = height + 'px';
+    cli.style.height = height + 'px';
+    cli.style.maxHeight = height + 'px';
+    document.body.style.transform = offsetTop ? `translateY(${offsetTop}px)` : '';
+    window.scrollTo(0, 0);
+}
+
+function focusCliInput() {
+    if (!isMobileCli()) return;
+    inputField.focus({ preventScroll: true });
+}
+
+function scrollCliToEnd() {
+    if (isMobileCli()) {
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    } else {
+        cli.scrollTop = terminalOutput.scrollHeight;
+    }
+}
+
 function appendOutput(text) {
     const newLine = document.createElement('div');
     if(text !== undefined) {
         newLine.innerHTML = text;
         terminalOutput.appendChild(newLine);
     }
-    cli.scrollTop = terminalOutput.scrollHeight;
+    scrollCliToEnd();
 }
 
 function onEnter(event) {
@@ -154,6 +190,54 @@ function onEnter(event) {
 }
 
 inputField.addEventListener('keydown', onEnter);
+
+const mobileCliQuery = window.matchMedia('(max-width: 768px)');
+
+function keepMobileKeyboard() {
+    if (!isMobileCli()) {
+        inputField.removeAttribute('inputmode');
+        return;
+    }
+    inputField.setAttribute('inputmode', 'text');
+    pinMobileCli();
+    focusCliInput();
+}
+
+inputField.addEventListener('blur', () => {
+    if (!isMobileCli()) return;
+    focusCliInput();
+    setTimeout(focusCliInput, 0);
+});
+
+document.addEventListener('mousedown', (event) => {
+    if (!isMobileCli()) return;
+    if (event.target.closest('a, button, audio, iframe, .input')) return;
+    event.preventDefault();
+}, true);
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') keepMobileKeyboard();
+});
+
+window.addEventListener('pageshow', keepMobileKeyboard);
+window.addEventListener('resize', pinMobileCli);
+mobileCliQuery.addEventListener('change', () => {
+    pinMobileCli();
+    keepMobileKeyboard();
+});
+
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', pinMobileCli);
+    window.visualViewport.addEventListener('scroll', pinMobileCli);
+}
+
+document.addEventListener('touchstart', (event) => {
+    if (!isMobileCli()) return;
+    if (event.target.closest('a, button, audio, iframe, .input')) return;
+    focusCliInput();
+}, { passive: true });
+
+keepMobileKeyboard();
 
 function buildSocialTable(items, cols = 2) {
     const rows = Math.ceil(items.length / cols);
