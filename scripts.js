@@ -14,6 +14,12 @@ function clearCommand() {
     } else {
         inputField.innerText = '';
     }
+    syncMobileInputWidth();
+}
+
+function syncMobileInputWidth() {
+    if (!isMobileCli() || inputField.tagName !== 'INPUT') return;
+    inputField.style.width = Math.max(inputField.value.length, 1) + 'ch';
 }
 
 let inputEventsReady = false;
@@ -21,11 +27,7 @@ let inputEventsReady = false;
 function onMobileBlur() {
     if (!isMobileCli()) return;
     const active = document.activeElement;
-    if (active && active.tagName === 'IFRAME') {
-        setTimeout(focusCliInput, 150);
-        return;
-    }
-    focusCliInput();
+    if (active && (active.tagName === 'IFRAME' || active.tagName === 'AUDIO' || active.tagName === 'VIDEO')) return;
 }
 
 function bindInputEvents() {
@@ -45,9 +47,11 @@ function installMobileInput() {
     native.autocapitalize = 'off';
     native.spellcheck = false;
     native.enterKeyHint = 'send';
-    native.setAttribute('inputmode', 'text');
-    native.setAttribute('autofocus', '');
+    native.readOnly = true;
+    native.setAttribute('inputmode', 'none');
     native.setAttribute('aria-label', 'Command');
+    native.addEventListener('mousedown', (event) => event.preventDefault());
+    native.addEventListener('touchstart', (event) => event.preventDefault(), { passive: false });
     inputField.replaceWith(native);
     inputField = native;
     if (inputEventsReady) bindInputEvents();
@@ -159,12 +163,12 @@ const commands = {
 
 document.addEventListener('DOMContentLoaded', function() {
     appendOutput('Welcome to my online terminal!\nType "help" to see all commands.');
-    inputField.focus();  // focus in the terminal after page loads
+    if (!isMobileCli()) inputField.focus();
 });
 
 document.addEventListener('click', function(event) {
     const selection = window.getSelection().toString();
-    if (!selection && !event.target.closest('.nextMusic')) {
+    if (!isMobileCli() && !selection && !event.target.closest('.nextMusic')) {
         inputField.focus();
     }
 });
@@ -188,35 +192,17 @@ function processCommand(input) {
 }
 
 function pinMobileCli() {
-    if (!isMobileCli()) {
-        cli.style.height = '';
-        cli.style.maxHeight = '';
-        document.documentElement.style.height = '';
-        document.body.style.height = '';
-        document.body.style.transform = '';
-        return;
-    }
-
-    const viewport = window.visualViewport;
-    const height = viewport ? viewport.height : window.innerHeight;
-    const offsetTop = viewport ? viewport.offsetTop : 0;
-    document.documentElement.style.height = height + 'px';
-    document.body.style.height = height + 'px';
-    cli.style.height = height + 'px';
-    cli.style.maxHeight = height + 'px';
-    document.body.style.transform = offsetTop ? `translateY(${offsetTop}px)` : '';
-    window.scrollTo(0, 0);
+    cli.style.height = '';
+    cli.style.maxHeight = '';
+    document.documentElement.style.height = '';
+    document.body.style.height = '';
+    document.body.style.transform = '';
+    if (isMobileCli()) window.scrollTo(0, 0);
 }
 
 function focusCliInput() {
     if (!isMobileCli()) return;
-    if (navigator.virtualKeyboard) {
-        navigator.virtualKeyboard.overlaysContent = false;
-        if (typeof navigator.virtualKeyboard.show === 'function') {
-            try { navigator.virtualKeyboard.show(); } catch (error) {}
-        }
-    }
-    inputField.focus({ preventScroll: true });
+    syncMobileInputWidth();
 }
 
 function scrollCliToEnd() {
@@ -262,10 +248,7 @@ function keepMobileKeyboard() {
         return;
     }
     installMobileInput();
-    inputField.setAttribute('inputmode', 'text');
-    if (navigator.virtualKeyboard) {
-        navigator.virtualKeyboard.overlaysContent = false;
-    }
+    inputField.setAttribute('inputmode', 'none');
     pinMobileCli();
     focusCliInput();
 }
@@ -292,11 +275,6 @@ document.addEventListener('touchstart', (event) => {
     focusCliInput();
 }, { passive: false });
 
-document.addEventListener('focusin', (event) => {
-    if (!isMobileCli() || event.target === inputField) return;
-    setTimeout(focusCliInput, 120);
-});
-
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') keepMobileKeyboard();
 });
@@ -322,6 +300,30 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('scroll', pinMobileCli);
 }
 
+function bindMobileKeyboard() {
+    const keyboard = document.getElementById('mobile-keyboard');
+    if (!keyboard || keyboard.dataset.bound === '1') return;
+    keyboard.dataset.bound = '1';
+    let lastKeyboardInput = 0;
+    keyboard.addEventListener('click', (event) => {
+        const now = Date.now();
+        if (now - lastKeyboardInput < 40) return;
+        lastKeyboardInput = now;
+        const keyButton = event.target.closest('[data-key]');
+        if (!keyButton || !isMobileCli() || inputField.tagName !== 'INPUT') return;
+        const key = keyButton.dataset.key;
+        if (key === 'back') {
+            inputField.value = inputField.value.slice(0, -1);
+        } else if (key === 'enter') {
+            onEnter({ key: 'Enter', preventDefault() {} });
+        } else {
+            inputField.value += key;
+        }
+        syncMobileInputWidth();
+    });
+}
+
+bindMobileKeyboard();
 keepMobileKeyboard();
 
 function buildSocialTable(items, cols = 2) {
