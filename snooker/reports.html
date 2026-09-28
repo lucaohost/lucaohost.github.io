@@ -366,9 +366,16 @@
                 ...data,
                 winRate: data.total > 0 ? ((data.wins / data.total) * 100).toFixed(2) + '%' : '0.00%'
             })).sort((a, b) => parseFloat(b.winRate) - parseFloat(a.winRate));
+
+            const hiddenNames = new Set(
+                Object.values(playersData)
+                    .filter(player => player && player.hidden === true && player.name)
+                    .map(player => player.name)
+            );
             
             const tbody = document.getElementById('individual-stats-body');
             statsArray.forEach(stat => {
+                if (hiddenNames.has(stat.player)) return;
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${stat.player}</strong></td>

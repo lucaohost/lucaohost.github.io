@@ -17,6 +17,15 @@ const toast = new bootstrap.Toast(document.getElementById('toast'));
 const toastMessage = document.getElementById('toast-message');
 const seasonSelect = document.getElementById('season-select');
 const historyBtn = document.getElementById('history-btn');
+const hidePlayerBtn = document.getElementById('hide-player-btn');
+
+const SEASON_2024_PLAYERS = [
+    { id: 'lucas', name: 'Lucas', wins: 51, games: 93, season: 2024 },
+    { id: 'paulinho', name: 'Paulinho', wins: 41, games: 93, season: 2024 },
+    { id: 'raquel', name: 'Raquel', wins: 32, games: 93, season: 2024 }
+];
+
+let secretUnlocked = false;
 
 // Buttons to hide/show based on season
 const addMatchBtn = document.querySelector('[data-bs-target="#addMatchModal"]');
@@ -37,18 +46,34 @@ function getPinsPath() {
     return `seasons/${currentSeason}/pins`;
 }
 
+function isClosedSeason() {
+    return currentSeason === 2024 || currentSeason === 2025;
+}
+
 function getMatchesPath() {
-    if (currentSeason === 2025) {
-        return null; // No match history for 2025
-    } else {
-        return `seasons/${currentSeason}/matches`; // Match history for 2026+
+    if (isClosedSeason()) {
+        return null;
+    }
+    return `seasons/${currentSeason}/matches`;
+}
+
+function updateSecretButtons() {
+    const backupBtn = document.getElementById('backup-btn');
+    if (!secretUnlocked) {
+        if (backupBtn) backupBtn.style.display = 'none';
+        if (hidePlayerBtn) hidePlayerBtn.style.display = 'none';
+        return;
+    }
+    if (backupBtn) backupBtn.style.display = 'inline-block';
+    if (hidePlayerBtn) {
+        hidePlayerBtn.style.display = currentSeason === 2026 ? 'inline-block' : 'none';
     }
 }
 
 // Function to toggle buttons visibility based on season
 function toggleButtonsBySeason() {
-    const is2025 = currentSeason === 2025;
-    const displayValue = is2025 ? 'none' : '';
+    const closedSeason = isClosedSeason();
+    const displayValue = closedSeason ? 'none' : '';
     
     // Hide/show buttons based on season
     if (addMatchBtn) addMatchBtn.style.display = displayValue;
@@ -65,10 +90,11 @@ function toggleButtonsBySeason() {
         }
     }
     
-    // Center share button when it's alone (2025 season)
+    updateSecretButtons();
+
     const buttonsContainer = document.querySelector('.buttons-container');
     if (buttonsContainer) {
-        if (is2025) {
+        if (closedSeason && !secretUnlocked) {
             buttonsContainer.style.justifyContent = 'center';
             buttonsContainer.classList.add('single-button');
         } else {
@@ -95,7 +121,6 @@ seasonSelect.addEventListener('change', (e) => {
 
 
 function loadPlayers() {
-    // Ensure currentSeason is in sync with the select element
     if (seasonSelect) {
         const selectedValue = parseInt(seasonSelect.value);
         if (selectedValue !== currentSeason) {
@@ -103,7 +128,12 @@ function loadPlayers() {
             localStorage.setItem('currentSeason', currentSeason);
         }
     }
-    
+
+    if (currentSeason === 2024) {
+        renderRanking(SEASON_2024_PLAYERS.map(player => ({ ...player })));
+        return;
+    }
+
     const playersPath = getPlayersPath();
     database.ref(playersPath).once('value').then((snapshot) => {
         const playersData = snapshot.val() || {};
@@ -119,95 +149,91 @@ function loadPlayers() {
                 ...player
             };
         });
+        renderRanking(playersArray);
+    });
+}
 
-        if (playersArray.length === 0) {
-            playersTable.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum jogador encontrado</td></tr>';
-            return;
+function renderRanking(playersArray) {
+    updatePlayerSelects(playersArray);
+    updateEditPlayerSelect(playersArray);
+
+    if (playersArray.length === 0) {
+        playersTable.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum jogador encontrado</td></tr>';
+        return;
+    }
+
+    const maxWins = Math.max(...playersArray.map(player => player.wins), 0);
+    const minWins = Math.floor(maxWins / 2);
+
+    const playersWithStats = playersArray.map(player => {
+        const wins = player.wins || 0;
+        const games = player.games || 0;
+        const percentage = games > 0
+            ? ((wins / games) * 100).toFixed(2) + '%'
+            : '0.00%';
+
+        return {
+            ...player,
+            wins,
+            games,
+            losses: games - wins,
+            percentage,
+            qualified: wins >= minWins
+        };
+    });
+
+    const qualifiedPlayers = playersWithStats.filter(p => p.qualified && p.percentage !== 'W.O');
+    const unclassifiedPlayers = playersWithStats.filter(p => !p.qualified && p.percentage !== 'W.O');
+    const woPlayers = playersWithStats.filter(p => p.percentage === 'W.O');
+
+    const byPercentage = (a, b) => parseFloat(b.percentage) - parseFloat(a.percentage);
+    qualifiedPlayers.sort(byPercentage);
+    unclassifiedPlayers.sort(byPercentage);
+
+    const sortedPlayers = [...qualifiedPlayers, ...unclassifiedPlayers, ...woPlayers];
+    const visiblePlayers = currentSeason === 2026
+        ? sortedPlayers.filter(player => player.hidden !== true)
+        : sortedPlayers;
+
+    playersTable.innerHTML = '';
+
+    if (visiblePlayers.length === 0) {
+        playersTable.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum jogador encontrado</td></tr>';
+        return;
+    }
+
+    let position = 1;
+    visiblePlayers.forEach(player => {
+        const row = document.createElement('tr');
+        let isUnclassified = false;
+
+        if (isClosedSeason()) {
+            if (position === 1) {
+                row.classList.add('gold-medal');
+            } else if (position === 2) {
+                row.classList.add('silver-medal');
+            } else if (position === 3) {
+                row.classList.add('bronze-medal');
+            }
+        } else if (!player.qualified) {
+            row.classList.add('unclassified');
+            isUnclassified = true;
+        } else {
+            row.classList.add('classified');
         }
 
-        const maxWins = Math.max(...playersArray.map(player => player.wins), 0);
-        const minWins = Math.floor(maxWins / 2);
-        
-        const playersWithStats = playersArray.map(player => {
-            player.qualified = player.wins >= minWins;
-            
-            player.percentage = player.games > 0 
-                ? ((player.wins / player.games) * 100).toFixed(2) + '%'
-                : '0.00%';
-                     
-            return {
-                ...player,
-                losses: player.games - player.wins,
-                percentage: player.percentage,
-                qualified: player.qualified
-            };
-        });
+        const winsClass = !isUnclassified ? 'text-success' : '';
+        const lossesClass = !isUnclassified ? 'text-danger' : '';
 
-        const qualifiedPlayers = playersWithStats.filter(p => p.qualified);
-        const unclassifiedPlayers = playersWithStats.filter(p => !p.qualified && p.percentage !== 'W.O');
-        const woPlayers = playersWithStats.filter(p => p.percentage === 'W.O');
-
-        qualifiedPlayers.sort((a, b) => {
-            const aPerc = parseFloat(a.percentage);
-            const bPerc = parseFloat(b.percentage);
-            return bPerc - aPerc;
-        });
-        
-        unclassifiedPlayers.sort((a, b) => {
-            const aPerc = parseFloat(a.percentage);
-            const bPerc = parseFloat(b.percentage);
-            return bPerc - aPerc;
-        });
-        
-        const sortedPlayers = [...qualifiedPlayers, ...unclassifiedPlayers, ...woPlayers];
-
-        playersTable.innerHTML = '';
-
-        let position = 1;
-        sortedPlayers.forEach(player => {
-            const row = document.createElement('tr');
-            
-            let isUnclassified = false;
-            
-            // Color scheme based on season
-            if (currentSeason === 2025) {
-                // 2025: Only Gold/Silver/Bronze for top 3, no disqualification colors
-                if (position === 1) {
-                    row.classList.add('gold-medal');
-                } else if (position === 2) {
-                    row.classList.add('silver-medal');
-                } else if (position === 3) {
-                    row.classList.add('bronze-medal');
-                }
-            } else {
-                // 2026: Keep disqualification colors
-                if (!player.qualified) {
-                    row.classList.add('unclassified');
-                    isUnclassified = true;
-                } else {
-                    row.classList.add('classified');
-                }
-            }
-            
-            const winsClass = !isUnclassified ? 'text-success' : '';
-            const lossesClass = !isUnclassified ? 'text-danger' : '';
-            
-            row.innerHTML = `
-                <td>${position++}</td>
-                <td>${player.name}</td>
-                <td class="${winsClass}">${player.wins}</td>
-                <td>${player.games}</td>
-                <td class="${lossesClass}">${player.losses}</td>
-                <td>${player.percentage}</td>
-            `;
-            playersTable.appendChild(row);
-        });
-
-        // Update player selects in forms
-        updatePlayerSelects(playersArray);
-        
-        // Update edit player select
-        updateEditPlayerSelect(playersArray);
+        row.innerHTML = `
+            <td>${position++}</td>
+            <td>${player.name}</td>
+            <td class="${winsClass}">${player.wins}</td>
+            <td>${player.games}</td>
+            <td class="${lossesClass}">${player.losses}</td>
+            <td>${player.percentage}</td>
+        `;
+        playersTable.appendChild(row);
     });
 }
 
@@ -444,7 +470,8 @@ addPlayerForm.addEventListener('submit', async (e) => {
             name: playerName,
             wins: 0,
             games: 0,
-            season: currentSeason
+            season: currentSeason,
+            hidden: false
         };
         
         // Create password hash
@@ -631,6 +658,15 @@ async function downloadBackup() {
             exportDate: new Date().toISOString(),
             seasons: {}
         };
+
+        backupData.seasons['2024'] = {
+            players: Object.fromEntries(SEASON_2024_PLAYERS.map(player => [player.id, {
+                name: player.name,
+                wins: player.wins,
+                games: player.games,
+                season: 2024
+            }]))
+        };
         
         // Fetch 2025 data (old structure)
         const [players2025, pins2025] = await Promise.all([
@@ -809,12 +845,108 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isHidden = fullText.style.display === 'none';
                 fullText.style.display = isHidden ? 'block' : 'none';
             }
-            
-            // Secret backup button activation
-            classificationClickCount++;
-            if (classificationClickCount >= 5 && backupBtn) {
-                backupBtn.style.display = 'inline-block';
-            }
+        });
+
+        const infoTitle = infoClassification.querySelector('.info-title');
+        if (infoTitle) {
+            infoTitle.addEventListener('click', function() {
+                classificationClickCount++;
+                if (classificationClickCount >= 10) {
+                    secretUnlocked = true;
+                    updateSecretButtons();
+                }
+            });
+        }
+    }
+
+    const hidePlayerModal = document.getElementById('hidePlayerModal');
+    const hidePlayerList = document.getElementById('hide-player-list');
+    const hideAdminPassword = document.getElementById('hide-admin-password');
+    let hideAdminUnlocked = false;
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    async function ensureHideAdmin() {
+        if (hideAdminUnlocked) return true;
+        const password = hideAdminPassword ? hideAdminPassword.value.trim() : '';
+        if (!password) {
+            showToast('Senha admin é obrigatória!', 'danger');
+            return false;
+        }
+        const adminPasswordHash = await sha256(password);
+        const expectedAdminHash = await sha256('godsmode');
+        if (adminPasswordHash !== expectedAdminHash) {
+            showToast('Senha admin incorreta!', 'danger');
+            return false;
+        }
+        hideAdminUnlocked = true;
+        return true;
+    }
+
+    async function onHidePlayerToggle(event) {
+        const input = event.target;
+        const wantHidden = input.checked;
+        const playerId = input.dataset.playerId;
+        const playerName = input.dataset.playerName;
+        const allowed = await ensureHideAdmin();
+        if (!allowed) {
+            input.checked = !wantHidden;
+            return;
+        }
+        try {
+            await database.ref(`seasons/2026/players/${playerId}/hidden`).set(wantHidden);
+            showToast(wantHidden ? `${playerName} oculto no ranking.` : `${playerName} visível no ranking.`, 'success');
+            loadPlayers();
+        } catch (error) {
+            input.checked = !wantHidden;
+            showToast('Erro ao atualizar jogador: ' + error.message, 'danger');
+        }
+    }
+
+    async function renderHidePlayerList() {
+        const snapshot = await database.ref('seasons/2026/players').once('value');
+        const playersData = snapshot.val() || {};
+        const players = Object.keys(playersData).map(id => ({
+            id,
+            name: playersData[id].name || id,
+            hidden: playersData[id].hidden === true
+        })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+        if (!hidePlayerList) return;
+
+        if (players.length === 0) {
+            hidePlayerList.innerHTML = '<p class="mb-0">Nenhum jogador encontrado.</p>';
+            return;
+        }
+
+        hidePlayerList.innerHTML = players.map((player, index) => `
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <span>${escapeHtml(player.name)}</span>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="hide-switch-${index}" data-player-id="${escapeHtml(player.id)}" data-player-name="${escapeHtml(player.name)}" ${player.hidden ? 'checked' : ''}>
+                    <label class="form-check-label" for="hide-switch-${index}">Oculto</label>
+                </div>
+            </div>
+        `).join('');
+
+        hidePlayerList.querySelectorAll('input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', onHidePlayerToggle);
+        });
+    }
+
+    if (hidePlayerModal) {
+        hidePlayerModal.addEventListener('show.bs.modal', () => {
+            hideAdminUnlocked = false;
+            if (hideAdminPassword) hideAdminPassword.value = '';
+            renderHidePlayerList().catch(error => {
+                showToast('Erro ao carregar jogadores: ' + error.message, 'danger');
+            });
         });
     }
     

@@ -129,6 +129,7 @@
         <div class="text-center mb-3">
             <label for="season-select" class="me-2"><strong>Temporada:</strong></label>
             <select id="season-select" class="form-select d-inline-block" style="width: auto; display: inline-block;">
+                <option value="2024">2024</option>
                 <option value="2025">2025</option>
                 <option value="2026" selected>2026</option>
             </select>
@@ -184,6 +185,9 @@
             </button>
             <button class="btn btn-style btn-warning" id="backup-btn" style="display: none;">
                 <i class="fas fa-download"></i> Backup
+            </button>
+            <button class="btn btn-style" id="hide-player-btn" style="display: none;" data-bs-toggle="modal" data-bs-target="#hidePlayerModal">
+                <i class="fas fa-user-slash"></i> Ocultar Jogador
             </button>
         </div>
     </div>
@@ -319,6 +323,25 @@
                         <h6>Resultado do Relatório:</h6>
                         <div id="report-text" class="p-3 bg-light rounded"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="hidePlayerModal" tabindex="-1" aria-labelledby="hidePlayerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="hidePlayerModalLabel">Ocultar Jogador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Quem fica oculto sai do ranking e do aproveitamento. O histórico de partidas continua igual. Desligar o interruptor faz o jogador voltar.</p>
+                    <div class="mb-3">
+                        <label for="hide-admin-password" class="form-label">Senha Admin</label>
+                        <input type="password" class="form-control" id="hide-admin-password" placeholder="Senha admin necessária" autocomplete="off">
+                    </div>
+                    <div id="hide-player-list"></div>
                 </div>
             </div>
         </div>
