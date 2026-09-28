@@ -1,4 +1,59 @@
-const inputField = document.getElementById('input');
+let inputField = document.getElementById('input');
+
+function isMobileCli() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function readCommand() {
+    return inputField.tagName === 'INPUT' ? inputField.value : inputField.innerText;
+}
+
+function clearCommand() {
+    if (inputField.tagName === 'INPUT') {
+        inputField.value = '';
+    } else {
+        inputField.innerText = '';
+    }
+}
+
+let inputEventsReady = false;
+
+function onMobileBlur() {
+    if (!isMobileCli()) return;
+    const active = document.activeElement;
+    if (active && active.tagName === 'IFRAME') {
+        setTimeout(focusCliInput, 150);
+        return;
+    }
+    focusCliInput();
+}
+
+function bindInputEvents() {
+    if (inputField.dataset.bound === '1') return;
+    inputField.dataset.bound = '1';
+    inputField.addEventListener('keydown', onEnter);
+    inputField.addEventListener('blur', onMobileBlur);
+}
+
+function installMobileInput() {
+    if (!isMobileCli() || inputField.tagName === 'INPUT') return;
+    const native = document.createElement('input');
+    native.type = 'text';
+    native.id = 'input';
+    native.className = 'input';
+    native.autocomplete = 'off';
+    native.autocapitalize = 'off';
+    native.spellcheck = false;
+    native.enterKeyHint = 'send';
+    native.setAttribute('inputmode', 'text');
+    native.setAttribute('autofocus', '');
+    native.setAttribute('aria-label', 'Command');
+    inputField.replaceWith(native);
+    inputField = native;
+    if (inputEventsReady) bindInputEvents();
+}
+
+installMobileInput();
 const terminalOutput = document.getElementById('output');
 const cli = document.getElementById('cli');
 const commands = {
@@ -65,7 +120,7 @@ const commands = {
     liked: function() {
         stopMusic('liked');
         appendOutput(`My Last 100 Liked Songs:\n`);
-        inputField.innerText = '';
+        clearCommand();
         return '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
     },
     rick: function () {
@@ -132,14 +187,11 @@ function processCommand(input) {
     }
 }
 
-function isMobileCli() {
-    return window.matchMedia('(max-width: 768px)').matches;
-}
-
 function pinMobileCli() {
     if (!isMobileCli()) {
         cli.style.height = '';
         cli.style.maxHeight = '';
+        document.documentElement.style.height = '';
         document.body.style.height = '';
         document.body.style.transform = '';
         return;
@@ -148,6 +200,7 @@ function pinMobileCli() {
     const viewport = window.visualViewport;
     const height = viewport ? viewport.height : window.innerHeight;
     const offsetTop = viewport ? viewport.offsetTop : 0;
+    document.documentElement.style.height = height + 'px';
     document.body.style.height = height + 'px';
     cli.style.height = height + 'px';
     cli.style.maxHeight = height + 'px';
@@ -157,15 +210,21 @@ function pinMobileCli() {
 
 function focusCliInput() {
     if (!isMobileCli()) return;
+    if (navigator.virtualKeyboard) {
+        navigator.virtualKeyboard.overlaysContent = false;
+        if (typeof navigator.virtualKeyboard.show === 'function') {
+            try { navigator.virtualKeyboard.show(); } catch (error) {}
+        }
+    }
     inputField.focus({ preventScroll: true });
 }
 
 function scrollCliToEnd() {
-    if (isMobileCli()) {
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-    } else {
-        cli.scrollTop = terminalOutput.scrollHeight;
-    }
+    const apply = () => {
+        cli.scrollTop = isMobileCli() ? cli.scrollHeight : terminalOutput.scrollHeight;
+    };
+    apply();
+    requestAnimationFrame(apply);
 }
 
 function appendOutput(text) {
@@ -173,6 +232,9 @@ function appendOutput(text) {
     if(text !== undefined) {
         newLine.innerHTML = text;
         terminalOutput.appendChild(newLine);
+        newLine.querySelectorAll('img, iframe').forEach((element) => {
+            element.addEventListener('load', scrollCliToEnd);
+        });
     }
     scrollCliToEnd();
 }
@@ -180,16 +242,17 @@ function appendOutput(text) {
 function onEnter(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        const input = inputField.innerText.trim();
+        const input = readCommand().trim();
         if(input !== "") {
             appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
             processCommand(input);
-            inputField.innerText = '';
+            clearCommand();
         }
     }
 }
 
-inputField.addEventListener('keydown', onEnter);
+bindInputEvents();
+inputEventsReady = true;
 
 const mobileCliQuery = window.matchMedia('(max-width: 768px)');
 
@@ -198,44 +261,66 @@ function keepMobileKeyboard() {
         inputField.removeAttribute('inputmode');
         return;
     }
+    installMobileInput();
     inputField.setAttribute('inputmode', 'text');
+    if (navigator.virtualKeyboard) {
+        navigator.virtualKeyboard.overlaysContent = false;
+    }
     pinMobileCli();
     focusCliInput();
 }
 
-inputField.addEventListener('blur', () => {
-    if (!isMobileCli()) return;
-    focusCliInput();
-    setTimeout(focusCliInput, 0);
-});
 
 document.addEventListener('mousedown', (event) => {
     if (!isMobileCli()) return;
-    if (event.target.closest('a, button, audio, iframe, .input')) return;
-    event.preventDefault();
+    if (event.target.closest('button, a')) {
+        event.preventDefault();
+        focusCliInput();
+    }
 }, true);
+
+document.addEventListener('touchstart', (event) => {
+    if (!isMobileCli()) return;
+    const control = event.target.closest('button, a');
+    if (!control) return;
+    event.preventDefault();
+    if (control.tagName === 'A' && control.getAttribute('href')) {
+        window.open(control.href, control.target || '_self', 'noopener');
+    } else {
+        control.click();
+    }
+    focusCliInput();
+}, { passive: false });
+
+document.addEventListener('focusin', (event) => {
+    if (!isMobileCli() || event.target === inputField) return;
+    setTimeout(focusCliInput, 120);
+});
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') keepMobileKeyboard();
 });
 
 window.addEventListener('pageshow', keepMobileKeyboard);
+window.addEventListener('focus', keepMobileKeyboard);
 window.addEventListener('resize', pinMobileCli);
 mobileCliQuery.addEventListener('change', () => {
+    installMobileInput();
     pinMobileCli();
     keepMobileKeyboard();
 });
 
 if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', pinMobileCli);
+    window.visualViewport.addEventListener('resize', () => {
+        pinMobileCli();
+        const line = document.querySelector('.input-line');
+        const visibleBottom = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        if (line && line.getBoundingClientRect().bottom > visibleBottom - 8) {
+            scrollCliToEnd();
+        }
+    });
     window.visualViewport.addEventListener('scroll', pinMobileCli);
 }
-
-document.addEventListener('touchstart', (event) => {
-    if (!isMobileCli()) return;
-    if (event.target.closest('a, button, audio, iframe, .input')) return;
-    focusCliInput();
-}, { passive: true });
 
 keepMobileKeyboard();
 
@@ -310,7 +395,7 @@ function buildCommandTable(items, cols = 2) {
 // const music declared in songs.js and imported in index.html
 
 function showRandomMusic(width = 560, height = 315) {
-    inputField.innerText = '';
+    clearCommand();
     let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
     if (Array.isArray(playedPositions)) {
         playedPositions = {};
@@ -357,7 +442,9 @@ function showSpotifyIframe() {
         iframe.style.width = "100%";
         iframe.style.maxWidth = "100%";
         iframe.hidden = false;
+        iframe.addEventListener('load', scrollCliToEnd);
     });
+    scrollCliToEnd();
 }
 
 function buildTgifMsg(days, hours, minutes, seconds) {
@@ -429,7 +516,7 @@ function addEvents(command) {
             element.addEventListener('click', function() {
                 appendOutput(`<span class="path">lucaohost@bash:~$</span> rickrolled?`);
                 processCommand(`rickrolled?`);
-                inputField.innerText = '';
+                clearCommand();
             });
         });
     }
@@ -438,7 +525,7 @@ function addEvents(command) {
             element.addEventListener('click', function() {
                 appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
                 processCommand(`localhost?`);
-                inputField.innerText = '';
+                clearCommand();
             });
         });
     }
@@ -447,7 +534,7 @@ function addEvents(command) {
             element.addEventListener('click', function() {
                 appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
                 processCommand('next music');
-                inputField.innerText = '';
+                clearCommand();
             });
         });
     }
