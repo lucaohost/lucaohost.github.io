@@ -18,13 +18,136 @@ body {
 .terminal {
     width: 100%;
     max-width: 800px;
-    height: 70%;
-    background-color: #222;
+    height: 74%;
+    background-color: #1b1b1b;
+    border: 1px solid #303030;
     border-radius: 10px;
-    padding: 20px;
-    overflow-y: auto;
-    overflow-x: auto;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.terminal.is-max {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    border-radius: 0;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.terminal.is-min {
+    height: auto;
+}
+
+.terminal.is-min .terminal-body {
+    display: none;
+}
+
+.terminal-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    height: 38px;
+    padding: 0 6px 0 14px;
+    background: #2a2a2a;
+    border-bottom: 1px solid #141414;
+    user-select: none;
+}
+
+.terminal-title {
+    color: #c8c8c8;
+    font-size: 13px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.terminal-controls {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.terminal-controls button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #e4e4e4;
+    cursor: pointer;
+}
+
+.terminal-controls button svg {
+    display: block;
+    width: 12px;
+    height: 12px;
+}
+
+.terminal-controls .icon-restore,
+.terminal-controls .term-max.is-maxed .icon-max {
+    display: none;
+}
+
+.terminal-controls .term-max.is-maxed .icon-restore {
+    display: block;
+}
+
+.terminal-controls button:hover {
+    background: #3a3a3a;
+}
+
+.terminal-controls .term-close:hover {
+    background: #c42b1c;
+    color: #fff;
+}
+
+.terminal-controls button:focus-visible,
+.trackPlay:focus-visible {
+    outline: 1px solid #4CAF50;
+    outline-offset: 1px;
+}
+
+.terminal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 16px 8px 16px 18px;
+    overflow: auto;
     overflow-anchor: none;
+    color-scheme: dark;
+    scrollbar-width: thin;
+    scrollbar-color: #4a4a4a transparent;
+    scrollbar-gutter: stable;
+}
+
+.terminal-body::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.terminal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.terminal-body::-webkit-scrollbar-thumb {
+    background: #3a3a3a;
+    border: 2px solid #1b1b1b;
+    border-radius: 8px;
+}
+
+.terminal-body::-webkit-scrollbar-thumb:hover {
+    background: #4CAF50;
 }
 
 .output {
@@ -153,28 +276,97 @@ iframe {
     max-width: 290px;
 }
 
-.likedList {
+.trackBlock {
+    white-space: normal;
+}
+
+.trackHeading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 2px;
+}
+
+.trackCount {
+    color: #4CAF50;
+    font-variant-numeric: tabular-nums;
+}
+
+.trackEmpty {
+    margin: 8px 0 0;
+    color: #bdbdbd;
+}
+
+.trackList {
     list-style: none;
     margin: 8px 0 0;
     padding: 0;
 }
 
-.likedTrack {
-    display: block;
-    width: 100%;
-    margin: 0;
-    padding: 4px 2px;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    line-height: 1.35;
-    text-align: left;
-    cursor: pointer;
+.trackRow {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    padding: 5px 2px;
+    border-top: 1px solid #2c2c2c;
 }
 
-.likedTrack.is-current {
+.trackPlay {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #2c2c2c;
+    color: #f2f2f2;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.trackPlay svg {
+    display: block;
+    width: 13px;
+    height: 13px;
+    margin-left: 1px;
+    pointer-events: none;
+}
+
+.trackPlay:hover,
+.trackRow.is-current .trackPlay {
+    background: #4CAF50;
+    color: #10210f;
+}
+
+.trackCopy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.trackName,
+.trackArtist {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trackArtist,
+.trackMeta {
+    color: #8f8f8f;
+    font-size: 12px;
+}
+
+.trackMeta {
+    font-variant-numeric: tabular-nums;
+}
+
+.trackRow.is-current .trackName {
     color: #4CAF50;
 }
 
@@ -221,13 +413,37 @@ iframe {
         flex: 1 1 auto;
         height: auto;
         min-height: 0;
+        border: 0;
         border-radius: 0;
-        display: block;
+        box-shadow: none;
+        display: flex;
+        overflow: hidden;
+    }
+
+    .terminal-bar {
+        display: none;
+    }
+
+    .terminal-body {
+        padding: 12px;
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
         -webkit-overflow-scrolling: touch;
-        padding: 12px;
+        scrollbar-gutter: auto;
+    }
+
+    .trackPlay {
+        width: 40px;
+        height: 40px;
+    }
+
+    .trackRow {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .trackMeta {
+        grid-column: 2;
     }
 
     .input-line {

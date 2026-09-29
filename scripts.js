@@ -109,8 +109,8 @@ const commands = {
             'share', "Share this site.",
             'music', "Random Liked Song.",
             'music song', "Play a Spotify song by name.",
-            'list music', "Songs already randomized.",
-            'liked', "100 newest liked songs.",
+            'list music', "Randomized songs. Play from the list.",
+            'liked', "100 newest liked songs, one after another.",
             'changelog', "Updates and dates.",
             'rick', "Type and find out.",
             'tgif', "Thank God It's Friday!",
@@ -130,9 +130,10 @@ const commands = {
     },
     helpDesc: `Type "help" to see all commands.`,
     exit: function() {
-        window.close();
-        window.close(); // if the first windows.close, closed the spotify iframe
-        window.history.back(); // if the windows didn't close, we back to the previous page
+        if (window.opener && !window.opener.closed) window.close();
+        window.setTimeout(function () {
+            if (!window.closed) window.location.replace('about:blank');
+        }, 0);
     },
     liked: function() {
         return renderLikedSongs();
@@ -183,12 +184,13 @@ const commands = {
 document.addEventListener('DOMContentLoaded', function() {
     appendOutput('Welcome to my online terminal!\nType "help" to see all commands.');
     loadLikedCatalog().catch(function () {});
+    bindTerminalChrome();
     if (!isMobileCli()) inputField.focus();
 });
 
 document.addEventListener('click', function(event) {
     const selection = window.getSelection().toString();
-    if (!isMobileCli() && !selection && !event.target.closest('.nextMusic')) {
+    if (!isMobileCli() && !selection && !event.target.closest('.nextMusic, .terminal-bar, .trackBlock')) {
         inputField.focus();
     }
 });
@@ -205,7 +207,7 @@ async function processCommand(input) {
                 : (typeof commands[command] === 'function' ? commands[command]() : commands[command]);
             const html = result instanceof Promise ? await result : result;
             if (html !== undefined) appendOutput(html);
-            if (runner === 'music-search' || command === 'rick' || command === 'music' || command === 'liked' || command === 'next music') {
+            if (runner === 'music-search' || command === 'rick' || command === 'music' || command === 'liked' || command === 'list music' || command === 'next music') {
                 showSpotifyIframe();
             }
         } catch (error) {
@@ -231,16 +233,78 @@ function focusCliInput() {
     syncMobileInputWidth();
 }
 
+var cliScrollLockedUntil = 0;
+
+function cliView() {
+    return document.getElementById('terminal-body') || cli;
+}
+
 function alignCli(mode, node) {
+    if (Date.now() < cliScrollLockedUntil) return;
+    const view = cliView();
     const apply = () => {
+        if (Date.now() < cliScrollLockedUntil) return;
         if (mode === 'start' && node && node.isConnected) {
-            cli.scrollTop += node.getBoundingClientRect().top - cli.getBoundingClientRect().top;
+            view.scrollTop += node.getBoundingClientRect().top - view.getBoundingClientRect().top;
             return;
         }
-        cli.scrollTop = cli.scrollHeight;
+        view.scrollTop = view.scrollHeight;
     };
     apply();
     requestAnimationFrame(apply);
+}
+
+function holdCliPosition() {
+    const view = cliView();
+    const top = view.scrollTop;
+    const until = Date.now() + 1200;
+    cliScrollLockedUntil = until;
+    const restore = function () {
+        if (Date.now() > until) {
+            view.removeEventListener('scroll', restore);
+            return;
+        }
+        if (Math.abs(view.scrollTop - top) > 1) view.scrollTop = top;
+    };
+    view.addEventListener('scroll', restore, { passive: true });
+    setTimeout(function () {
+        view.removeEventListener('scroll', restore);
+    }, 1300);
+    const blurFrame = function () {
+        const active = document.activeElement;
+        if (active && active.tagName === 'IFRAME') active.blur();
+        restore();
+    };
+    blurFrame();
+    setTimeout(blurFrame, 0);
+    setTimeout(blurFrame, 80);
+    setTimeout(blurFrame, 300);
+    setTimeout(blurFrame, 700);
+}
+
+function bindTerminalChrome() {
+    const bar = document.querySelector('.terminal-bar');
+    if (!bar || bar.dataset.bound === '1') return;
+    bar.dataset.bound = '1';
+    const maxButton = bar.querySelector('.term-max');
+    bar.querySelector('.term-min').addEventListener('click', function () {
+        cli.classList.remove('is-max');
+        cli.classList.toggle('is-min');
+        syncMaxIcon();
+    });
+    maxButton.addEventListener('click', function () {
+        cli.classList.remove('is-min');
+        cli.classList.toggle('is-max');
+        syncMaxIcon();
+    });
+    bar.querySelector('.term-close').addEventListener('click', function () {
+        commands.exit();
+    });
+    function syncMaxIcon() {
+        const maximized = cli.classList.contains('is-max');
+        maxButton.setAttribute('aria-label', maximized ? 'Restore' : 'Maximize');
+        maxButton.classList.toggle('is-maxed', maximized);
+    }
 }
 
 function scrollCliToEnd() {
@@ -408,6 +472,7 @@ mobileCliQuery.addEventListener('change', () => {
     installMobileInput();
     pinMobileCli();
     keepMobileKeyboard();
+    if (isMobileCli()) cli.classList.remove('is-max', 'is-min');
 });
 
 if (window.visualViewport) {
@@ -664,9 +729,9 @@ var likedCatalogPromise = null;
 var playedMusicState = null;
 
 terminalOutput.addEventListener('click', function (event) {
-    const likedButton = event.target.closest('.likedTrack');
-    if (likedButton) {
-        playLikedSelection(likedButton);
+    const playButton = event.target.closest('.trackPlay');
+    if (playButton) {
+        playTrackSelection(playButton);
         return;
     }
     const button = event.target.closest('.nextMusic');
@@ -826,7 +891,9 @@ function activateEmbeddedMedia(root) {
 function discardSpotifyHost(host) {
     if (!host) return;
     clearTimeout(host._loadingTimer);
+    clearTimeout(host._queueTimer);
     host._loadingTimer = 0;
+    host._queueTimer = 0;
     if (host._spotifyObserver) host._spotifyObserver.disconnect();
     host.remove();
 }
@@ -945,8 +1012,9 @@ function mountSpotifyHost(host) {
                 }, 700);
             }
             controller.addListener('playback_update', function (event) {
-                const isPaused = event && event.data ? event.data.isPaused : undefined;
-                notePlayback(controller, host, isPaused);
+                const data = event && event.data ? event.data : {};
+                notePlayback(controller, host, data.isPaused);
+                watchLikedQueue(host, data);
             });
             controller.addListener('playback_started', function () {
                 notePlayback(controller, host, false);
@@ -1300,12 +1368,13 @@ async function renderPlayedMusic() {
         return (b.seq || 0) - (a.seq || 0) || trackLabel(a).localeCompare(trackLabel(b));
     });
     const totalLabel = total ? String(total) : '?';
-    let text = 'Randomized songs (' + rows.length + '/' + totalLabel + '):';
-    if (!rows.length) text += '\nNone yet.';
-    rows.forEach(function (row) {
-        text += '\n' + trackLabel(row);
-    });
-    return '<div class="musicList">' + escapeHtml(text) + '</div>';
+    const heading = '<div class="trackHeading"><span>Randomized songs</span><span class="trackCount">' + rows.length + '/' + escapeHtml(totalLabel) + '</span></div>';
+    if (!rows.length) return '<div class="musicList trackBlock">' + heading + '<p class="trackEmpty">None yet.</p></div>';
+    pauseEveryPlayer();
+    const items = rows.map(function (row, index) {
+        return trackRowMarkup(row, index === 0, row.playedOn || '');
+    }).join('');
+    return '<div class="musicList trackBlock">' + heading + spotifyHostMarkup('spotify:track:' + rows[0].id) + '<ol class="trackList">' + items + '</ol></div>';
 }
 
 async function clearPlayedMusic() {
@@ -1324,27 +1393,91 @@ async function renderLikedSongs() {
         .slice(0, 100);
     if (!latest.length) return "Couldn't load the current liked songs.";
     const items = latest.map(function (track, index) {
-        const current = index === 0 ? ' is-current' : '';
-        return '<li><button type="button" class="likedTrack' + current + '" data-track-id="' + escapeHtml(track.id) + '">' + escapeHtml((index + 1) + '. ' + trackLabel(track)) + '</button></li>';
+        return trackRowMarkup(track, index === 0, '');
     }).join('');
-    return '<div class="likedBlock">My Last 100 Liked Songs:\n' + spotifyHostMarkup('spotify:track:' + latest[0].id) + '<ol class="likedList">' + items + '</ol></div>';
+    return '<div class="trackBlock likedBlock"><div class="trackHeading">My Last 100 Liked Songs</div>' + spotifyHostMarkup('spotify:track:' + latest[0].id) + '<ol class="trackList">' + items + '</ol></div>';
 }
 
-function playLikedSelection(button) {
-    const block = button.closest('.likedBlock');
+function trackRowMarkup(track, current, meta) {
+    const label = trackLabel(track) || 'Unknown song';
+    const name = track.name || label;
+    const artist = track.artist ? '<span class="trackArtist">' + escapeHtml(track.artist) + '</span>' : '';
+    const when = meta ? '<span class="trackMeta">' + escapeHtml(meta) + '</span>' : '';
+    return '<li class="trackRow' + (current ? ' is-current' : '') + '"><button type="button" class="trackPlay" data-track-id="' + escapeHtml(track.id) + '" aria-label="Play ' + escapeHtml(label) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg></button><span class="trackCopy"><span class="trackName">' + escapeHtml(name) + '</span>' + artist + '</span>' + when + '</li>';
+}
+
+function playTrackSelection(button) {
+    const block = button.closest('.trackBlock');
     const host = block && block.querySelector('.spotifyHost');
     const trackId = button.dataset.trackId;
     if (!host || !trackId) return;
-    block.querySelectorAll('.likedTrack').forEach(function (item) {
-        item.classList.toggle('is-current', item === button);
+    const row = button.closest('.trackRow');
+    block.querySelectorAll('.trackRow').forEach(function (item) {
+        item.classList.toggle('is-current', item === row);
     });
+    cancelLikedQueue(host);
     host.dataset.autoplay = '1';
+    holdCliPosition();
     playSpotifyUri(host, 'spotify:track:' + trackId);
-    const hostTop = host.getBoundingClientRect().top;
-    const cliTop = cli.getBoundingClientRect().top;
-    if (hostTop < cliTop || host.getBoundingClientRect().bottom > cli.getBoundingClientRect().bottom) {
-        cli.scrollTop += hostTop - cliTop;
+}
+
+function scheduleLikedQueue(host, delay) {
+    clearTimeout(host._queueTimer);
+    const generation = (host._queueGeneration || 0) + 1;
+    host._queueGeneration = generation;
+    host._queueDue = Date.now() + delay;
+    host._queueTimer = setTimeout(function () {
+        if (host._queueGeneration !== generation || !host.isConnected) return;
+        host._queueDue = 0;
+        host._queueTimer = 0;
+        playNextLiked(host);
+    }, delay);
+}
+
+function cancelLikedQueue(host) {
+    clearTimeout(host._queueTimer);
+    host._queueTimer = 0;
+    host._queueDue = 0;
+    host._reachedEnd = false;
+    host._queueGeneration = (host._queueGeneration || 0) + 1;
+}
+
+function watchLikedQueue(host, data) {
+    if (!host || !host.isConnected || !host.closest('.likedBlock')) return;
+    if (data && data.playingURI && host.dataset.spotifyUri && data.playingURI !== host.dataset.spotifyUri) return;
+    if (host._queueAdvancing && (!data || data.isPaused !== false)) return;
+    const duration = Number(data && data.duration) || 0;
+    const position = Number(data && data.position) || 0;
+    const playing = !!(data && data.isPaused === false);
+    if (playing && duration >= 2000) {
+        if (position >= Math.max(0, duration - 3000)) host._reachedEnd = true;
+        scheduleLikedQueue(host, Math.max(0, duration - position) + 800);
+        return;
     }
+    if (!data || data.isPaused !== true) return;
+    const atEnd = host._reachedEnd || (duration >= 2000 && position >= duration - 1500);
+    const dueSoon = host._queueDue && host._queueDue - Date.now() < 2500;
+    if (atEnd || dueSoon) {
+        host._reachedEnd = false;
+        scheduleLikedQueue(host, 400);
+        return;
+    }
+    cancelLikedQueue(host);
+}
+
+function playNextLiked(host) {
+    const block = host.closest('.likedBlock');
+    if (!block || latestMediaElement() !== host) return;
+    const current = block.querySelector('.trackRow.is-current');
+    const next = current ? current.nextElementSibling : null;
+    const button = next && next.querySelector('.trackPlay');
+    cancelLikedQueue(host);
+    if (!button) return;
+    host._queueAdvancing = true;
+    playTrackSelection(button);
+    setTimeout(function () {
+        host._queueAdvancing = false;
+    }, 2500);
 }
 
 function playSpotifyUri(host, uri) {

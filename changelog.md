@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.5.0 - 2026-09-29
+
+### Added
+- `list music` plays a song from its play icon.
+
+### Changed
+- The desktop terminal has a window bar and a thinner scrollbar.
+- Liked songs and randomized songs start from a play icon. The song name does not start playback.
+- `liked` plays the next song when the current one ends.
+
+### Fixed
+- `exit` leaves the terminal again.
+- Scrolling the song list on the phone no longer starts a song.
+- Choosing a song from a list keeps the screen where it is.
+
 ## 1.4.0 - 2026-09-29
 
 ### Added
