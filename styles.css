@@ -114,7 +114,8 @@ body {
 }
 
 .terminal-controls button:focus-visible,
-.trackPlay:focus-visible {
+.trackPlay:focus-visible,
+.nextMusic:focus-visible {
     outline: 1px solid #4CAF50;
     outline-offset: 1px;
 }
@@ -235,15 +236,62 @@ iframe {
 
 .nextMusic {
     flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
     margin: 0;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    font-size: 14px;
-    border-radius: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #2c2c2c;
+    color: #f2f2f2;
     cursor: pointer;
     touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nextMusic svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+}
+
+.nextMusic:hover,
+.nextMusic:focus-visible {
+    background: #4CAF50;
+    color: #10210f;
+}
+
+body.is-commandLocked .output,
+body.is-commandLocked .input-line,
+body.is-commandLocked .mobile-keyboard {
+    pointer-events: none;
+}
+
+body.is-commandLocked .mobile-keyboard {
+    opacity: 0.4;
+}
+
+.commandWait {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+    color: #d0d0d0;
+    white-space: nowrap;
+}
+
+.commandWaitSpin {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #333;
+    border-top-color: #4CAF50;
+    border-radius: 50%;
+    animation: spotifySpin 0.7s linear infinite;
+    flex: 0 0 auto;
 }
 
 .spotifyLoading {
@@ -502,7 +550,8 @@ iframe {
         scrollbar-gutter: auto;
     }
 
-    .trackPlay {
+    .trackPlay,
+    .nextMusic {
         width: 40px;
         height: 40px;
     }

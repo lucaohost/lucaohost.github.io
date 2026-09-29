@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.0 - 2026-09-29
+
+### Added
+- `music` with a song name shows a spinner and holds scrolling and typing while Spotify searches.
+
+### Changed
+- Next is a round skip button beside the player.
+- A song picked from `list` or `liked` starts in the player already open.
+- `music` with a song name plays a liked match immediately when the name is already known.
+
+### Fixed
+- `list` no longer shows numbered rows that have no song name.
+
 ## 2.0.1 - 2026-09-29
 
 ### Changed

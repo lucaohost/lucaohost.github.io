@@ -522,12 +522,17 @@ test('changelog renders versions, sections, and items', async () => {
 });
 
 test('the changelog records list playback and single-song changes', () => {
-    const top = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8').split(/^## /m)[1];
-    assert.match(top, /^2\.0\.1 - 2026-09-29/);
-    assert.match(top, /right side of the Spotify player/);
-    assert.match(top, /`liked` and `list` play the next song/);
-    assert.match(top, /stops the one already playing/);
-    assert.match(top, /Dragging or scrolling across Next/);
+    const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
+    const top = changelog.split(/^## /m)[1];
+    assert.match(top, /^2\.1\.0 - 2026-09-29/);
+    assert.match(top, /round skip button/);
+    assert.match(top, /holds scrolling and typing/);
+    assert.match(top, /player already open/);
+    assert.match(top, /numbered rows that have no song name/);
+    assert.match(changelog, /right side of the Spotify player/);
+    assert.match(changelog, /`liked` and `list` play the next song/);
+    assert.match(changelog, /stops the one already playing/);
+    assert.match(changelog, /Dragging or scrolling across Next/);
 });
 
 test('music starts a random liked song and remembers it', async () => {
@@ -598,9 +603,10 @@ test('choosing another song keeps a single player', async () => {
             const button = output(page).querySelectorAll('.trackPlay')[index];
             button.click();
             await delay(20);
+            assert.equal(page.api.created.length, 1, 'selection ' + index + ' opened another player');
             const live = page.api.created.filter((player) => !player.destroyed);
             assert.equal(live.length, 1, 'selection ' + index + ' left more than one player');
-            assert.equal(live[0].options.uri, 'spotify:track:' + button.dataset.trackId);
+            assert.equal(live[0].loads[live[0].loads.length - 1], 'spotify:track:' + button.dataset.trackId);
             assert.equal(audible(page).has('spotify:track:' + output(page).querySelectorAll('.trackPlay')[index - 1].dataset.trackId), false);
         }
     });
@@ -682,6 +688,195 @@ test('tgif tells how long until Friday', async () => {
     await withPage({}, async (page) => {
         await runCommand(page, 'tgif');
         assert.match(output(page).textContent, /Thank God It's Friday|It's Saturday|It's Sunday/);
+    });
+});
+
+function searchHit(track) {
+    return {
+        data: {
+            searchV2: {
+                topResultsV2: {
+                    itemsV2: [{
+                        item: {
+                            __typename: 'TrackResponseWrapper',
+                            data: {
+                                uri: 'spotify:track:' + track.id,
+                                name: track.name,
+                                artists: { items: [{ profile: { name: track.artist } }] }
+                            }
+                        }
+                    }]
+                }
+            }
+        }
+    };
+}
+
+function installSearch(page, track, gate) {
+    const original = page.window.fetch;
+    page.window.fetch = async (url, request) => {
+        const href = String(url);
+        if (href.includes('embed/api/token') || href.includes('searchSuggestions')) {
+            page.fetches.push({ href: href, method: (request && request.method) || 'GET' });
+            if (href.includes('embed/api/token')) {
+                return jsonResponse({
+                    accessToken: 'token',
+                    accessTokenExpirationTimestampMs: Date.now() + 60 * 60 * 1000
+                });
+            }
+            if (gate) await gate;
+            return jsonResponse(searchHit(track));
+        }
+        return original(url, request);
+    };
+}
+
+function pressEnter(page) {
+    page.document.getElementById('input').dispatchEvent(new page.window.KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true
+    }));
+}
+
+test('Next is a round skip control', async () => {
+    await withPage({ catalog: tracks(['a', 'b']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        const button = await musicNextButton(page);
+        assert.equal(button.getAttribute('aria-label'), 'Next song');
+        assert.ok(button.querySelector('svg'));
+        assert.equal(button.textContent.trim(), '');
+        const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+        assert.match(css, /\.nextMusic\s*\{[^}]*border-radius:\s*50%/);
+        assert.match(css, /\.nextMusic\s*\{[^}]*background:\s*#2c2c2c/);
+    });
+});
+
+test('music song plays a known liked song without searching', async () => {
+    await withPage({ catalog: tracks(['a', 'b']) }, async (page) => {
+        await runCommand(page, 'music Song a');
+        assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, 'spotify:track:a');
+        assert.equal(page.fetches.some((entry) => entry.href.includes('searchSuggestions')), false);
+        await delay(450);
+        assert.equal(output(page).querySelector('.commandWait'), null);
+        assert.equal(page.document.body.classList.contains('is-commandLocked'), false);
+    });
+});
+
+test('music song plays the only liked title that contains the words', async () => {
+    const catalog = [{ id: 'rick', name: 'Never Gonna Give You Up', artist: 'Rick Astley', addedAt: '2026-09-01T00:00:00.000Z' }];
+    await withPage({ catalog: catalog }, async (page) => {
+        await runCommand(page, 'music never gonna');
+        assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, 'spotify:track:rick');
+        assert.equal(page.fetches.some((entry) => entry.href.includes('searchSuggestions')), false);
+    });
+});
+
+test('music song asks Spotify when more than one liked title matches', async () => {
+    const catalog = [
+        { id: 'one', name: 'Love Song', artist: 'A', addedAt: '2026-09-02T00:00:00.000Z' },
+        { id: 'two', name: 'Love Song', artist: 'B', addedAt: '2026-09-01T00:00:00.000Z' }
+    ];
+    await withPage({ catalog: catalog }, async (page) => {
+        installSearch(page, { id: 'picked', name: 'Love Song', artist: 'C' });
+        await runCommand(page, 'music Love Song');
+        assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, 'spotify:track:picked');
+    });
+});
+
+test('a repeated song search reuses the Spotify token', async () => {
+    await withPage({ catalog: tracks(['a']) }, async (page) => {
+        installSearch(page, { id: 'remote', name: 'Remote Song', artist: 'Someone' });
+        await runCommand(page, 'music remote one');
+        await runCommand(page, 'music remote two');
+        assert.equal(page.fetches.filter((entry) => entry.href.includes('embed/api/token')).length, 1);
+        assert.equal(page.fetches.filter((entry) => entry.href.includes('searchSuggestions')).length, 2);
+    });
+});
+
+test('a slow music song search holds scrolling and typing', async () => {
+    await withPage({ catalog: tracks(['a', 'b']) }, async (page) => {
+        let release;
+        const gate = new Promise((resolve) => { release = resolve; });
+        installSearch(page, { id: 'remote', name: 'Remote Song', artist: 'Remote Artist' }, gate);
+        const pending = runCommand(page, 'music remote song');
+        await delay(80);
+        assert.equal(output(page).querySelector('.commandWait'), null);
+        assert.equal(page.document.body.classList.contains('is-commandLocked'), false);
+        await delay(450);
+        assert.equal(output(page).querySelector('.commandWait').textContent, 'Searching Spotify…');
+        assert.equal(page.document.body.classList.contains('is-commandLocked'), true);
+        assert.equal(page.document.getElementById('terminal-body').classList.contains('is-scrollLocked'), true);
+        const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+        assert.match(css, /body\.is-commandLocked \.output,[\s\S]*?pointer-events:\s*none/);
+        const input = page.document.getElementById('input');
+        input.textContent = 'whoami';
+        input.innerText = 'whoami';
+        pressEnter(page);
+        await delay(30);
+        assert.equal(output(page).textContent.includes('software engineer'), false);
+        release();
+        await pending;
+        assert.equal(output(page).querySelector('.commandWait'), null);
+        assert.equal(page.document.body.classList.contains('is-commandLocked'), false);
+        assert.equal(page.document.getElementById('terminal-body').classList.contains('is-scrollLocked'), false);
+        assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, 'spotify:track:remote');
+        input.textContent = 'whoami';
+        input.innerText = 'whoami';
+        pressEnter(page);
+        await delay(30);
+        assert.match(output(page).textContent, /Lucas/);
+    });
+});
+
+test('list drops numbered songs that have no name', async () => {
+    const played = {
+        tracks: {
+            a: { name: 'Song a', artist: 'Artist a', playedOn: '2026-09-01', seq: 2 },
+            b: { name: '', artist: '', playedOn: '2026-09-02', seq: 3 },
+            '99': { name: '', artist: '', playedOn: '', seq: 5 },
+            '105': { name: '', artist: '', playedOn: '', seq: 4 }
+        },
+        cycle: { '99': 1, a: 1 },
+        generation: 1
+    };
+    await withPage({ catalog: tracks(['a', 'b', 'c']), played: played }, async (page) => {
+        page.window.localStorage.setItem('playedPositions', JSON.stringify({ '105': true, '42': true, a: true }));
+        await runCommand(page, 'list');
+        const names = [...output(page).querySelectorAll('.trackName')].map((node) => node.textContent);
+        assert.deepEqual(names, ['Song b', 'Song a']);
+        const puts = page.fetches.filter((entry) => entry.method === 'PUT' && /\/tracks\/(99|105|42)\.json/.test(entry.href));
+        assert.equal(puts.length, 0);
+        assert.equal(page.fetches.some((entry) => entry.method === 'DELETE' && entry.href.includes('/tracks/99.json')), true);
+        assert.equal(page.fetches.some((entry) => entry.method === 'DELETE' && entry.href.includes('/tracks/105.json')), true);
+    });
+});
+
+test('music ignores numbered leftovers when it remembers a song', async () => {
+    await withPage({ catalog: tracks(['a', 'b']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        page.window.localStorage.setItem('playedPositions', JSON.stringify({ '99': true, '105': true }));
+        await runCommand(page, 'music');
+        await delay(30);
+        const bad = page.fetches.filter((entry) => entry.method === 'PUT' && /\/tracks\/(99|105)\.json/.test(entry.href));
+        assert.equal(bad.length, 0);
+        await runCommand(page, 'list');
+        const names = [...output(page).querySelectorAll('.musicList .trackName')].map((node) => node.textContent);
+        assert.equal(names.some((name) => name === '99' || name === '105'), false);
+        assert.equal(names.length, 1);
+        assert.match(names[0], /^Song /);
+    });
+});
+
+test('play from list reuses the open player', async () => {
+    await withPage({ catalog: tracks(['a', 'b', 'c']), played: playedSongs(['a', 'b', 'c']) }, async (page) => {
+        await runCommand(page, 'list');
+        const first = output(page).querySelector('.trackPlay').dataset.trackId;
+        await hear(page, 'spotify:track:' + first);
+        const button = output(page).querySelectorAll('.trackPlay')[1];
+        button.click();
+        assert.equal(page.api.created.length, 1);
+        assert.equal(livePlayer(page).destroyed, false);
+        assert.equal(livePlayer(page).loads[livePlayer(page).loads.length - 1], 'spotify:track:' + button.dataset.trackId);
+        assert.equal(audible(page).has('spotify:track:' + first), false);
     });
 });
 

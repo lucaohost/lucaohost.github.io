@@ -5,7 +5,10 @@ function isMobileCli() {
 }
 
 function readCommand() {
-    return inputField.tagName === 'INPUT' ? inputField.value : inputField.innerText;
+    if (!inputField) return '';
+    if (inputField.tagName === 'INPUT') return inputField.value || '';
+    if (typeof inputField.innerText === 'string') return inputField.innerText;
+    return inputField.textContent || '';
 }
 
 function clearCommand() {
@@ -39,6 +42,10 @@ function bindInputEvents() {
     if (inputField.dataset.bound === '1') return;
     inputField.dataset.bound = '1';
     inputField.addEventListener('keydown', function (event) {
+        if (commandInputLocked) {
+            event.preventDefault();
+            return;
+        }
         if (navigateHistory(event)) return;
         onEnter(event);
     });
@@ -201,16 +208,19 @@ async function processCommand(input) {
     const namedMusic = command.startsWith('music ') ? input.trim().replace(/^music\s+/i, '').trim() : '';
     const runner = commands[command] ? command : (namedMusic ? 'music-search' : '');
     if (runner) {
+        const wait = runner === 'music-search' ? beginSlowCommandWait('Searching Spotify…') : null;
         try {
             const result = runner === 'music-search'
                 ? playNamedSong(namedMusic)
                 : (typeof commands[command] === 'function' ? commands[command]() : commands[command]);
             const html = result instanceof Promise ? await result : result;
+            endSlowCommandWait(wait);
             if (html !== undefined) appendOutput(html);
             if (runner === 'music-search' || command === 'rick' || command === 'music' || command === 'liked' || command === 'list' || command === 'next music') {
                 showSpotifyIframe();
             }
         } catch (error) {
+            endSlowCommandWait(wait);
             appendOutput(`Command "${escapeHtml(input)}" failed.\n${commands.helpDesc}`);
         }
         addEvents(runner === 'music-search' ? 'music' : command);
@@ -234,6 +244,7 @@ function focusCliInput() {
 }
 
 var cliScrollLockedUntil = 0;
+var commandInputLocked = false;
 
 function cliView() {
     return document.getElementById('terminal-body') || cli;
@@ -451,6 +462,10 @@ function navigateHistory(event) {
 }
 
 function onEnter(event) {
+    if (commandInputLocked) {
+        if (event.preventDefault) event.preventDefault();
+        return;
+    }
     if (event.key === 'Enter') {
         event.preventDefault();
         const input = readCommand().trim();
@@ -465,6 +480,14 @@ function onEnter(event) {
 
 bindInputEvents();
 inputEventsReady = true;
+
+document.addEventListener('beforeinput', function (event) {
+    if (!commandInputLocked) return;
+    const target = event.target;
+    if (target === inputField || (target && target.closest && target.closest('.input-line'))) {
+        event.preventDefault();
+    }
+}, true);
 
 const mobileCliQuery = window.matchMedia('(max-width: 768px)');
 
@@ -645,6 +668,7 @@ function bindMobileKeyboard() {
     }
 
     function typeKey(keyButton, allowRepeat) {
+        if (commandInputLocked) return;
         if (!isMobileCli() || inputField.tagName !== 'INPUT') return;
         const key = keyButton.dataset.key;
         if (key !== 'back') stopRepeat();
@@ -826,6 +850,9 @@ var pausingPlayers = false;
 var likedCatalog = null;
 var likedCatalogPromise = null;
 var playedMusicState = null;
+var spotifyToken = null;
+var spotifyTokenPromise = null;
+var trackSearchCache = new Map();
 
 var trackTouch = null;
 var trackPointer = null;
@@ -943,7 +970,57 @@ function spotifyHostMarkup(uri, autoplay) {
 }
 
 function nextMusicButton() {
-    return '<button type="button" class="nextMusic">Next</button>';
+    return '<button type="button" class="nextMusic" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 5.2v13.6L12 12z" fill="currentColor"></path><path d="M12.4 5.2v13.6L20.8 12z" fill="currentColor"></path></svg></button>';
+}
+
+function beginSlowCommandWait(label) {
+    const wait = { done: false, node: null, timer: 0 };
+    wait.timer = window.setTimeout(function () {
+        wait.timer = 0;
+        showSlowCommandWait(wait, label);
+    }, 400);
+    return wait;
+}
+
+function showSlowCommandWait(wait, label) {
+    if (wait.done) return;
+    const line = document.createElement('div');
+    line.className = 'commandWait';
+    line.setAttribute('role', 'status');
+    const spin = document.createElement('span');
+    spin.className = 'commandWaitSpin';
+    spin.setAttribute('aria-hidden', 'true');
+    line.appendChild(spin);
+    line.appendChild(document.createTextNode(label));
+    terminalOutput.appendChild(line);
+    wait.node = line;
+    const view = cliView();
+    view.scrollTop = view.scrollHeight;
+    lockPlaybackScroll();
+    commandInputLocked = true;
+    document.body.classList.add('is-commandLocked');
+    if (inputField && inputField.getAttribute('contenteditable') === 'true') {
+        inputField.dataset.editable = '1';
+        inputField.setAttribute('contenteditable', 'false');
+    }
+    if (inputField) inputField.setAttribute('aria-busy', 'true');
+}
+
+function endSlowCommandWait(wait) {
+    if (!wait || wait.done) return;
+    wait.done = true;
+    window.clearTimeout(wait.timer);
+    if (wait.node && wait.node.parentNode) wait.node.remove();
+    commandInputLocked = false;
+    document.body.classList.remove('is-commandLocked');
+    if (inputField) {
+        inputField.removeAttribute('aria-busy');
+        if (inputField.dataset.editable === '1') {
+            inputField.setAttribute('contenteditable', 'true');
+            delete inputField.dataset.editable;
+        }
+    }
+    unlockPlaybackScroll();
 }
 
 async function playRandomLikedSong() {
@@ -1024,12 +1101,19 @@ function rejectStalePlayback(controller, host, data) {
     }
     if (data.isPaused === false) {
         try { controller.pause(); } catch (error) {}
+        if (host._stuckUri && host._stuckUri === playingUri) {
+            host._stuckUri = '';
+            replaceSpotifyController(host);
+        } else {
+            host._stuckUri = playingUri;
+        }
     }
     return true;
 }
 
 function replaceSpotifyController(host) {
     if (!host || !host.isConnected || host._replacing) return;
+    clearTrackSwitch(host);
     host._replacing = true;
     const controller = host._controller;
     host._controller = null;
@@ -1125,11 +1209,18 @@ function activateEmbeddedMedia(root) {
     });
 }
 
+function clearTrackSwitch(host) {
+    if (!host) return;
+    clearTimeout(host._switchTimer);
+    host._switchTimer = 0;
+}
+
 function discardSpotifyHost(host) {
     if (!host) return;
     const block = host.closest('.trackBlock');
     clearTimeout(host._loadingTimer);
     clearTimeout(host._queueTimer);
+    clearTrackSwitch(host);
     host._loadingTimer = 0;
     host._queueTimer = 0;
     if (host._spotifyObserver) host._spotifyObserver.disconnect();
@@ -1474,11 +1565,28 @@ async function fetchTracksForHash(hash) {
 }
 
 async function fetchSpotifyToken() {
+    const now = Date.now();
+    if (spotifyToken && spotifyToken.expiresAt - now > 60000) return spotifyToken.accessToken;
+    if (!spotifyTokenPromise) {
+        spotifyTokenPromise = requestSpotifyToken().then(function (token) {
+            spotifyToken = token;
+            return token.accessToken;
+        }).finally(function () {
+            spotifyTokenPromise = null;
+        });
+    }
+    return spotifyTokenPromise;
+}
+
+async function requestSpotifyToken() {
     const tokenResponse = await fetch('https://open.spotify.com/embed/api/token');
     if (!tokenResponse.ok) throw new Error('embed token unavailable');
     const tokenPayload = await tokenResponse.json();
     if (!tokenPayload.accessToken) throw new Error('embed token missing');
-    return tokenPayload.accessToken;
+    return {
+        accessToken: tokenPayload.accessToken,
+        expiresAt: Number(tokenPayload.accessTokenExpirationTimestampMs) || (Date.now() + 30 * 60 * 1000)
+    };
 }
 
 async function fetchPlaylistPage(token, hash, offset, limit) {
@@ -1568,10 +1676,48 @@ async function pickRandomLikedTrackId() {
     return trackId;
 }
 
+function isLegacyPositionKey(id) {
+    return /^[0-9]{1,6}$/.test(String(id || ''));
+}
+
+function withoutLegacyKeys(value) {
+    const kept = {};
+    const removed = [];
+    if (!value || typeof value !== 'object') return { kept: kept, removed: removed };
+    Object.keys(value).forEach(function (key) {
+        if (isLegacyPositionKey(key)) {
+            removed.push(key);
+            return;
+        }
+        kept[key] = value[key];
+    });
+    return { kept: kept, removed: removed };
+}
+
+function deletePlayedKey(id) {
+    fetch(PLAYED_MUSIC_URL + '/tracks/' + id + '.json', { method: 'DELETE' }).catch(function () {});
+    fetch(PLAYED_MUSIC_URL + '/cycle/' + id + '.json', { method: 'DELETE' }).catch(function () {});
+}
+
 function readLocalCycle() {
     try {
         const stored = JSON.parse(localStorage.getItem('playedPositions'));
-        if (stored && !Array.isArray(stored)) return stored;
+        if (!stored || typeof stored !== 'object') return {};
+        if (Array.isArray(stored)) {
+            localStorage.removeItem('playedPositions');
+            return {};
+        }
+        const cycle = {};
+        let legacy = false;
+        Object.keys(stored).forEach(function (id) {
+            if (isLegacyPositionKey(id)) {
+                legacy = true;
+                return;
+            }
+            cycle[id] = true;
+        });
+        if (legacy) localStorage.setItem('playedPositions', JSON.stringify(cycle));
+        return cycle;
     } catch (error) {}
     return {};
 }
@@ -1580,6 +1726,7 @@ function writeLocalCycle(state) {
     const pruned = {};
     const generation = state.generation || 1;
     Object.keys(state.cycle || {}).forEach(function (id) {
+        if (isLegacyPositionKey(id)) return;
         if (state.cycle[id] === generation) pruned[id] = true;
     });
     localStorage.setItem('playedPositions', JSON.stringify(pruned));
@@ -1592,13 +1739,19 @@ function emptyPlayedState() {
 async function readPlayedMusic(force) {
     if (playedMusicState && !force) return playedMusicState;
     const state = emptyPlayedState();
+    const removed = [];
     try {
         const response = await fetch(PLAYED_MUSIC_URL + '.json');
         if (response.ok) {
             const data = await response.json();
-            if (data && data.tracks && typeof data.tracks === 'object') state.tracks = data.tracks;
-            if (data && data.cycle && typeof data.cycle === 'object') state.cycle = data.cycle;
             if (data && data.generation) state.generation = data.generation;
+            const tracks = withoutLegacyKeys(data && data.tracks);
+            const cycle = withoutLegacyKeys(data && data.cycle);
+            state.tracks = tracks.kept;
+            state.cycle = cycle.kept;
+            tracks.removed.concat(cycle.removed).forEach(function (id) {
+                if (removed.indexOf(id) === -1) removed.push(id);
+            });
         }
     } catch (error) {}
     const local = readLocalCycle();
@@ -1614,6 +1767,7 @@ async function readPlayedMusic(force) {
         }
     });
     playedMusicState = state;
+    removed.forEach(deletePlayedKey);
     const headers = { 'Content-Type': 'application/json' };
     Object.keys(missing).forEach(function (id) {
         fetch(PLAYED_MUSIC_URL + '/tracks/' + id + '.json', {
@@ -1648,7 +1802,9 @@ async function renderPlayedMusic() {
             }).catch(function () {});
         });
     } catch (error) {}
-    const rows = Object.keys(state.tracks).map(function (id) {
+    const rows = Object.keys(state.tracks).filter(function (id) {
+        return !isLegacyPositionKey(id) && state.tracks[id] && typeof state.tracks[id] === 'object';
+    }).map(function (id) {
         return Object.assign({ id: id }, state.tracks[id]);
     }).sort(function (a, b) {
         return (b.seq || 0) - (a.seq || 0) || trackLabel(a).localeCompare(trackLabel(b));
@@ -1750,6 +1906,7 @@ function sameTrackUri(left, right) {
 function noteTrackProgress(host, data) {
     const uri = host && host.dataset.spotifyUri;
     if (!uri || !data || !sameTrackUri(data.playingURI, uri)) return;
+    clearTrackSwitch(host);
     if (data.isPaused === false && !data.isBuffering) {
         host._heardUri = uri;
         host._playNudges = 0;
@@ -1857,6 +2014,25 @@ function playNextLiked(host) {
     }, 2500);
 }
 
+function scheduleTrackSwitch(host) {
+    clearTrackSwitch(host);
+    const token = host._requestToken;
+    const uri = host.dataset.spotifyUri;
+    const controller = host._controller;
+    host._switchTimer = setTimeout(function () {
+        host._switchTimer = 0;
+        try {
+            if (!host.isConnected || !host.ownerDocument || !host.ownerDocument.defaultView) return;
+            if (host._requestToken !== token || !controller || host._controller !== controller) return;
+            if (host._heardUri === uri || (host._reportedUri && sameTrackUri(host._reportedUri, uri))) {
+                startRequestedPlayback(controller, host);
+                return;
+            }
+            replaceSpotifyController(host);
+        } catch (error) {}
+    }, 900);
+}
+
 function playSpotifyUri(host, uri) {
     const previous = host.dataset.spotifyUri || '';
     const switching = !!(previous && previous !== uri);
@@ -1873,6 +2049,17 @@ function playSpotifyUri(host, uri) {
     if (switching) {
         host._switchToken = (host._switchToken || 0) + 1;
         host._stuckUri = '';
+    }
+    if (switching && host._controller && typeof host._controller.loadUri === 'function') {
+        try {
+            host._controller._awaitingPause = false;
+            host._controller._ignorePlayUntil = 0;
+            host._controller.pause();
+            host._controller.loadUri(uri);
+            host._controller._requestToken = host._requestToken;
+            scheduleTrackSwitch(host);
+            return;
+        } catch (error) {}
     }
     if (switching && host._controller) {
         replaceSpotifyController(host);
@@ -1896,15 +2083,70 @@ function playSpotifyUri(host, uri) {
     if (!host.dataset.mounted) mountSpotifyHost(host);
 }
 
+function normalizeTrackText(value) {
+    return String(value || '').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function matchLikedTrack(query, catalog) {
+    const wanted = normalizeTrackText(query);
+    if (!wanted || wanted.length < 2 || !catalog || !catalog.length) return null;
+    const exact = [];
+    catalog.forEach(function (track) {
+        if (!track || !track.id) return;
+        const name = normalizeTrackText(track.name);
+        if (!name) return;
+        const artist = normalizeTrackText(track.artist);
+        if (name === wanted || (name + ' ' + artist).trim() === wanted || (artist + ' ' + name).trim() === wanted) exact.push(track);
+    });
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) {
+        const namedArtist = exact.filter(function (track) {
+            const artist = normalizeTrackText(track.artist);
+            return artist && wanted.indexOf(artist) !== -1;
+        });
+        if (namedArtist.length === 1) return namedArtist[0];
+        return null;
+    }
+    if (wanted.length < 4) return null;
+    const partial = catalog.filter(function (track) {
+        const name = normalizeTrackText(track && track.name);
+        return track && track.id && name && (name.indexOf(wanted) !== -1 || wanted.indexOf(name) === 0);
+    });
+    return partial.length === 1 ? partial[0] : null;
+}
+
+async function findNamedTrack(query) {
+    if (likedCatalog) {
+        const local = matchLikedTrack(query, likedCatalog);
+        if (local) return local;
+    }
+    const remote = searchSpotifyTrack(query);
+    if (!likedCatalog && likedCatalogPromise) {
+        const local = likedCatalogPromise.then(function (catalog) {
+            return matchLikedTrack(query, catalog);
+        }).catch(function () { return null; });
+        const first = await Promise.race([
+            local.then(function (track) { return { from: 'local', track: track }; }),
+            remote.then(function (track) { return { from: 'remote', track: track }; })
+        ]);
+        if (first.from === 'local') return first.track || remote;
+        if (first.track) return first.track;
+        return local;
+    }
+    return remote;
+}
+
 async function playNamedSong(query) {
     pauseEveryPlayer();
     if (!query) return 'Tell me which song to play.\nExample: music Never Gonna Give You Up';
-    const track = await searchSpotifyTrack(query);
+    const track = await findNamedTrack(query);
     if (!track) return 'Couldn\'t find "' + escapeHtml(query) + '" on Spotify.';
     return escapeHtml(trackLabel(track)) + '\n' + spotifyHostMarkup('spotify:track:' + track.id, true);
 }
 
 async function searchSpotifyTrack(query) {
+    const key = normalizeTrackText(query);
+    if (key && trackSearchCache.has(key)) return trackSearchCache.get(key);
     const token = await fetchSpotifyToken();
     const variables = {
         query: query,
@@ -1938,13 +2180,15 @@ async function searchSpotifyTrack(query) {
         if (!item || item.__typename !== 'TrackResponseWrapper' || !data || !data.uri) continue;
         if (data.playability && data.playability.playable === false) continue;
         const artists = data.artists && data.artists.items ? data.artists.items : [];
-        return {
+        const track = {
             id: data.uri.split(':').pop(),
             name: data.name || '',
             artist: artists.map(function (artist) {
                 return artist.profile && artist.profile.name ? artist.profile.name : '';
             }).filter(Boolean).join(', ')
         };
+        if (key) trackSearchCache.set(key, track);
+        return track;
     }
     return null;
 }
