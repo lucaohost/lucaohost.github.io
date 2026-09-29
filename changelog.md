@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.1 - 2026-09-29
+
+### Changed
+- Next sits on the right side of the Spotify player.
+
+### Fixed
+- `liked` and `list` play the next song when the current one ends.
+- Choosing another song stops the one already playing, including when the next one is slow to start.
+- Dragging or scrolling across Next does not play another song. A tap still does.
+
 ## 2.0.0 - 2026-09-29
 
 ### Changed

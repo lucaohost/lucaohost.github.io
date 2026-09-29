@@ -93,6 +93,12 @@ function createSpotifyApi(options) {
                 }
             };
             created.push(player);
+            if (mount && mount.replaceWith) {
+                const frame = mount.ownerDocument.createElement('iframe');
+                frame.className = 'spotifyIframe';
+                mount.replaceWith(frame);
+                player.frame = frame;
+            }
             callback(player);
             setTimeout(function () {
                 (listeners.ready || []).forEach((fn) => fn());
@@ -517,10 +523,11 @@ test('changelog renders versions, sections, and items', async () => {
 
 test('the changelog records list playback and single-song changes', () => {
     const top = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8').split(/^## /m)[1];
-    assert.match(top, /^2\.0\.0 - 2026-09-29/);
-    assert.match(top, /`list` command/);
-    assert.match(top, /`list` plays the next song/);
+    assert.match(top, /^2\.0\.1 - 2026-09-29/);
+    assert.match(top, /right side of the Spotify player/);
+    assert.match(top, /`liked` and `list` play the next song/);
     assert.match(top, /stops the one already playing/);
+    assert.match(top, /Dragging or scrolling across Next/);
 });
 
 test('music starts a random liked song and remembers it', async () => {
@@ -562,6 +569,42 @@ async function musicNextButton(page) {
     assert.ok(button);
     return button;
 }
+
+test('Next sits on the right side of the Spotify player', async () => {
+    await withPage({ catalog: tracks(['a', 'b']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        for (const command of ['music', 'next music']) {
+            output(page).replaceChildren();
+            await runCommand(page, command);
+            await delay(40);
+            const row = output(page).querySelector('.musicPlay');
+            const host = row.querySelector('.spotifyHost');
+            const button = row.querySelector('.nextMusic');
+            assert.equal(host.nextElementSibling, button);
+            assert.equal(button.parentElement, row);
+        }
+        const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+        assert.match(css, /\.musicPlay\s*\{[^}]*display:\s*flex/);
+        assert.match(css, /\.musicPlay\s*\{[^}]*flex-direction:\s*row/);
+        assert.match(css, /\.musicPlay \.spotifyHost\s*\{[^}]*flex:\s*1/);
+    });
+});
+
+test('choosing another song keeps a single player', async () => {
+    await withPage({ catalog: tracks(['s0', 's1', 's2', 's3', 's4']) }, async (page) => {
+        await runCommand(page, 'liked');
+        const first = output(page).querySelector('.trackPlay').dataset.trackId;
+        await hear(page, 'spotify:track:' + first);
+        for (let index = 1; index <= 4; index += 1) {
+            const button = output(page).querySelectorAll('.trackPlay')[index];
+            button.click();
+            await delay(20);
+            const live = page.api.created.filter((player) => !player.destroyed);
+            assert.equal(live.length, 1, 'selection ' + index + ' left more than one player');
+            assert.equal(live[0].options.uri, 'spotify:track:' + button.dataset.trackId);
+            assert.equal(audible(page).has('spotify:track:' + output(page).querySelectorAll('.trackPlay')[index - 1].dataset.trackId), false);
+        }
+    });
+});
 
 test('a tap on Next plays another song', async () => {
     await withPage({ catalog: tracks(['a', 'b']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {

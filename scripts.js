@@ -532,6 +532,7 @@ document.addEventListener('touchend', function (event) {
     trackTouch = null;
     const dragged = gesture.dragged || trackGestureMoved(gesture, touch.clientX, touch.clientY);
     if (dragged) {
+        event.preventDefault();
         armSuppressClick(gesture.button);
         return;
     }
@@ -942,18 +943,21 @@ function spotifyHostMarkup(uri, autoplay) {
 }
 
 function nextMusicButton() {
-    return `<p><button type="button" class="nextMusic" style="margin-top: 0px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;">Next</button></p>`;
+    return '<button type="button" class="nextMusic">Next</button>';
 }
 
 async function playRandomLikedSong() {
     pauseEveryPlayer();
     const slot = document.createElement('div');
     slot.appendChild(document.createTextNode('Random Liked Song:\n'));
+    const row = document.createElement('div');
+    row.className = 'musicPlay';
     const host = document.createElement('div');
     host.className = 'spotifyHost';
     host.dataset.autoplay = '1';
     host.innerHTML = '<div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div>';
-    slot.appendChild(host);
+    row.appendChild(host);
+    slot.appendChild(row);
     terminalOutput.appendChild(slot);
     mountSpotifyHost(host);
     scrollCliToEnd();
@@ -967,7 +971,7 @@ async function playRandomLikedSong() {
             return;
         }
         host.dataset.spotifyUri = 'spotify:track:' + trackId;
-        slot.insertAdjacentHTML('beforeend', nextMusicButton());
+        row.insertAdjacentHTML('beforeend', nextMusicButton());
         activateEmbeddedMedia(slot);
         scrollCliToEnd();
     } catch (error) {
@@ -1011,27 +1015,16 @@ function notePlayback(controller, host, isPaused) {
 }
 
 function rejectStalePlayback(controller, host, data) {
+    if (host._controller !== controller) return true;
     const playingUri = data && data.playingURI;
     const requested = host.dataset.spotifyUri;
     if (!playingUri || !requested || sameTrackUri(playingUri, requested)) {
         host._stuckUri = '';
         return false;
     }
-    if (data.isPaused !== false) return true;
-    const token = host._switchToken || 0;
-    if (host._stuckUri === playingUri && host._stuckToken === token && Date.now() - (host._stuckAt || 0) >= 400) {
-        if (host._remountedForToken !== token) {
-            host._remountedForToken = token;
-            replaceSpotifyController(host);
-        }
-        return true;
+    if (data.isPaused === false) {
+        try { controller.pause(); } catch (error) {}
     }
-    if (host._stuckUri !== playingUri || host._stuckToken !== token) {
-        host._stuckUri = playingUri;
-        host._stuckToken = token;
-        host._stuckAt = Date.now();
-    }
-    try { controller.pause(); } catch (error) {}
     return true;
 }
 
@@ -1045,11 +1038,11 @@ function replaceSpotifyController(host) {
         try { if (typeof controller.destroy === 'function') controller.destroy(); } catch (error) {}
         spotifyPlayers.delete(controller);
     }
-    host.querySelectorAll('iframe').forEach(function (frame) { frame.remove(); });
-    const mount = host.querySelector('.spotifyMount');
-    if (mount) {
-        while (mount.firstChild) mount.removeChild(mount.firstChild);
-    }
+    host.querySelectorAll('iframe').forEach(function (frame) {
+        try { frame.src = 'about:blank'; } catch (error) {}
+        frame.remove();
+    });
+    ensureSpotifyMount(host);
     delete host.dataset.mounted;
     host._reportedUri = '';
     host._heardUri = '';
@@ -1214,6 +1207,15 @@ function watchSpotifyFrame(host) {
     updateSpotifyLoading(host);
 }
 
+function ensureSpotifyMount(host) {
+    let mount = host.querySelector('.spotifyMount');
+    if (mount) return mount;
+    mount = document.createElement('div');
+    mount.className = 'spotifyMount';
+    host.appendChild(mount);
+    return mount;
+}
+
 function mountSpotifyHost(host) {
     if (!host || host.dataset.mounted) return;
     watchSpotifyFrame(host);
@@ -1226,7 +1228,7 @@ function mountSpotifyHost(host) {
         if (pendingSpotifyHosts.indexOf(host) === -1) pendingSpotifyHosts.push(host);
         return;
     }
-    const mount = host.querySelector('.spotifyMount');
+    const mount = ensureSpotifyMount(host);
     if (!mount) return;
     try {
         const requestedUri = host.dataset.spotifyUri;
@@ -1242,8 +1244,15 @@ function mountSpotifyHost(host) {
             host._requestToken = playbackToken;
             controller._requestToken = playbackToken;
             spotifyPlayers.add(controller);
-            if (host.dataset.spotifyUri && host.dataset.spotifyUri !== requestedUri && controller.loadUri) {
-                try { controller.loadUri(host.dataset.spotifyUri); } catch (error) {}
+            if (host.dataset.spotifyUri && host.dataset.spotifyUri !== requestedUri) {
+                try { controller.pause(); } catch (error) {}
+                try { if (typeof controller.destroy === 'function') controller.destroy(); } catch (error) {}
+                spotifyPlayers.delete(controller);
+                host._controller = null;
+                delete host.dataset.mounted;
+                host._replacing = false;
+                mountSpotifyHost(host);
+                return;
             }
             if (latestMediaElement() !== host) {
                 silenceController(controller);
@@ -1263,6 +1272,7 @@ function mountSpotifyHost(host) {
                 }, 700);
             }
             controller.addListener('playback_update', function (event) {
+                if (host._controller !== controller) return;
                 const data = event && event.data ? event.data : {};
                 if (data.playingURI) host._reportedUri = data.playingURI;
                 if (rejectStalePlayback(controller, host, data)) return;
@@ -1271,6 +1281,7 @@ function mountSpotifyHost(host) {
                 watchLikedQueue(host, data);
             });
             controller.addListener('playback_started', function () {
+                if (host._controller !== controller) return;
                 if (reportedUriBlocksPlay(host)) return;
                 notePlayback(controller, host, false);
             });
@@ -1863,13 +1874,14 @@ function playSpotifyUri(host, uri) {
         host._switchToken = (host._switchToken || 0) + 1;
         host._stuckUri = '';
     }
+    if (switching && host._controller) {
+        replaceSpotifyController(host);
+        return;
+    }
     if (host._controller && typeof host._controller.loadUri === 'function') {
         try {
-            if (switching) {
-                try { host._controller.pause(); } catch (error) {}
-            }
             host._controller.loadUri(uri);
-            if (!switching) startRequestedPlayback(host._controller, host);
+            startRequestedPlayback(host._controller, host);
             return;
         } catch (error) {}
     }
