@@ -217,6 +217,10 @@ iframe {
     margin: 0;
 }
 
+.nextMusic {
+    touch-action: pan-y;
+}
+
 .spotifyLoading {
     display: none;
 }

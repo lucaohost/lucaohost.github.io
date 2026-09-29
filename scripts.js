@@ -109,7 +109,7 @@ const commands = {
             'share', "Share this site.",
             'music', "Random Liked Song.",
             'music song', "Play a Spotify song by name.",
-            'list music', "Randomized songs. Play from the list.",
+            'list', "Randomized songs. Play from the list.",
             'liked', "100 newest liked songs, one after another.",
             'changelog', "Updates and dates.",
             'rick', "Type and find out.",
@@ -141,7 +141,7 @@ const commands = {
     changelog: function () {
         return renderChangelog();
     },
-    'list music': function () {
+    list: function () {
         return renderPlayedMusic();
     },
     'clear music': function () {
@@ -207,7 +207,7 @@ async function processCommand(input) {
                 : (typeof commands[command] === 'function' ? commands[command]() : commands[command]);
             const html = result instanceof Promise ? await result : result;
             if (html !== undefined) appendOutput(html);
-            if (runner === 'music-search' || command === 'rick' || command === 'music' || command === 'liked' || command === 'list music' || command === 'next music') {
+            if (runner === 'music-search' || command === 'rick' || command === 'music' || command === 'liked' || command === 'list' || command === 'next music') {
                 showSpotifyIframe();
             }
         } catch (error) {
@@ -496,7 +496,7 @@ document.addEventListener('touchstart', (event) => {
         event.preventDefault();
         return;
     }
-    if (control.classList.contains('trackPlay')) {
+    if (control.classList.contains('trackPlay') || control.classList.contains('nextMusic')) {
         const touch = event.changedTouches[0];
         trackTouch = {
             id: touch.identifier,
@@ -533,6 +533,13 @@ document.addEventListener('touchend', function (event) {
     const dragged = gesture.dragged || trackGestureMoved(gesture, touch.clientX, touch.clientY);
     if (dragged) {
         armSuppressClick(gesture.button);
+        return;
+    }
+    if (gesture.button.classList.contains('nextMusic')) {
+        event.preventDefault();
+        armSuppressClick(gesture.button);
+        startNextMusic();
+        focusCliInput();
         return;
     }
     const block = gesture.button.closest('.trackBlock');
@@ -852,8 +859,18 @@ function markTrackDrag() {
     if (trackTouch) trackTouch.dragged = true;
 }
 
+function guardedPressButton(target) {
+    return target && target.closest && target.closest('.trackPlay, .nextMusic');
+}
+
+function startNextMusic() {
+    appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
+    processCommand('next music');
+    clearCommand();
+}
+
 document.addEventListener('pointerdown', function (event) {
-    const button = event.target.closest && event.target.closest('.trackPlay');
+    const button = guardedPressButton(event.target);
     if (!button) {
         trackPointer = null;
         return;
@@ -901,9 +918,11 @@ terminalOutput.addEventListener('click', function (event) {
     }
     const button = event.target.closest('.nextMusic');
     if (!button) return;
-    appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
-    processCommand('next music');
-    clearCommand();
+    if (button.dataset.suppressClick === '1') {
+        delete button.dataset.suppressClick;
+        return;
+    }
+    startNextMusic();
 });
 
 window.onSpotifyIframeApiReady = function (api) {
@@ -991,8 +1010,63 @@ function notePlayback(controller, host, isPaused) {
     pauseOthers({ controller: controller });
 }
 
+function rejectStalePlayback(controller, host, data) {
+    const playingUri = data && data.playingURI;
+    const requested = host.dataset.spotifyUri;
+    if (!playingUri || !requested || sameTrackUri(playingUri, requested)) {
+        host._stuckUri = '';
+        return false;
+    }
+    if (data.isPaused !== false) return true;
+    const token = host._switchToken || 0;
+    if (host._stuckUri === playingUri && host._stuckToken === token && Date.now() - (host._stuckAt || 0) >= 400) {
+        if (host._remountedForToken !== token) {
+            host._remountedForToken = token;
+            replaceSpotifyController(host);
+        }
+        return true;
+    }
+    if (host._stuckUri !== playingUri || host._stuckToken !== token) {
+        host._stuckUri = playingUri;
+        host._stuckToken = token;
+        host._stuckAt = Date.now();
+    }
+    try { controller.pause(); } catch (error) {}
+    return true;
+}
+
+function replaceSpotifyController(host) {
+    if (!host || !host.isConnected || host._replacing) return;
+    host._replacing = true;
+    const controller = host._controller;
+    host._controller = null;
+    if (controller) {
+        try { controller.pause(); } catch (error) {}
+        try { if (typeof controller.destroy === 'function') controller.destroy(); } catch (error) {}
+        spotifyPlayers.delete(controller);
+    }
+    host.querySelectorAll('iframe').forEach(function (frame) { frame.remove(); });
+    const mount = host.querySelector('.spotifyMount');
+    if (mount) {
+        while (mount.firstChild) mount.removeChild(mount.firstChild);
+    }
+    delete host.dataset.mounted;
+    host._reportedUri = '';
+    host._heardUri = '';
+    host._stuckUri = '';
+    host._replacing = false;
+    mountSpotifyHost(host);
+}
+
+function reportedUriBlocksPlay(host) {
+    if (!host._reportedUri || !host.dataset.spotifyUri) return false;
+    return !sameTrackUri(host._reportedUri, host.dataset.spotifyUri);
+}
+
 function startRequestedPlayback(controller, host) {
-    if (!host.isConnected || host.dataset.autoplay !== '1') return;
+    if (!host.isConnected || host.dataset.autoplay !== '1' || !controller) return;
+    if (controller._requestToken !== host._requestToken) return;
+    if (reportedUriBlocksPlay(host)) return;
     if (latestMediaElement() !== host) {
         silenceController(controller);
         return;
@@ -1164,6 +1238,9 @@ function mountSpotifyHost(host) {
         }, function (controller) {
             controller._host = host;
             host._controller = controller;
+            const playbackToken = (host._requestToken || 0) + 1;
+            host._requestToken = playbackToken;
+            controller._requestToken = playbackToken;
             spotifyPlayers.add(controller);
             if (host.dataset.spotifyUri && host.dataset.spotifyUri !== requestedUri && controller.loadUri) {
                 try { controller.loadUri(host.dataset.spotifyUri); } catch (error) {}
@@ -1173,23 +1250,28 @@ function mountSpotifyHost(host) {
             } else if (host.dataset.autoplay === '1') {
                 const playWhenReady = function () {
                     setTimeout(function () {
+                        if (host._requestToken !== playbackToken) return;
                         startRequestedPlayback(controller, host);
                     }, 0);
                 };
                 controller.addListener('ready', playWhenReady);
                 setTimeout(function () {
-                    if (!host.isConnected || host._heardUri === host.dataset.spotifyUri) return;
+                    if (!host.isConnected || host._requestToken !== playbackToken) return;
+                    if (host._heardUri === host.dataset.spotifyUri) return;
                     if (latestMediaElement() !== host) return;
                     startRequestedPlayback(controller, host);
                 }, 700);
             }
             controller.addListener('playback_update', function (event) {
                 const data = event && event.data ? event.data : {};
+                if (data.playingURI) host._reportedUri = data.playingURI;
+                if (rejectStalePlayback(controller, host, data)) return;
                 notePlayback(controller, host, data.isPaused);
                 noteTrackProgress(host, data);
                 watchLikedQueue(host, data);
             });
             controller.addListener('playback_started', function () {
+                if (reportedUriBlocksPlay(host)) return;
                 notePlayback(controller, host, false);
             });
             styleSpotifyIframe(host);
@@ -1664,7 +1746,9 @@ function noteTrackProgress(host, data) {
         finishTrackPlay(host.closest('.trackBlock'));
         return;
     }
-    if (data.isPaused !== true || data.isBuffering || host._heardUri === uri || host._playGiveUp) return;
+    if (host._heardUri === uri || host._playGiveUp) return;
+    if (data.isPaused === false && data.isBuffering) return;
+    if (data.isPaused !== true && !data.isBuffering) return;
     if (latestMediaElement() !== host || !host._controller) return;
     const now = Date.now();
     if (now - (host._playNudgeAt || 0) < 500) return;
@@ -1674,8 +1758,10 @@ function noteTrackProgress(host, data) {
     }
     host._playNudges = (host._playNudges || 0) + 1;
     host._playNudgeAt = now;
+    const requestToken = host._requestToken;
     window.setTimeout(function () {
-        if (!host.isConnected || host._heardUri === uri || latestMediaElement() !== host) return;
+        if (!host.isConnected || host._requestToken !== requestToken || host._heardUri === uri) return;
+        if (latestMediaElement() !== host) return;
         startRequestedPlayback(host._controller, host);
     }, 0);
 }
@@ -1718,9 +1804,13 @@ function cancelLikedQueue(host) {
     host._queueGeneration = (host._queueGeneration || 0) + 1;
 }
 
+function activeTrackBlock(host) {
+    return host && host.closest('.trackBlock');
+}
+
 function watchLikedQueue(host, data) {
-    if (!host || !host.isConnected || !host.closest('.likedBlock')) return;
-    if (data && data.playingURI && host.dataset.spotifyUri && data.playingURI !== host.dataset.spotifyUri) return;
+    if (!host || !host.isConnected || !activeTrackBlock(host)) return;
+    if (data && data.playingURI && host.dataset.spotifyUri && !sameTrackUri(data.playingURI, host.dataset.spotifyUri)) return;
     if (host._queueAdvancing && (!data || data.isPaused !== false)) return;
     const duration = Number(data && data.duration) || 0;
     const position = Number(data && data.position) || 0;
@@ -1742,7 +1832,7 @@ function watchLikedQueue(host, data) {
 }
 
 function playNextLiked(host) {
-    const block = host.closest('.likedBlock');
+    const block = activeTrackBlock(host);
     if (!block || latestMediaElement() !== host) return;
     const current = block.querySelector('.trackRow.is-current');
     const next = current ? current.nextElementSibling : null;
@@ -1757,6 +1847,8 @@ function playNextLiked(host) {
 }
 
 function playSpotifyUri(host, uri) {
+    const previous = host.dataset.spotifyUri || '';
+    const switching = !!(previous && previous !== uri);
     host.dataset.spotifyUri = uri;
     host.dataset.autoplay = '1';
     host.dataset.playback = '';
@@ -1765,10 +1857,19 @@ function playSpotifyUri(host, uri) {
         host._playNudges = 0;
         host._playGiveUp = false;
     }
+    host._requestToken = (host._requestToken || 0) + 1;
+    if (host._controller) host._controller._requestToken = host._requestToken;
+    if (switching) {
+        host._switchToken = (host._switchToken || 0) + 1;
+        host._stuckUri = '';
+    }
     if (host._controller && typeof host._controller.loadUri === 'function') {
         try {
+            if (switching) {
+                try { host._controller.pause(); } catch (error) {}
+            }
             host._controller.loadUri(uri);
-            startRequestedPlayback(host._controller, host);
+            if (!switching) startRequestedPlayback(host._controller, host);
             return;
         } catch (error) {}
     }

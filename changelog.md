@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0 - 2026-09-29
+
+### Changed
+- Randomized songs use the `list` command.
+
+### Fixed
+- `list` plays the next song when the current one ends.
+- Choosing another song stops the one already playing when the next one is slow to start.
+- Dragging or scrolling across Next no longer plays another song. A tap still does.
+
 ## 1.5.1 - 2026-09-29
 
 ### Fixed
