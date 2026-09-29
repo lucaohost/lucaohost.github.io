@@ -33,6 +33,7 @@ body {
 }
 .path {
     color: #4CAF50;
+    flex: 0 0 auto;
 }
 
 .input-line {
@@ -73,6 +74,62 @@ iframe {
     border: none;
 }
 
+.spotifyHost {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin: 5px 0;
+}
+
+.spotifyHost iframe {
+    display: block;
+    margin: 0;
+}
+
+.spotifyLoading {
+    display: none;
+}
+
+.spotifyHost.spotifyPending {
+    min-height: 152px;
+}
+
+.spotifyHost.spotifyPending .spotifyLoading {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 152px;
+    padding: 0 16px;
+    border-radius: 12px;
+    background: #1a1a1a;
+    box-shadow: inset 0 0 0 1px #333;
+    color: #d0d0d0;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.spotifyHost.spotifyPending .spotifyLoading::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    border: 2px solid #333;
+    border-top-color: #4CAF50;
+    border-radius: 50%;
+    animation: spotifySpin 0.7s linear infinite;
+    flex: 0 0 auto;
+}
+
+@keyframes spotifySpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .output table {
     width: 100%;
     max-width: 100%;
@@ -95,6 +152,7 @@ iframe {
     max-width: 290px;
 }
 
+.input-mirror,
 .mobile-caret,
 .mobile-keyboard {
     display: none;
@@ -132,11 +190,21 @@ iframe {
         padding: 12px;
     }
 
+    .input-line {
+        position: relative;
+    }
+
+    .input-mirror {
+        display: inline;
+        flex: 0 0 auto;
+        white-space: pre;
+    }
+
     .mobile-caret {
         display: inline-block;
         width: 0.55ch;
         height: 1.05em;
-        margin-left: 1px;
+        margin-left: 0;
         background: #4CAF50;
         animation: blink 1s step-end infinite;
         align-self: center;
@@ -144,49 +212,64 @@ iframe {
     }
 
     .mobile-keyboard {
-        --key-gap: 6px;
-        --key-size: calc((100% - 9 * var(--key-gap)) / 10);
+        --key-size: 10%;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 0;
         width: 100%;
         flex: 0 0 auto;
-        padding: 10px 5px calc(10px + env(safe-area-inset-bottom));
+        padding: 6px 1px calc(6px + env(safe-area-inset-bottom));
         background: #111;
         border-top: 1px solid #333;
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
     }
 
     .mobile-keyboard-row {
         display: flex;
         justify-content: center;
-        gap: var(--key-gap);
+        gap: 0;
+        touch-action: manipulation;
     }
 
     .mobile-keyboard button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
         flex: 1 1 0;
         min-width: 0;
-        height: 44px;
+        height: 52px;
+        margin: 0;
+        padding: 4px 2px;
         border: 0;
         border-radius: 10px;
-        background: #2a2a2a;
+        background-color: #2a2a2a;
+        background-clip: content-box;
         color: #fff;
         font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
         font-size: 18px;
         line-height: 1;
         touch-action: manipulation;
         user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
+        -webkit-appearance: none;
+        appearance: none;
     }
 
+    .mobile-keyboard button.is-pressed,
     .mobile-keyboard button:active {
-        background: #3d3d3d;
+        background-color: #4a4a4a;
     }
 
     .mobile-keyboard button svg {
         display: block;
         width: 20px;
         height: 20px;
-        margin: 0 auto;
+        margin: 0;
         pointer-events: none;
     }
 
@@ -196,8 +279,13 @@ iframe {
     }
 
     .mobile-keyboard.shift-on button[data-key="shift"] {
-        background: #f2f2f2;
+        background-color: #f2f2f2;
         color: #111;
+    }
+
+    .mobile-keyboard.shift-on button[data-key="shift"].is-pressed,
+    .mobile-keyboard.shift-on button[data-key="shift"]:active {
+        background-color: #d9d9d9;
     }
 
     .mobile-keyboard-row-space button[data-key="?"],
@@ -211,12 +299,13 @@ iframe {
     }
 
     .mobile-keyboard button[data-key="enter"] {
-        background: #4CAF50;
+        background-color: #4CAF50;
         color: #111;
     }
 
+    .mobile-keyboard button[data-key="enter"].is-pressed,
     .mobile-keyboard button[data-key="enter"]:active {
-        background: #3e8e41;
+        background-color: #3e8e41;
     }
 
     .output,
@@ -225,15 +314,21 @@ iframe {
     }
 
     input.input {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 0;
+        height: 0;
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        opacity: 0;
+        pointer-events: none;
+        flex: 0 0 auto;
         font: inherit;
         font-size: 16px;
-        line-height: 1.2;
         caret-color: transparent;
-        padding: 0;
-        border-radius: 0;
-        flex-grow: 0;
-        width: 1ch;
-        min-width: 1ch;
         -webkit-appearance: none;
         appearance: none;
     }

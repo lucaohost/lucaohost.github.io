@@ -18,8 +18,13 @@ function clearCommand() {
 }
 
 function syncMobileInputWidth() {
-    if (!isMobileCli() || inputField.tagName !== 'INPUT') return;
-    inputField.style.width = Math.max(inputField.value.length, 1) + 'ch';
+    const mirror = document.getElementById('input-mirror');
+    if (!mirror) return;
+    if (!isMobileCli() || inputField.tagName !== 'INPUT') {
+        mirror.textContent = '';
+        return;
+    }
+    mirror.textContent = inputField.value;
 }
 
 let inputEventsReady = false;
@@ -33,7 +38,10 @@ function onMobileBlur() {
 function bindInputEvents() {
     if (inputField.dataset.bound === '1') return;
     inputField.dataset.bound = '1';
-    inputField.addEventListener('keydown', onEnter);
+    inputField.addEventListener('keydown', function (event) {
+        if (navigateHistory(event)) return;
+        onEnter(event);
+    });
     inputField.addEventListener('blur', onMobileBlur);
 }
 
@@ -48,6 +56,7 @@ function installMobileInput() {
     native.spellcheck = false;
     native.enterKeyHint = 'send';
     native.readOnly = true;
+    native.size = 1;
     native.setAttribute('inputmode', 'none');
     native.setAttribute('aria-label', 'Command');
     native.addEventListener('mousedown', (event) => event.preventDefault());
@@ -87,6 +96,7 @@ const commands = {
     snooker: "Snooker Scoreboard:\n<a href='https://lucaohost.github.io/snooker' target='_blank'>https://lucaohost.github.io/snooker</a>",
     clear: function() {
         pauseEveryPlayer();
+        releaseSpotifyHosts();
         spotifyPlayers.clear();
         terminalOutput.innerHTML = '';
     },
@@ -228,12 +238,65 @@ function appendOutput(text) {
     return text !== undefined ? newLine : null;
 }
 
+const commandHistory = [];
+let historyCursor = 0;
+let historyDraft = '';
+
+function pushHistory(command) {
+    commandHistory.push(command);
+    historyCursor = commandHistory.length;
+    historyDraft = '';
+}
+
+function readCommandDraft() {
+    const value = inputField.tagName === 'INPUT' ? inputField.value : inputField.innerText;
+    return value.replace(/\n$/, '');
+}
+
+function placeCaretAtEnd(element) {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+function setCommandText(value) {
+    if (inputField.tagName === 'INPUT') {
+        inputField.value = value;
+    } else {
+        inputField.textContent = value;
+        placeCaretAtEnd(inputField);
+    }
+    syncMobileInputWidth();
+}
+
+function navigateHistory(event) {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return false;
+    if (isMobileCli()) return false;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+    event.preventDefault();
+    if (!commandHistory.length) return true;
+    if (historyCursor === commandHistory.length) historyDraft = readCommandDraft();
+    if (event.key === 'ArrowUp') {
+        historyCursor = Math.max(0, historyCursor - 1);
+    } else if (historyCursor < commandHistory.length) {
+        historyCursor += 1;
+    }
+    const value = historyCursor === commandHistory.length ? historyDraft : commandHistory[historyCursor];
+    setCommandText(value);
+    return true;
+}
+
 function onEnter(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
         const input = readCommand().trim();
         if(input !== "") {
             appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
+            pushHistory(input);
             processCommand(input);
             clearCommand();
         }
@@ -259,16 +322,20 @@ function keepMobileKeyboard() {
 
 document.addEventListener('mousedown', (event) => {
     if (!isMobileCli()) return;
-    if (event.target.closest('button, a')) {
-        event.preventDefault();
-        focusCliInput();
-    }
+    const control = event.target.closest('button, a');
+    if (!control || control.closest('#mobile-keyboard')) return;
+    event.preventDefault();
+    focusCliInput();
 }, true);
 
 document.addEventListener('touchstart', (event) => {
     if (!isMobileCli()) return;
     const control = event.target.closest('button, a');
     if (!control) return;
+    if (control.closest('#mobile-keyboard')) {
+        event.preventDefault();
+        return;
+    }
     event.preventDefault();
     if (control.tagName === 'A' && control.getAttribute('href')) {
         window.open(control.href, control.target || '_self', 'noopener');
@@ -309,8 +376,11 @@ function bindMobileKeyboard() {
     keyboard.dataset.bound = '1';
     const letterButtons = keyboard.querySelectorAll('button[data-letter]');
     const shiftButton = keyboard.querySelector('[data-key="shift"]');
-    let lastKeyboardInput = 0;
     let shiftOn = false;
+    let lastPointerInput = 0;
+    let repeatTimer = 0;
+    let pressedButton = null;
+    let sawPointer = false;
 
     function setShift(on) {
         shiftOn = on;
@@ -322,20 +392,50 @@ function bindMobileKeyboard() {
         });
     }
 
-    keyboard.addEventListener('click', (event) => {
-        const now = Date.now();
-        if (now - lastKeyboardInput < 40) return;
-        lastKeyboardInput = now;
-        const keyButton = event.target.closest('[data-key]');
-        if (!keyButton || !isMobileCli() || inputField.tagName !== 'INPUT') return;
+    function stopRepeat() {
+        clearTimeout(repeatTimer);
+        repeatTimer = 0;
+    }
+
+    function finishPress() {
+        if (pressedButton) pressedButton.classList.remove('is-pressed');
+        pressedButton = null;
+        stopRepeat();
+    }
+
+    function startBackspaceRepeat() {
+        stopRepeat();
+        let delay = 70;
+        const tick = () => {
+            if (inputField.tagName !== 'INPUT' || !inputField.value) {
+                stopRepeat();
+                return;
+            }
+            inputField.value = inputField.value.slice(0, -1);
+            syncMobileInputWidth();
+            delay = Math.max(30, delay - 8);
+            repeatTimer = setTimeout(tick, delay);
+        };
+        repeatTimer = setTimeout(tick, 350);
+    }
+
+    function typeKey(keyButton, allowRepeat) {
+        if (!isMobileCli() || inputField.tagName !== 'INPUT') return;
         const key = keyButton.dataset.key;
+        if (key !== 'back') stopRepeat();
         if (key === 'shift') {
             setShift(!shiftOn);
             return;
         }
         if (key === 'back') {
-            inputField.value = inputField.value.slice(0, -1);
-        } else if (key === 'enter') {
+            if (inputField.value) {
+                inputField.value = inputField.value.slice(0, -1);
+                syncMobileInputWidth();
+            }
+            if (allowRepeat) startBackspaceRepeat();
+            return;
+        }
+        if (key === 'enter') {
             onEnter({ key: 'Enter', preventDefault() {} });
         } else {
             const typed = shiftOn && key >= 'a' && key <= 'z' ? key.toUpperCase() : key;
@@ -343,7 +443,77 @@ function bindMobileKeyboard() {
             if (shiftOn) setShift(false);
         }
         syncMobileInputWidth();
+    }
+
+    function resolveKey(x, y) {
+        const target = document.elementFromPoint(x, y);
+        const direct = target && target.closest ? target.closest('[data-key]') : null;
+        if (direct && keyboard.contains(direct)) return direct;
+        let best = null;
+        let bestDist = 16 * 16;
+        keyboard.querySelectorAll('[data-key]').forEach((button) => {
+            const rect = button.getBoundingClientRect();
+            const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+            const dy = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
+            const dist = dx * dx + dy * dy;
+            if (dist <= bestDist) {
+                bestDist = dist;
+                best = button;
+            }
+        });
+        return best;
+    }
+
+    function pressKey(keyButton, allowRepeat) {
+        if (pressedButton && pressedButton !== keyButton) pressedButton.classList.remove('is-pressed');
+        pressedButton = keyButton;
+        keyButton.classList.add('is-pressed');
+        typeKey(keyButton, allowRepeat);
+    }
+
+    keyboard.addEventListener('pointerdown', (event) => {
+        if (!isMobileCli() || event.button > 0) return;
+        const keyButton = resolveKey(event.clientX, event.clientY);
+        if (!keyButton) return;
+        event.preventDefault();
+        sawPointer = true;
+        const now = Date.now();
+        if (now - lastPointerInput < 30) return;
+        lastPointerInput = now;
+        try { keyboard.setPointerCapture(event.pointerId); } catch (error) {}
+        pressKey(keyButton, true);
     });
+
+    keyboard.addEventListener('pointerup', finishPress);
+    keyboard.addEventListener('pointercancel', finishPress);
+    keyboard.addEventListener('touchend', (event) => {
+        if (event.touches.length === 0) finishPress();
+    });
+    keyboard.addEventListener('touchcancel', finishPress);
+    keyboard.addEventListener('contextmenu', (event) => event.preventDefault());
+    keyboard.addEventListener('touchstart', (event) => {
+        if (!isMobileCli()) return;
+        event.preventDefault();
+        if (Date.now() - lastPointerInput < 30) return;
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+        const keyButton = resolveKey(touch.clientX, touch.clientY);
+        if (!keyButton) return;
+        lastPointerInput = Date.now();
+        pressKey(keyButton, true);
+    }, { passive: false });
+
+    keyboard.addEventListener('click', (event) => {
+        if (sawPointer || Date.now() - lastPointerInput < 700) return;
+        const keyButton = event.target.closest('[data-key]');
+        if (!keyButton) return;
+        lastPointerInput = Date.now();
+        pressKey(keyButton, false);
+        finishPress();
+    });
+
+    window.addEventListener('pointerup', finishPress);
+    window.addEventListener('pointercancel', finishPress);
 }
 
 bindMobileKeyboard();
@@ -422,6 +592,7 @@ var PLAYLIST_QUERY_HASH = '243c0ba2736f16da721e3a227004bbcdb8df6c846f198bd478172
 var HASH_STORAGE_KEY = 'spotifyPlaylistQueryHash';
 var spotifyPlayers = new Set();
 var spotifyApi = null;
+var spotifyApiGaveUp = false;
 var pendingSpotifyHosts = [];
 var pausingPlayers = false;
 var likedTrackIds = null;
@@ -442,12 +613,13 @@ window.onSpotifyIframeApiReady = function (api) {
 
 setTimeout(function () {
     if (spotifyApi) return;
+    spotifyApiGaveUp = true;
     pendingSpotifyHosts.splice(0).forEach(mountPlainSpotify);
 }, 5000);
 
 function spotifyHostMarkup(uri, autoplay) {
     const autoplayAttr = autoplay ? ' data-autoplay="1"' : '';
-    return `<div class="spotifyHost"${autoplayAttr} data-spotify-uri="${uri}"><div class="spotifyMount"></div></div>`;
+    return `<div class="spotifyHost"${autoplayAttr} data-spotify-uri="${uri}"><div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div></div>`;
 }
 
 function nextMusicButton() {
@@ -457,24 +629,32 @@ function nextMusicButton() {
 async function playRandomLikedSong() {
     pauseEveryPlayer();
     const slot = document.createElement('div');
-    slot.textContent = 'Random Liked Song:\n';
+    slot.appendChild(document.createTextNode('Random Liked Song:\n'));
+    const host = document.createElement('div');
+    host.className = 'spotifyHost';
+    host.dataset.autoplay = '1';
+    host.innerHTML = '<div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div>';
+    slot.appendChild(host);
     terminalOutput.appendChild(slot);
+    mountSpotifyHost(host);
     scrollCliToEnd();
     try {
         const trackId = await pickRandomLikedTrackId();
         if (!slot.isConnected) return;
         if (!trackId) {
-            slot.textContent += "Couldn't load a liked song right now.";
+            discardSpotifyHost(host);
+            slot.appendChild(document.createTextNode("Couldn't load a liked song right now."));
             scrollCliToEnd();
             return;
         }
-        const uri = `spotify:track:${trackId}`;
-        slot.insertAdjacentHTML('beforeend', spotifyHostMarkup(uri, true) + nextMusicButton());
+        host.dataset.spotifyUri = 'spotify:track:' + trackId;
+        slot.insertAdjacentHTML('beforeend', nextMusicButton());
         activateEmbeddedMedia(slot);
         scrollCliToEnd();
     } catch (error) {
-        if (!slot.isConnected || slot.querySelector('.spotifyHost')) return;
-        slot.textContent += "Couldn't load a liked song right now.";
+        if (!slot.isConnected || host.dataset.mounted) return;
+        discardSpotifyHost(host);
+        slot.appendChild(document.createTextNode("Couldn't load a liked song right now."));
         scrollCliToEnd();
     }
 }
@@ -573,9 +753,93 @@ function activateEmbeddedMedia(root) {
     root.querySelectorAll('.spotifyHost').forEach(mountSpotifyHost);
 }
 
+function discardSpotifyHost(host) {
+    if (!host) return;
+    clearTimeout(host._loadingTimer);
+    host._loadingTimer = 0;
+    if (host._spotifyObserver) host._spotifyObserver.disconnect();
+    host.remove();
+}
+
+function releaseSpotifyHosts() {
+    terminalOutput.querySelectorAll('.spotifyHost').forEach(discardSpotifyHost);
+}
+
+function spotifySrcReady(src) {
+    return !!src && src.indexOf('about:blank') !== 0;
+}
+
+function updateSpotifyLoading(host) {
+    const iframe = host.querySelector('iframe');
+    const src = iframe ? (iframe.getAttribute('src') || '') : '';
+    const ready = !!(iframe && iframe.dataset.loaded === '1' && spotifySrcReady(src));
+    if (ready) {
+        clearTimeout(host._loadingTimer);
+        host._loadingTimer = 0;
+        host.classList.remove('spotifyPending');
+        return;
+    }
+    if (host._loadingTimer || host.classList.contains('spotifyPending')) return;
+    host._loadingTimer = setTimeout(function () {
+        host._loadingTimer = 0;
+        if (!host.isConnected) return;
+        const current = host.querySelector('iframe');
+        const currentSrc = current ? (current.getAttribute('src') || '') : '';
+        const stillReady = !!(current && current.dataset.loaded === '1' && spotifySrcReady(currentSrc));
+        if (!stillReady) host.classList.add('spotifyPending');
+    }, 400);
+}
+
+function bindSpotifyIframe(host, iframe) {
+    if (!iframe || iframe.dataset.loadBound === '1') return;
+    iframe.dataset.loadBound = '1';
+    iframe.classList.add('spotifyIframe');
+    iframe.addEventListener('load', function () {
+        const src = iframe.getAttribute('src') || '';
+        iframe.dataset.loaded = spotifySrcReady(src) ? '1' : '';
+        updateSpotifyLoading(host);
+        scrollCliToEnd();
+        if (host.dataset.mounted !== 'plain') return;
+        if (src.indexOf('open.spotify.com/embed') === -1) return;
+        if (host.dataset.autoplay !== '1' || host.dataset.playback === 'paused') return;
+        if (latestMediaElement() !== host) return;
+        pauseOthers({ host: host });
+        try { iframe.contentWindow.postMessage({ command: 'play' }, '*'); } catch (error) {}
+    });
+}
+
+function watchSpotifyFrame(host) {
+    if (!host || host.dataset.loadWatch === '1') return;
+    host.dataset.loadWatch = '1';
+    if (!host.querySelector('.spotifyLoading')) {
+        const loading = document.createElement('div');
+        loading.className = 'spotifyLoading';
+        loading.setAttribute('role', 'status');
+        loading.textContent = 'Loading Spotify…';
+        host.prepend(loading);
+    }
+    const observer = new MutationObserver(function () {
+        host.querySelectorAll('iframe').forEach(function (iframe) {
+            bindSpotifyIframe(host, iframe);
+        });
+    });
+    observer.observe(host, { childList: true, subtree: true });
+    host._spotifyObserver = observer;
+    host.querySelectorAll('iframe').forEach(function (iframe) {
+        bindSpotifyIframe(host, iframe);
+    });
+    updateSpotifyLoading(host);
+}
+
 function mountSpotifyHost(host) {
     if (!host || host.dataset.mounted) return;
+    watchSpotifyFrame(host);
+    if (!host.dataset.spotifyUri) return;
     if (!spotifyApi) {
+        if (spotifyApiGaveUp) {
+            mountPlainSpotify(host);
+            return;
+        }
         if (pendingSpotifyHosts.indexOf(host) === -1) pendingSpotifyHosts.push(host);
         return;
     }
@@ -629,7 +893,7 @@ function styleSpotifyIframe(host) {
     iframe.style.width = '100%';
     iframe.style.maxWidth = '100%';
     iframe.style.borderRadius = '12px';
-    iframe.addEventListener('load', scrollCliToEnd);
+    bindSpotifyIframe(host, iframe);
 }
 
 function embedUrlFromUri(uri) {
@@ -639,6 +903,8 @@ function embedUrlFromUri(uri) {
 
 function mountPlainSpotify(host) {
     if (!host || host.dataset.mounted) return;
+    watchSpotifyFrame(host);
+    if (!host.dataset.spotifyUri) return;
     const mount = host.querySelector('.spotifyMount');
     if (!mount) return;
     const iframe = document.createElement('iframe');
@@ -650,17 +916,9 @@ function mountPlainSpotify(host) {
     iframe.style.border = 'none';
     iframe.style.borderRadius = '12px';
     iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-    iframe.addEventListener('load', function () {
-        scrollCliToEnd();
-        const src = iframe.getAttribute('src') || '';
-        if (src.indexOf('open.spotify.com/embed') === -1) return;
-        if (host.dataset.autoplay !== '1' || host.dataset.playback === 'paused') return;
-        if (latestMediaElement() !== host) return;
-        pauseOthers({ host: host });
-        try { iframe.contentWindow.postMessage({ command: 'play' }, '*'); } catch (error) {}
-    });
-    mount.replaceWith(iframe);
     host.dataset.mounted = 'plain';
+    bindSpotifyIframe(host, iframe);
+    mount.replaceWith(iframe);
     scrollCliToEnd();
 }
 
