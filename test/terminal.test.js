@@ -344,9 +344,10 @@ test('a song that keeps playing after pause is replaced by only the selected son
             position: 4000
         };
         page.api.created[0].emit(stale);
-        await delay(450);
+        await delay(400);
         page.api.created[0].emit(stale);
-        await delay(40);
+        assert.equal(page.api.created.length, 1);
+        await delay(3300);
         assert.deepEqual([...audible(page)], [next]);
     });
 });
@@ -462,7 +463,7 @@ test('dragging a play icon does not start the song', async () => {
     });
 });
 
-test('another song cannot start while the loading icon is showing', async () => {
+test('another song can start while the previous one is still loading', async () => {
     await withPage({ catalog: tracks(['a', 'b', 'c']) }, async (page) => {
         await runCommand(page, 'liked');
         await hear(page, 'spotify:track:a');
@@ -471,9 +472,11 @@ test('another song cannot start while the loading icon is showing', async () => 
         await delay(450);
         assert.equal(buttons[1].classList.contains('is-loading'), true);
         buttons[2].click();
-        assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, 'spotify:track:b');
-        assert.equal(audible(page).has('spotify:track:c'), false);
+        assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, 'spotify:track:c');
+        assert.equal(page.api.created.length, 1);
         assert.equal(audible(page).has('spotify:track:a'), false);
+        await finishSlowLoad(page, 'spotify:track:c');
+        assert.deepEqual([...audible(page)], ['spotify:track:c']);
     });
 });
 
@@ -524,11 +527,12 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.1\.0 - 2026-09-29/);
-    assert.match(top, /round skip button/);
-    assert.match(top, /holds scrolling and typing/);
-    assert.match(top, /player already open/);
-    assert.match(top, /numbered rows that have no song name/);
+    assert.match(top, /^2\.1\.1 - 2026-09-29/);
+    assert.match(top, /while one is still loading/);
+    assert.match(changelog, /round skip button/);
+    assert.match(changelog, /holds scrolling and typing/);
+    assert.match(changelog, /player already open/);
+    assert.match(changelog, /numbered rows that have no song name/);
     assert.match(changelog, /right side of the Spotify player/);
     assert.match(changelog, /`liked` and `list` play the next song/);
     assert.match(changelog, /stops the one already playing/);
@@ -878,6 +882,32 @@ test('play from list reuses the open player', async () => {
         assert.equal(livePlayer(page).loads[livePlayer(page).loads.length - 1], 'spotify:track:' + button.dataset.trackId);
         assert.equal(audible(page).has('spotify:track:' + first), false);
     });
+});
+
+test('clicking another song while one is still loading keeps the same player', async () => {
+    const ids = Array.from({ length: 30 }, (_, index) => 's' + index);
+    for (const command of ['list', 'liked']) {
+        const options = { catalog: tracks(ids) };
+        if (command === 'list') options.played = playedSongs(ids);
+        await withPage(options, async (page) => {
+            await runCommand(page, command);
+            const buttons = () => [...output(page).querySelectorAll('.trackPlay')];
+            await hear(page, 'spotify:track:' + buttons()[0].dataset.trackId);
+            buttons()[9].click();
+            await delay(1200);
+            assert.equal(page.api.created.length, 1, command + ' rebuilt the player while the tenth song was loading');
+            assert.equal(buttons()[9].classList.contains('is-loading'), true);
+            buttons()[29].click();
+            await delay(1200);
+            const third = buttons()[14];
+            third.click();
+            const uri = 'spotify:track:' + third.dataset.trackId;
+            assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, uri);
+            assert.equal(page.api.created.filter((player) => !player.destroyed).length, 1, command);
+            await finishSlowLoad(page, uri);
+            assert.deepEqual([...audible(page)], [uri]);
+        });
+    }
 });
 
 function playedSongs(ids) {

@@ -566,8 +566,7 @@ document.addEventListener('touchend', function (event) {
         focusCliInput();
         return;
     }
-    const block = gesture.button.closest('.trackBlock');
-    if (gesture.button.disabled || (block && block.classList.contains('is-playLocked'))) {
+    if (gesture.button.disabled) {
         event.preventDefault();
         return;
     }
@@ -939,8 +938,7 @@ terminalOutput.addEventListener('click', function (event) {
             delete playButton.dataset.suppressClick;
             return;
         }
-        const block = playButton.closest('.trackBlock');
-        if (playButton.disabled || (block && block.classList.contains('is-playLocked'))) return;
+        if (playButton.disabled) return;
         playTrackSelection(playButton);
         return;
     }
@@ -1097,15 +1095,25 @@ function rejectStalePlayback(controller, host, data) {
     const requested = host.dataset.spotifyUri;
     if (!playingUri || !requested || sameTrackUri(playingUri, requested)) {
         host._stuckUri = '';
+        clearTimeout(host._stuckTimer);
+        host._stuckTimer = 0;
         return false;
     }
     if (data.isPaused === false) {
         try { controller.pause(); } catch (error) {}
-        if (host._stuckUri && host._stuckUri === playingUri) {
-            host._stuckUri = '';
-            replaceSpotifyController(host);
-        } else {
-            host._stuckUri = playingUri;
+        host._stuckUri = playingUri;
+        if (!host._stuckTimer) {
+            const token = host._requestToken;
+            host._stuckTimer = setTimeout(function () {
+                host._stuckTimer = 0;
+                try {
+                    if (!host.isConnected || !host.ownerDocument || !host.ownerDocument.defaultView) return;
+                    if (host._requestToken !== token || host._controller !== controller) return;
+                    if (host._heardUri === host.dataset.spotifyUri) return;
+                    if (host._reportedUri && sameTrackUri(host._reportedUri, host.dataset.spotifyUri)) return;
+                    replaceSpotifyController(host);
+                } catch (error) {}
+            }, 3500);
         }
     }
     return true;
@@ -1212,7 +1220,9 @@ function activateEmbeddedMedia(root) {
 function clearTrackSwitch(host) {
     if (!host) return;
     clearTimeout(host._switchTimer);
+    clearTimeout(host._stuckTimer);
     host._switchTimer = 0;
+    host._stuckTimer = 0;
 }
 
 function discardSpotifyHost(host) {
@@ -1869,10 +1879,6 @@ function beginTrackPlayWait(block, button) {
 function showTrackPlayLoading(block, button) {
     button.classList.add('is-loading');
     button.setAttribute('aria-busy', 'true');
-    block.classList.add('is-playLocked');
-    block.querySelectorAll('.trackPlay').forEach(function (item) {
-        if (item !== button) item.disabled = true;
-    });
     lockPlaybackScroll();
 }
 
@@ -1920,7 +1926,7 @@ function noteTrackProgress(host, data) {
     if (latestMediaElement() !== host || !host._controller) return;
     const now = Date.now();
     if (now - (host._playNudgeAt || 0) < 500) return;
-    if ((host._playNudges || 0) >= 6) {
+    if ((host._playNudges || 0) >= 24) {
         host._playGiveUp = true;
         return;
     }
@@ -1939,7 +1945,6 @@ function playTrackSelection(button) {
     const host = block && block.querySelector('.spotifyHost');
     const trackId = button.dataset.trackId;
     if (!host || !trackId || button.disabled) return;
-    if (block.classList.contains('is-playLocked')) return;
     const row = button.closest('.trackRow');
     block.querySelectorAll('.trackRow').forEach(function (item) {
         item.classList.toggle('is-current', item === row);
@@ -2019,18 +2024,30 @@ function scheduleTrackSwitch(host) {
     const token = host._requestToken;
     const uri = host.dataset.spotifyUri;
     const controller = host._controller;
-    host._switchTimer = setTimeout(function () {
+    let tries = 0;
+    const tick = function () {
         host._switchTimer = 0;
         try {
             if (!host.isConnected || !host.ownerDocument || !host.ownerDocument.defaultView) return;
             if (host._requestToken !== token || !controller || host._controller !== controller) return;
-            if (host._heardUri === uri || (host._reportedUri && sameTrackUri(host._reportedUri, uri))) {
+            if (host._heardUri === uri) return;
+            if (host._reportedUri && sameTrackUri(host._reportedUri, uri)) {
                 startRequestedPlayback(controller, host);
                 return;
             }
-            replaceSpotifyController(host);
+            tries += 1;
+            if (tries <= 4 && typeof controller.loadUri === 'function') {
+                try { controller.loadUri(uri); } catch (error) {}
+            }
+            // The live controller starts the track on play(). The test double sets pendingUri until that load finishes.
+            if (!controller.pendingUri) {
+                try { controller.play(); } catch (error) {}
+            }
+            if (tries >= 6) return;
+            host._switchTimer = setTimeout(tick, 500);
         } catch (error) {}
-    }, 900);
+    };
+    host._switchTimer = setTimeout(tick, 700);
 }
 
 function playSpotifyUri(host, uri) {

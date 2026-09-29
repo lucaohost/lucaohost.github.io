@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1 - 2026-09-29
+
+### Fixed
+- Choosing another song in `list` or `liked` while one is still loading plays that song in the player already open.
+
 ## 2.1.0 - 2026-09-29
 
 ### Added
