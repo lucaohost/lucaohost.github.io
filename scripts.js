@@ -86,6 +86,8 @@ const commands = {
     },
     snooker: "Snooker Scoreboard:\n<a href='https://lucaohost.github.io/snooker' target='_blank'>https://lucaohost.github.io/snooker</a>",
     clear: function() {
+        pauseEveryPlayer();
+        spotifyPlayers.clear();
         terminalOutput.innerHTML = '';
     },
     help: function() {
@@ -108,12 +110,10 @@ const commands = {
         return buildCommandTable(items);
     },
     music: function() {
-        stopMusic('music');
-        return "Random Liked Song:\n" + showRandomMusic();
+        return playRandomLikedSong();
     },
     'next music': function () {
-        stopMusic('next music');
-        return "Random Liked Song:\n" + showRandomMusic();
+        return playRandomLikedSong();
     },
     helpDesc: `Type "help" to see all commands.`,
     exit: function() {
@@ -122,13 +122,11 @@ const commands = {
         window.history.back(); // if the windows didn't close, we back to the previous page
     },
     liked: function() {
-        stopMusic('liked');
-        appendOutput(`My Last 100 Liked Songs:\n`);
-        clearCommand();
-        return '<iframe class="spotifyIframe" hidden style="border-radius:12px" src="https://open.spotify.com/embed/playlist/2kO4SQsSzH2wYMkNB9lVEC?utm_source=generator" width="50%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+        pauseEveryPlayer();
+        return `My Last 100 Liked Songs:\n${spotifyHostMarkup('spotify:playlist:' + LIKED_PLAYLIST_ID)}`;
     },
     rick: function () {
-        stopMusic('rick');
+        pauseEveryPlayer();
         let htmlRick = "<p style='text-align: justify;'>You've been <a class='rickRolledExplanation'>Rickrolled</a>!</p>";
         let rickCounter = localStorage.getItem('rickCounter') || 0;
         rickCounter++;
@@ -163,6 +161,7 @@ const commands = {
 
 document.addEventListener('DOMContentLoaded', function() {
     appendOutput('Welcome to my online terminal!\nType "help" to see all commands.');
+    loadLikedTrackIds().catch(function () {});
     if (!isMobileCli()) inputField.focus();
 });
 
@@ -174,16 +173,18 @@ document.addEventListener('click', function(event) {
 });
 
 
-function processCommand(input) {
+async function processCommand(input) {
     const command = input.trim().toLocaleLowerCase();
     if (commands[command]) {
-        if (typeof commands[command] === 'function') {
-            appendOutput(commands[command]());
-            if (command === 'rick' || command === "music" || command === "liked" || command === "next music") {
+        try {
+            const result = typeof commands[command] === 'function' ? commands[command]() : commands[command];
+            const html = result instanceof Promise ? await result : result;
+            if (html !== undefined) appendOutput(html);
+            if (command === 'rick' || command === 'music' || command === 'liked' || command === 'next music') {
                 showSpotifyIframe();
             }
-        } else {
-            appendOutput(commands[command]);
+        } catch (error) {
+            appendOutput(`Command "${input}" failed.\n${commands.helpDesc}`);
         }
         addEvents(command);
     } else {
@@ -215,14 +216,16 @@ function scrollCliToEnd() {
 
 function appendOutput(text) {
     const newLine = document.createElement('div');
-    if(text !== undefined) {
+    if (text !== undefined) {
         newLine.innerHTML = text;
         terminalOutput.appendChild(newLine);
         newLine.querySelectorAll('img, iframe').forEach((element) => {
             element.addEventListener('load', scrollCliToEnd);
         });
+        activateEmbeddedMedia(newLine);
     }
     scrollCliToEnd();
+    return text !== undefined ? newLine : null;
 }
 
 function onEnter(event) {
@@ -394,59 +397,359 @@ function buildCommandTable(items, cols = 2) {
     return table;
 }
 
-// const music declared in songs.js and imported in index.html
+var LIKED_PLAYLIST_ID = '2kO4SQsSzH2wYMkNB9lVEC';
+var PLAYLIST_QUERY_HASH = '243c0ba2736f16da721e3a227004bbcdb8df6c846f198bd478172e00aa1faf42';
+var HASH_STORAGE_KEY = 'spotifyPlaylistQueryHash';
+var spotifyPlayers = new Set();
+var spotifyApi = null;
+var pendingSpotifyHosts = [];
+var pausingPlayers = false;
+var likedTrackIds = null;
+var likedTrackIdsPromise = null;
 
-function showRandomMusic(width = 560, height = 315) {
+terminalOutput.addEventListener('click', function (event) {
+    const button = event.target.closest('.nextMusic');
+    if (!button) return;
+    appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
+    processCommand('next music');
     clearCommand();
-    let playedPositions = JSON.parse(localStorage.getItem('playedPositions')) || [];
-    if (Array.isArray(playedPositions)) {
-        playedPositions = {};
-    }
+});
 
-    let randomIndex;
-    let tries = 0;
-    do {
-        randomIndex = Math.floor(Math.random() * likedMusics.length);
-        tries++;
-    } while (tries < 10 && playedPositions[randomIndex] === true);
-    if (tries === 10) {
-        playedPositions = [];
-    }
-    
-    playedPositions[randomIndex] = true;
-    localStorage.setItem('playedPositions', JSON.stringify(playedPositions));
+window.onSpotifyIframeApiReady = function (api) {
+    spotifyApi = api;
+    pendingSpotifyHosts.splice(0).forEach(mountSpotifyHost);
+};
 
-    const selectedMusic = likedMusics[randomIndex];
+setTimeout(function () {
+    if (spotifyApi) return;
+    pendingSpotifyHosts.splice(0).forEach(mountPlainSpotify);
+}, 5000);
 
-    const spotifyIframe = document.createElement('iframe');
-    spotifyIframe.style.borderRadius = '12px';
-    spotifyIframe.classList.add('spotifyIframe');
-    spotifyIframe.src = `https://open.spotify.com/embed/track/${selectedMusic.musicId}?utm_source=generator&theme=0`;
-    spotifyIframe.hidden = true;
-    spotifyIframe.height = '152';
-    const nextButton = `<p><button class='nextMusic' style='margin-top: 0px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Next</button></p>`;
-    return spotifyIframe.outerHTML + nextButton;
+function spotifyHostMarkup(uri) {
+    return `<div class="spotifyHost" data-spotify-uri="${uri}"><div class="spotifyMount"></div></div>`;
 }
 
-function stopMusic(command) {
-    const alreadyHasPlayer = terminalOutput.querySelector('iframe');
-    if (alreadyHasPlayer) {
-        processCommand('clear');
-        appendOutput(`<span class="path">lucaohost@bash:~$</span> ${command}`);
+function nextMusicButton() {
+    return `<p><button type="button" class="nextMusic" style="margin-top: 0px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;">Next</button></p>`;
+}
+
+async function playRandomLikedSong() {
+    pauseEveryPlayer();
+    const slot = document.createElement('div');
+    slot.textContent = 'Random Liked Song:\n';
+    terminalOutput.appendChild(slot);
+    scrollCliToEnd();
+    try {
+        const trackId = await pickRandomLikedTrackId();
+        if (!slot.isConnected) return;
+        if (!trackId) {
+            slot.textContent += "Couldn't load a liked song right now.";
+            scrollCliToEnd();
+            return;
+        }
+        const uri = `spotify:track:${trackId}`;
+        slot.insertAdjacentHTML('beforeend', spotifyHostMarkup(uri) + nextMusicButton());
+        activateEmbeddedMedia(slot);
+        pauseEveryPlayer();
+        scrollCliToEnd();
+    } catch (error) {
+        if (!slot.isConnected || slot.querySelector('.spotifyHost')) return;
+        slot.textContent += "Couldn't load a liked song right now.";
+        scrollCliToEnd();
     }
-    document.querySelectorAll('audio').forEach(audio => audio.pause());
+}
+
+function pauseEveryPlayer() {
+    pauseOthers({});
+}
+
+function latestMediaElement() {
+    const nodes = terminalOutput.querySelectorAll('.spotifyHost, audio');
+    return nodes.length ? nodes[nodes.length - 1] : null;
+}
+
+function pauseOthers(active) {
+    if (pausingPlayers) return;
+    pausingPlayers = true;
+    try {
+        spotifyPlayers.forEach(function (controller) {
+            if (controller === active.controller) return;
+            try { controller.pause(); } catch (error) {}
+            if (controller._host) controller._host.dataset.playback = 'paused';
+        });
+        terminalOutput.querySelectorAll('audio').forEach(function (audio) {
+            if (audio !== active.audio) audio.pause();
+        });
+        terminalOutput.querySelectorAll('.spotifyHost').forEach(function (host) {
+            if (active.controller && active.controller._host === host) return;
+            if (host.dataset.mounted !== 'plain') return;
+            const iframe = host.querySelector('iframe');
+            if (iframe) reloadSpotifyIframe(iframe);
+            host.dataset.playback = 'paused';
+        });
+    } finally {
+        pausingPlayers = false;
+    }
+}
+
+function reloadSpotifyIframe(iframe) {
+    const src = iframe.getAttribute('src');
+    if (!src || src === 'about:blank') return;
+    iframe.src = 'about:blank';
+    setTimeout(function () {
+        if (iframe.isConnected) iframe.src = src;
+    }, 0);
+}
+
+function activateEmbeddedMedia(root) {
+    if (!root) return;
+    root.querySelectorAll('audio').forEach(function (audio) {
+        if (audio.dataset.bound === '1') return;
+        audio.dataset.bound = '1';
+        audio.addEventListener('play', function () {
+            pauseOthers({ audio: audio });
+        });
+    });
+    root.querySelectorAll('.spotifyHost').forEach(mountSpotifyHost);
+}
+
+function mountSpotifyHost(host) {
+    if (!host || host.dataset.mounted) return;
+    if (!spotifyApi) {
+        if (pendingSpotifyHosts.indexOf(host) === -1) pendingSpotifyHosts.push(host);
+        return;
+    }
+    const mount = host.querySelector('.spotifyMount');
+    if (!mount) return;
+    try {
+        spotifyApi.createController(mount, {
+            width: '100%',
+            height: 152,
+            uri: host.dataset.spotifyUri,
+            theme: 'dark'
+        }, function (controller) {
+            controller._host = host;
+            host._controller = controller;
+            spotifyPlayers.add(controller);
+            if (latestMediaElement() !== host) {
+                try { controller.pause(); } catch (error) {}
+                host.dataset.playback = 'paused';
+            }
+            controller.addListener('playback_update', function (event) {
+                const isPaused = event && event.data ? event.data.isPaused : undefined;
+                if (isPaused === true) host.dataset.playback = 'paused';
+                if (isPaused === false) {
+                    host.dataset.playback = 'playing';
+                    pauseOthers({ controller: controller });
+                }
+            });
+            controller.addListener('playback_started', function () {
+                host.dataset.playback = 'playing';
+                pauseOthers({ controller: controller });
+            });
+            styleSpotifyIframe(host);
+            scrollCliToEnd();
+        });
+        host.dataset.mounted = 'api';
+    } catch (error) {
+        if (host.querySelector('.spotifyMount')) mountPlainSpotify(host);
+    }
+}
+
+function styleSpotifyIframe(host) {
+    const iframe = host.querySelector('iframe');
+    if (!iframe) return;
+    iframe.classList.add('spotifyIframe');
+    iframe.style.width = '100%';
+    iframe.style.maxWidth = '100%';
+    iframe.style.borderRadius = '12px';
+    iframe.addEventListener('load', scrollCliToEnd);
+}
+
+function embedUrlFromUri(uri) {
+    const parts = uri.split(':');
+    return `https://open.spotify.com/embed/${parts[1]}/${parts[2]}?utm_source=generator&theme=0`;
+}
+
+function mountPlainSpotify(host) {
+    if (!host || host.dataset.mounted) return;
+    const mount = host.querySelector('.spotifyMount');
+    if (!mount) return;
+    const iframe = document.createElement('iframe');
+    iframe.className = 'spotifyIframe';
+    iframe.src = embedUrlFromUri(host.dataset.spotifyUri);
+    iframe.height = '152';
+    iframe.style.width = '100%';
+    iframe.style.maxWidth = '100%';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '12px';
+    iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
+    iframe.addEventListener('load', scrollCliToEnd);
+    mount.replaceWith(iframe);
+    host.dataset.mounted = 'plain';
+    scrollCliToEnd();
 }
 
 function showSpotifyIframe() {
-    // Edit width of spotify iframe and show
-    // Setting in the html didnt work
-    document.querySelectorAll(".spotifyIframe").forEach(iframe => {
-        iframe.style.width = "100%";
-        iframe.style.maxWidth = "100%";
+    document.querySelectorAll('.spotifyHost iframe').forEach(function (iframe) {
+        iframe.style.width = '100%';
+        iframe.style.maxWidth = '100%';
         iframe.hidden = false;
-        iframe.addEventListener('load', scrollCliToEnd);
+        iframe.style.borderRadius = '12px';
     });
     scrollCliToEnd();
+}
+
+function loadLikedTrackIds() {
+    if (likedTrackIds) return Promise.resolve(likedTrackIds);
+    if (!likedTrackIdsPromise) {
+        likedTrackIdsPromise = fetchLikedTrackIds().then(function (ids) {
+            likedTrackIds = ids;
+            return ids;
+        }).catch(function (error) {
+            likedTrackIdsPromise = null;
+            const fallback = fallbackLikedTrackIds();
+            if (fallback.length) return fallback;
+            throw error;
+        });
+    }
+    return likedTrackIdsPromise;
+}
+
+function fallbackLikedTrackIds() {
+    if (typeof likedMusics === 'undefined' || !Array.isArray(likedMusics)) return [];
+    return likedMusics.map(function (song) { return song.musicId; }).filter(Boolean);
+}
+
+async function fetchLikedTrackIds() {
+    const hashes = [PLAYLIST_QUERY_HASH];
+    const stored = readStoredHash();
+    if (stored && hashes.indexOf(stored) === -1) hashes.push(stored);
+    let lastError = null;
+    for (let i = 0; i < hashes.length; i++) {
+        try {
+            return await fetchTracksForHash(hashes[i]);
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    try {
+        const discovered = await discoverPlaylistQueryHash();
+        if (discovered && hashes.indexOf(discovered) === -1) {
+            localStorage.setItem(HASH_STORAGE_KEY, JSON.stringify({ hash: discovered, savedAt: Date.now() }));
+            return await fetchTracksForHash(discovered);
+        }
+    } catch (error) {
+        lastError = error;
+    }
+    throw lastError || new Error('playlist');
+}
+
+function readStoredHash() {
+    try {
+        const raw = JSON.parse(localStorage.getItem(HASH_STORAGE_KEY));
+        if (!raw || !/^[a-f0-9]{64}$/.test(raw.hash)) return null;
+        if (Date.now() - raw.savedAt > 12 * 60 * 60 * 1000) return null;
+        return raw.hash;
+    } catch (error) {
+        return null;
+    }
+}
+
+async function discoverPlaylistQueryHash() {
+    const home = await fetch('https://open.spotify.com/');
+    if (!home.ok) throw new Error('spotify home unavailable');
+    const html = await home.text();
+    const bundleUrl = html.match(/https:\/\/open\.spotifycdn\.com\/cdn\/build\/web-player\/web-player\.[a-f0-9]+\.js/);
+    if (!bundleUrl) throw new Error('web player bundle missing');
+    const jsResponse = await fetch(bundleUrl[0]);
+    if (!jsResponse.ok) throw new Error('web player bundle unavailable');
+    const js = await jsResponse.text();
+    const hash = js.match(/"fetchPlaylist","query","([a-f0-9]{64})"/);
+    if (!hash) throw new Error('playlist query missing');
+    return hash[1];
+}
+
+async function fetchTracksForHash(hash) {
+    const tokenResponse = await fetch('https://open.spotify.com/embed/api/token');
+    if (!tokenResponse.ok) throw new Error('embed token unavailable');
+    const tokenPayload = await tokenResponse.json();
+    if (!tokenPayload.accessToken) throw new Error('embed token missing');
+    const ids = [];
+    const limit = 100;
+    let offset = 0;
+    let total = Infinity;
+    while (offset < total && offset < 2000) {
+        const page = await fetchPlaylistPage(tokenPayload.accessToken, hash, offset, limit);
+        total = page.total;
+        page.ids.forEach(function (id) {
+            if (ids.indexOf(id) === -1) ids.push(id);
+        });
+        if (!page.ids.length) break;
+        offset += limit;
+    }
+    if (!ids.length) throw new Error('playlist empty');
+    return ids;
+}
+
+async function fetchPlaylistPage(token, hash, offset, limit) {
+    const variables = {
+        uri: `spotify:playlist:${LIKED_PLAYLIST_ID}`,
+        offset: offset,
+        limit: limit,
+        enableWatchFeedEntrypoint: false
+    };
+    const extensions = { persistedQuery: { version: 1, sha256Hash: hash } };
+    const params = new URLSearchParams({
+        operationName: 'fetchPlaylist',
+        variables: JSON.stringify(variables),
+        extensions: JSON.stringify(extensions)
+    });
+    const response = await fetch(`https://api-partner.spotify.com/pathfinder/v1/query?${params}`, {
+        headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!response.ok) throw new Error('playlist request failed');
+    const payload = await response.json();
+    if (payload.errors && payload.errors.length) {
+        throw new Error(payload.errors[0].message || 'playlist query failed');
+    }
+    const content = payload.data && payload.data.playlistV2 && payload.data.playlistV2.content;
+    if (!content) throw new Error('playlist content missing');
+    const ids = [];
+    (content.items || []).forEach(function (item) {
+        const data = item.itemV2 && item.itemV2.data;
+        const uri = data && data.uri ? data.uri : '';
+        if (uri.indexOf('spotify:track:') !== 0) return;
+        if (data.playability && data.playability.playable === false) return;
+        ids.push(uri.split(':').pop());
+    });
+    return { ids: ids, total: content.totalCount || ids.length };
+}
+
+async function pickRandomLikedTrackId() {
+    const ids = await loadLikedTrackIds();
+    if (!ids.length) return null;
+    let played = {};
+    try {
+        const stored = JSON.parse(localStorage.getItem('playedPositions'));
+        if (stored && !Array.isArray(stored)) played = stored;
+    } catch (error) {
+        played = {};
+    }
+    const remaining = ids.filter(function (id) { return !played[id]; });
+    const pool = remaining.length ? remaining : ids;
+    const nextPlayed = remaining.length ? played : {};
+    const trackId = pool[Math.floor(Math.random() * pool.length)];
+    nextPlayed[trackId] = true;
+    const pruned = {};
+    ids.forEach(function (id) {
+        if (nextPlayed[id]) pruned[id] = true;
+    });
+    localStorage.setItem('playedPositions', JSON.stringify(pruned));
+    return trackId;
 }
 
 function buildTgifMsg(days, hours, minutes, seconds) {
@@ -527,15 +830,6 @@ function addEvents(command) {
             element.addEventListener('click', function() {
                 appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
                 processCommand(`localhost?`);
-                clearCommand();
-            });
-        });
-    }
-    if (command === "music" || command === 'next music') {
-        document.querySelectorAll(`.nextMusic`).forEach(element => {
-            element.addEventListener('click', function() {
-                appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
-                processCommand('next music');
                 clearCommand();
             });
         });

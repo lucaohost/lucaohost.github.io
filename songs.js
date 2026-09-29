@@ -1,11 +1,6 @@
 /**
- * How to get all liked musics from Spotify
- * 1. Go to Spotify PC App
- * 2. Go to the playlist
- * 3. Click in some music, in a neutral area
- * 4. Press Ctrl + A
- * 5. Press Ctrl + C
- * 6. Edit using multi-cursor on VSCode
+ * Offline fallback for the music command.
+ * Track ids normally come from the public Liked playlist at runtime.
  */
 const likedMusics = [
     { musicId: "3jJZVeExYzVYiV6Y9Fl3DX"},
