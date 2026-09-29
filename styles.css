@@ -24,6 +24,7 @@ body {
     padding: 20px;
     overflow-y: auto;
     overflow-x: auto;
+    overflow-anchor: none;
 }
 
 .output {
@@ -152,6 +153,45 @@ iframe {
     max-width: 290px;
 }
 
+.likedList {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+}
+
+.likedTrack {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1.35;
+    text-align: left;
+    cursor: pointer;
+}
+
+.likedTrack.is-current {
+    color: #4CAF50;
+}
+
+.changelogVersion {
+    color: #4CAF50;
+    margin-top: 14px;
+}
+
+.changelogSection {
+    margin-top: 6px;
+    color: #b7d7b8;
+}
+
+.changelogItem {
+    padding-left: 12px;
+}
+
 .input-mirror,
 .mobile-caret,
 .mobile-keyboard {
@@ -258,11 +298,13 @@ iframe {
         -webkit-tap-highlight-color: transparent;
         -webkit-appearance: none;
         appearance: none;
+        transition: background-color 80ms linear, color 80ms linear;
     }
 
     .mobile-keyboard button.is-pressed,
     .mobile-keyboard button:active {
-        background-color: #4a4a4a;
+        background-color: #3e6844;
+        color: #f3fff4;
     }
 
     .mobile-keyboard button svg {

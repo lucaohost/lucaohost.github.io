@@ -11,6 +11,12 @@
     "seasons": {
       ".read": true,
       ".write": true,
+      "cli": {
+        "playedMusic": {
+          ".read": true,
+          ".write": true
+        }
+      },
       "$season": {
         ".read": true,
         ".write": true,

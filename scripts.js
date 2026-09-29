@@ -108,7 +108,10 @@ const commands = {
             'social', "Social networks.",
             'share', "Share this site.",
             'music', "Random Liked Song.",
-            'liked', "Last 100 Liked Songs.",
+            'music song', "Play a Spotify song by name.",
+            'list music', "Songs already randomized.",
+            'liked', "100 newest liked songs.",
+            'changelog', "Updates and dates.",
             'rick', "Type and find out.",
             'tgif', "Thank God It's Friday!",
             'kali', "Kali Linux photo.",
@@ -132,8 +135,16 @@ const commands = {
         window.history.back(); // if the windows didn't close, we back to the previous page
     },
     liked: function() {
-        pauseEveryPlayer();
-        return `My Last 100 Liked Songs:\n${spotifyHostMarkup('spotify:playlist:' + LIKED_PLAYLIST_ID)}`;
+        return renderLikedSongs();
+    },
+    changelog: function () {
+        return renderChangelog();
+    },
+    'list music': function () {
+        return renderPlayedMusic();
+    },
+    'clear music': function () {
+        return clearPlayedMusic();
     },
     rick: function () {
         pauseEveryPlayer();
@@ -144,7 +155,7 @@ const commands = {
         if (rickCounter > 1) {
             htmlRick += `<p style='text-align: justify;'>A true fan! You've been Rickrolling ${rickCounter} times.</p>`;
         }
-        htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' style='max-width: 100%; height: auto; margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
+        htmlRick += "<img src='images/rick-roll-rick-rolled.gif' alt='Rick Roll' style='display: block; width: 100%; max-width: 640px; aspect-ratio: 1 / 1; height: auto; margin-top: 10px; margin-bottom: 10px; border-radius:12px;'><br>";
         htmlRick += '<audio src="images/rick-song.mp3" autoplay controls style="width: 100%; max-width: 290px; height: 25px; margin-top: 10px; margin-bottom: 10px; border-radius: 8px;" preload="none"></audio>';
         return htmlRick;
     },
@@ -171,7 +182,7 @@ const commands = {
 
 document.addEventListener('DOMContentLoaded', function() {
     appendOutput('Welcome to my online terminal!\nType "help" to see all commands.');
-    loadLikedTrackIds().catch(function () {});
+    loadLikedCatalog().catch(function () {});
     if (!isMobileCli()) inputField.focus();
 });
 
@@ -185,20 +196,24 @@ document.addEventListener('click', function(event) {
 
 async function processCommand(input) {
     const command = input.trim().toLocaleLowerCase();
-    if (commands[command]) {
+    const namedMusic = command.startsWith('music ') ? input.trim().replace(/^music\s+/i, '').trim() : '';
+    const runner = commands[command] ? command : (namedMusic ? 'music-search' : '');
+    if (runner) {
         try {
-            const result = typeof commands[command] === 'function' ? commands[command]() : commands[command];
+            const result = runner === 'music-search'
+                ? playNamedSong(namedMusic)
+                : (typeof commands[command] === 'function' ? commands[command]() : commands[command]);
             const html = result instanceof Promise ? await result : result;
             if (html !== undefined) appendOutput(html);
-            if (command === 'rick' || command === 'music' || command === 'liked' || command === 'next music') {
+            if (runner === 'music-search' || command === 'rick' || command === 'music' || command === 'liked' || command === 'next music') {
                 showSpotifyIframe();
             }
         } catch (error) {
-            appendOutput(`Command "${input}" failed.\n${commands.helpDesc}`);
+            appendOutput(`Command "${escapeHtml(input)}" failed.\n${commands.helpDesc}`);
         }
-        addEvents(command);
+        addEvents(runner === 'music-search' ? 'music' : command);
     } else {
-        appendOutput(`Command "${input}" not found.\n${commands["helpDesc"]}`);
+        appendOutput(`Command "${escapeHtml(input)}" not found.\n${commands.helpDesc}`);
     }
 }
 
@@ -216,12 +231,38 @@ function focusCliInput() {
     syncMobileInputWidth();
 }
 
-function scrollCliToEnd() {
+function alignCli(mode, node) {
     const apply = () => {
-        cli.scrollTop = isMobileCli() ? cli.scrollHeight : terminalOutput.scrollHeight;
+        if (mode === 'start' && node && node.isConnected) {
+            cli.scrollTop += node.getBoundingClientRect().top - cli.getBoundingClientRect().top;
+            return;
+        }
+        cli.scrollTop = cli.scrollHeight;
     };
     apply();
     requestAnimationFrame(apply);
+}
+
+function scrollCliToEnd() {
+    const latest = terminalOutput.lastElementChild;
+    const holdStart = latest && latest.querySelector('.likedBlock, .changelogText, .musicList');
+    alignCli(holdStart ? 'start' : 'end', latest);
+}
+
+function followCliScroll(node) {
+    const apply = () => {
+        if (node && node.isConnected && terminalOutput.lastElementChild && node !== terminalOutput.lastElementChild) return;
+        scrollCliToEnd();
+    };
+    apply();
+    if (!node || node._scrollWatch || typeof ResizeObserver === 'undefined') return;
+    node._scrollWatch = true;
+    const observer = new ResizeObserver(apply);
+    observer.observe(node);
+    setTimeout(() => {
+        observer.disconnect();
+        node._scrollWatch = false;
+    }, 3000);
 }
 
 function appendOutput(text) {
@@ -229,12 +270,23 @@ function appendOutput(text) {
     if (text !== undefined) {
         newLine.innerHTML = text;
         terminalOutput.appendChild(newLine);
-        newLine.querySelectorAll('img, iframe').forEach((element) => {
-            element.addEventListener('load', scrollCliToEnd);
+        newLine.querySelectorAll('img, iframe, audio').forEach((element) => {
+            element.addEventListener('load', () => followCliScroll(newLine));
+            if (element.tagName === 'AUDIO') element.addEventListener('play', () => followCliScroll(newLine));
+            if (element.tagName === 'IMG' && element.complete) followCliScroll(newLine);
+            if (element.tagName === 'IMG' && typeof element.decode === 'function') {
+                element.decode().then(() => followCliScroll(newLine)).catch(function () {});
+            }
         });
         activateEmbeddedMedia(newLine);
+        followCliScroll(newLine);
+        if (newLine.querySelector('img, audio')) {
+            setTimeout(() => followCliScroll(newLine), 400);
+            setTimeout(() => followCliScroll(newLine), 1200);
+        }
+    } else {
+        scrollCliToEnd();
     }
-    scrollCliToEnd();
     return text !== undefined ? newLine : null;
 }
 
@@ -397,10 +449,19 @@ function bindMobileKeyboard() {
         repeatTimer = 0;
     }
 
+    let releaseTimer = 0;
+
     function finishPress() {
-        if (pressedButton) pressedButton.classList.remove('is-pressed');
-        pressedButton = null;
+        const button = pressedButton;
         stopRepeat();
+        clearTimeout(releaseTimer);
+        if (!button) return;
+        releaseTimer = setTimeout(() => {
+            if (pressedButton === button) {
+                button.classList.remove('is-pressed');
+                pressedButton = null;
+            }
+        }, 180);
     }
 
     function startBackspaceRepeat() {
@@ -465,6 +526,7 @@ function bindMobileKeyboard() {
     }
 
     function pressKey(keyButton, allowRepeat) {
+        clearTimeout(releaseTimer);
         if (pressedButton && pressedButton !== keyButton) pressedButton.classList.remove('is-pressed');
         pressedButton = keyButton;
         keyButton.classList.add('is-pressed');
@@ -589,16 +651,24 @@ function buildCommandTable(items, cols = 2) {
 
 var LIKED_PLAYLIST_ID = '2kO4SQsSzH2wYMkNB9lVEC';
 var PLAYLIST_QUERY_HASH = '243c0ba2736f16da721e3a227004bbcdb8df6c846f198bd478172e00aa1faf42';
+var SEARCH_QUERY_HASH = 'b50ebd72524415b132ddaca04158fd7aca529da28be322c9924643c0633df5bd';
 var HASH_STORAGE_KEY = 'spotifyPlaylistQueryHash';
+var PLAYED_MUSIC_URL = 'https://snooker-scoreboard2-default-rtdb.firebaseio.com/seasons/cli/playedMusic';
 var spotifyPlayers = new Set();
 var spotifyApi = null;
 var spotifyApiGaveUp = false;
 var pendingSpotifyHosts = [];
 var pausingPlayers = false;
-var likedTrackIds = null;
-var likedTrackIdsPromise = null;
+var likedCatalog = null;
+var likedCatalogPromise = null;
+var playedMusicState = null;
 
 terminalOutput.addEventListener('click', function (event) {
+    const likedButton = event.target.closest('.likedTrack');
+    if (likedButton) {
+        playLikedSelection(likedButton);
+        return;
+    }
     const button = event.target.closest('.nextMusic');
     if (!button) return;
     appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
@@ -846,15 +916,19 @@ function mountSpotifyHost(host) {
     const mount = host.querySelector('.spotifyMount');
     if (!mount) return;
     try {
+        const requestedUri = host.dataset.spotifyUri;
         spotifyApi.createController(mount, {
             width: '100%',
             height: 152,
-            uri: host.dataset.spotifyUri,
+            uri: requestedUri,
             theme: 'dark'
         }, function (controller) {
             controller._host = host;
             host._controller = controller;
             spotifyPlayers.add(controller);
+            if (host.dataset.spotifyUri && host.dataset.spotifyUri !== requestedUri && controller.loadUri) {
+                try { controller.loadUri(host.dataset.spotifyUri); } catch (error) {}
+            }
             if (latestMediaElement() !== host) {
                 silenceController(controller);
             } else if (host.dataset.autoplay === '1') {
@@ -932,28 +1006,49 @@ function showSpotifyIframe() {
     scrollCliToEnd();
 }
 
-function loadLikedTrackIds() {
-    if (likedTrackIds) return Promise.resolve(likedTrackIds);
-    if (!likedTrackIdsPromise) {
-        likedTrackIdsPromise = fetchLikedTrackIds().then(function (ids) {
-            likedTrackIds = ids;
-            return ids;
+function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+    });
+}
+
+function trackLabel(track) {
+    if (!track) return '';
+    if (track.name && track.artist) return track.name + ' — ' + track.artist;
+    return track.name || track.artist || track.id || '';
+}
+
+function todayStamp() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return now.getFullYear() + '-' + month + '-' + day;
+}
+
+function loadLikedCatalog() {
+    if (likedCatalog) return Promise.resolve(likedCatalog);
+    if (!likedCatalogPromise) {
+        likedCatalogPromise = fetchLikedTracks().then(function (tracks) {
+            likedCatalog = tracks;
+            return tracks;
         }).catch(function (error) {
-            likedTrackIdsPromise = null;
-            const fallback = fallbackLikedTrackIds();
+            likedCatalogPromise = null;
+            const fallback = fallbackLikedTracks();
             if (fallback.length) return fallback;
             throw error;
         });
     }
-    return likedTrackIdsPromise;
+    return likedCatalogPromise;
 }
 
-function fallbackLikedTrackIds() {
+function fallbackLikedTracks() {
     if (typeof likedMusics === 'undefined' || !Array.isArray(likedMusics)) return [];
-    return likedMusics.map(function (song) { return song.musicId; }).filter(Boolean);
+    return likedMusics.map(function (song) {
+        return { id: song.musicId, name: '', artist: '', addedAt: '' };
+    }).filter(function (track) { return track.id; });
 }
 
-async function fetchLikedTrackIds() {
+async function fetchLikedTracks() {
     const hashes = [PLAYLIST_QUERY_HASH];
     const stored = readStoredHash();
     if (stored && hashes.indexOf(stored) === -1) hashes.push(stored);
@@ -1003,25 +1098,33 @@ async function discoverPlaylistQueryHash() {
 }
 
 async function fetchTracksForHash(hash) {
-    const tokenResponse = await fetch('https://open.spotify.com/embed/api/token');
-    if (!tokenResponse.ok) throw new Error('embed token unavailable');
-    const tokenPayload = await tokenResponse.json();
-    if (!tokenPayload.accessToken) throw new Error('embed token missing');
-    const ids = [];
+    const token = await fetchSpotifyToken();
+    const tracks = [];
+    const seen = new Set();
     const limit = 100;
     let offset = 0;
     let total = Infinity;
     while (offset < total && offset < 2000) {
-        const page = await fetchPlaylistPage(tokenPayload.accessToken, hash, offset, limit);
+        const page = await fetchPlaylistPage(token, hash, offset, limit);
         total = page.total;
-        page.ids.forEach(function (id) {
-            if (ids.indexOf(id) === -1) ids.push(id);
+        page.tracks.forEach(function (track) {
+            if (seen.has(track.id)) return;
+            seen.add(track.id);
+            tracks.push(track);
         });
-        if (!page.ids.length) break;
+        if (!page.tracks.length) break;
         offset += limit;
     }
-    if (!ids.length) throw new Error('playlist empty');
-    return ids;
+    if (!tracks.length) throw new Error('playlist empty');
+    return tracks;
+}
+
+async function fetchSpotifyToken() {
+    const tokenResponse = await fetch('https://open.spotify.com/embed/api/token');
+    if (!tokenResponse.ok) throw new Error('embed token unavailable');
+    const tokenPayload = await tokenResponse.json();
+    if (!tokenPayload.accessToken) throw new Error('embed token missing');
+    return tokenPayload.accessToken;
 }
 
 async function fetchPlaylistPage(token, hash, offset, limit) {
@@ -1050,38 +1153,288 @@ async function fetchPlaylistPage(token, hash, offset, limit) {
     }
     const content = payload.data && payload.data.playlistV2 && payload.data.playlistV2.content;
     if (!content) throw new Error('playlist content missing');
-    const ids = [];
+    const tracks = [];
     (content.items || []).forEach(function (item) {
         const data = item.itemV2 && item.itemV2.data;
         const uri = data && data.uri ? data.uri : '';
         if (uri.indexOf('spotify:track:') !== 0) return;
         if (data.playability && data.playability.playable === false) return;
-        ids.push(uri.split(':').pop());
+        const artists = data.artists && data.artists.items ? data.artists.items : [];
+        tracks.push({
+            id: uri.split(':').pop(),
+            name: data.name || '',
+            artist: artists.map(function (artist) {
+                return artist.profile && artist.profile.name ? artist.profile.name : '';
+            }).filter(Boolean).join(', '),
+            addedAt: item.addedAt && item.addedAt.isoString ? item.addedAt.isoString : ''
+        });
     });
-    return { ids: ids, total: content.totalCount || ids.length };
+    return { tracks: tracks, total: content.totalCount || tracks.length };
 }
 
 async function pickRandomLikedTrackId() {
-    const ids = await loadLikedTrackIds();
+    const catalog = await loadLikedCatalog();
+    const ids = catalog.map(function (track) { return track.id; }).filter(Boolean);
     if (!ids.length) return null;
-    let played = {};
+    const state = await readPlayedMusic(false);
+    const generation = state.generation || 1;
+    let remaining = ids.filter(function (id) { return state.cycle[id] !== generation; });
+    if (!remaining.length) {
+        state.generation = generation + 1;
+        fetch(PLAYED_MUSIC_URL + '/generation.json', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: String(state.generation)
+        }).catch(function () {});
+        remaining = ids;
+    }
+    const trackId = remaining[Math.floor(Math.random() * remaining.length)];
+    const track = catalog.find(function (item) { return item.id === trackId; }) || { id: trackId, name: '', artist: '' };
+    const previous = state.tracks[trackId] || {};
+    const record = {
+        name: track.name || previous.name || '',
+        artist: track.artist || previous.artist || '',
+        playedOn: todayStamp(),
+        seq: Date.now()
+    };
+    state.cycle[trackId] = state.generation || 1;
+    state.tracks[trackId] = record;
+    writeLocalCycle(state);
+    const headers = { 'Content-Type': 'application/json' };
+    fetch(PLAYED_MUSIC_URL + '/tracks/' + trackId + '.json', {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify(record)
+    }).catch(function () {});
+    fetch(PLAYED_MUSIC_URL + '/cycle/' + trackId + '.json', {
+        method: 'PUT',
+        headers: headers,
+        body: String(state.generation || 1)
+    }).catch(function () {});
+    return trackId;
+}
+
+function readLocalCycle() {
     try {
         const stored = JSON.parse(localStorage.getItem('playedPositions'));
-        if (stored && !Array.isArray(stored)) played = stored;
-    } catch (error) {
-        played = {};
-    }
-    const remaining = ids.filter(function (id) { return !played[id]; });
-    const pool = remaining.length ? remaining : ids;
-    const nextPlayed = remaining.length ? played : {};
-    const trackId = pool[Math.floor(Math.random() * pool.length)];
-    nextPlayed[trackId] = true;
+        if (stored && !Array.isArray(stored)) return stored;
+    } catch (error) {}
+    return {};
+}
+
+function writeLocalCycle(state) {
     const pruned = {};
-    ids.forEach(function (id) {
-        if (nextPlayed[id]) pruned[id] = true;
+    const generation = state.generation || 1;
+    Object.keys(state.cycle || {}).forEach(function (id) {
+        if (state.cycle[id] === generation) pruned[id] = true;
     });
     localStorage.setItem('playedPositions', JSON.stringify(pruned));
-    return trackId;
+}
+
+function emptyPlayedState() {
+    return { tracks: {}, cycle: {}, generation: 1 };
+}
+
+async function readPlayedMusic(force) {
+    if (playedMusicState && !force) return playedMusicState;
+    const state = emptyPlayedState();
+    try {
+        const response = await fetch(PLAYED_MUSIC_URL + '.json');
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.tracks && typeof data.tracks === 'object') state.tracks = data.tracks;
+            if (data && data.cycle && typeof data.cycle === 'object') state.cycle = data.cycle;
+            if (data && data.generation) state.generation = data.generation;
+        }
+    } catch (error) {}
+    const local = readLocalCycle();
+    const missing = {};
+    Object.keys(local).forEach(function (id) {
+        if (!state.tracks[id]) {
+            state.tracks[id] = { name: '', artist: '', playedOn: '', seq: 0 };
+            missing[id] = true;
+        }
+        if (state.cycle[id] !== state.generation) {
+            state.cycle[id] = state.generation;
+            missing[id] = true;
+        }
+    });
+    playedMusicState = state;
+    const headers = { 'Content-Type': 'application/json' };
+    Object.keys(missing).forEach(function (id) {
+        fetch(PLAYED_MUSIC_URL + '/tracks/' + id + '.json', {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(state.tracks[id])
+        }).catch(function () {});
+        fetch(PLAYED_MUSIC_URL + '/cycle/' + id + '.json', {
+            method: 'PUT',
+            headers: headers,
+            body: String(state.generation)
+        }).catch(function () {});
+    });
+    return state;
+}
+
+async function renderPlayedMusic() {
+    const state = await readPlayedMusic(true);
+    let total = 0;
+    try {
+        const catalog = await loadLikedCatalog();
+        total = catalog.length;
+        catalog.forEach(function (track) {
+            const saved = state.tracks[track.id];
+            if (!saved || saved.name || !track.name) return;
+            saved.name = track.name;
+            saved.artist = track.artist || saved.artist || '';
+            fetch(PLAYED_MUSIC_URL + '/tracks/' + track.id + '.json', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: saved.name, artist: saved.artist })
+            }).catch(function () {});
+        });
+    } catch (error) {}
+    const rows = Object.keys(state.tracks).map(function (id) {
+        return Object.assign({ id: id }, state.tracks[id]);
+    }).sort(function (a, b) {
+        return (b.seq || 0) - (a.seq || 0) || trackLabel(a).localeCompare(trackLabel(b));
+    });
+    const totalLabel = total ? String(total) : '?';
+    let text = 'Randomized songs (' + rows.length + '/' + totalLabel + '):';
+    if (!rows.length) text += '\nNone yet.';
+    rows.forEach(function (row) {
+        text += '\n' + trackLabel(row);
+    });
+    return '<div class="musicList">' + escapeHtml(text) + '</div>';
+}
+
+async function clearPlayedMusic() {
+    const response = await fetch(PLAYED_MUSIC_URL + '.json', { method: 'DELETE' });
+    if (!response.ok) return "Couldn't clear the randomized songs.";
+    playedMusicState = emptyPlayedState();
+    localStorage.removeItem('playedPositions');
+    return 'Randomized songs cleared.';
+}
+
+async function renderLikedSongs() {
+    pauseEveryPlayer();
+    const catalog = await loadLikedCatalog();
+    const latest = catalog.filter(function (track) { return track.addedAt; })
+        .sort(function (a, b) { return b.addedAt.localeCompare(a.addedAt); })
+        .slice(0, 100);
+    if (!latest.length) return "Couldn't load the current liked songs.";
+    const items = latest.map(function (track, index) {
+        const current = index === 0 ? ' is-current' : '';
+        return '<li><button type="button" class="likedTrack' + current + '" data-track-id="' + escapeHtml(track.id) + '">' + escapeHtml((index + 1) + '. ' + trackLabel(track)) + '</button></li>';
+    }).join('');
+    return '<div class="likedBlock">My Last 100 Liked Songs:\n' + spotifyHostMarkup('spotify:track:' + latest[0].id) + '<ol class="likedList">' + items + '</ol></div>';
+}
+
+function playLikedSelection(button) {
+    const block = button.closest('.likedBlock');
+    const host = block && block.querySelector('.spotifyHost');
+    const trackId = button.dataset.trackId;
+    if (!host || !trackId) return;
+    block.querySelectorAll('.likedTrack').forEach(function (item) {
+        item.classList.toggle('is-current', item === button);
+    });
+    host.dataset.autoplay = '1';
+    playSpotifyUri(host, 'spotify:track:' + trackId);
+    const hostTop = host.getBoundingClientRect().top;
+    const cliTop = cli.getBoundingClientRect().top;
+    if (hostTop < cliTop || host.getBoundingClientRect().bottom > cli.getBoundingClientRect().bottom) {
+        cli.scrollTop += hostTop - cliTop;
+    }
+}
+
+function playSpotifyUri(host, uri) {
+    host.dataset.spotifyUri = uri;
+    host.dataset.autoplay = '1';
+    host.dataset.playback = '';
+    if (host._controller && typeof host._controller.loadUri === 'function') {
+        try {
+            host._controller.loadUri(uri);
+            startRequestedPlayback(host._controller, host);
+            return;
+        } catch (error) {}
+    }
+    if (host.dataset.mounted === 'plain') {
+        const iframe = host.querySelector('iframe');
+        if (iframe) {
+            iframe.dataset.loaded = '';
+            iframe.src = embedUrlFromUri(uri);
+            return;
+        }
+    }
+    if (!host.dataset.mounted) mountSpotifyHost(host);
+}
+
+async function playNamedSong(query) {
+    pauseEveryPlayer();
+    if (!query) return 'Tell me which song to play.\nExample: music Never Gonna Give You Up';
+    const track = await searchSpotifyTrack(query);
+    if (!track) return 'Couldn\'t find "' + escapeHtml(query) + '" on Spotify.';
+    return escapeHtml(trackLabel(track)) + '\n' + spotifyHostMarkup('spotify:track:' + track.id, true);
+}
+
+async function searchSpotifyTrack(query) {
+    const token = await fetchSpotifyToken();
+    const variables = {
+        query: query,
+        limit: 10,
+        numberOfTopResults: 10,
+        offset: 0,
+        includeAuthors: false,
+        includeAlbumPreReleases: false,
+        includeEpisodeContentRatingsV2: false
+    };
+    const extensions = { persistedQuery: { version: 1, sha256Hash: SEARCH_QUERY_HASH } };
+    const params = new URLSearchParams({
+        operationName: 'searchSuggestions',
+        variables: JSON.stringify(variables),
+        extensions: JSON.stringify(extensions)
+    });
+    const response = await fetch('https://api-partner.spotify.com/pathfinder/v1/query?' + params, {
+        headers: {
+            Accept: 'application/json',
+            Authorization: 'Bearer ' + token
+        }
+    });
+    if (!response.ok) throw new Error('search failed');
+    const payload = await response.json();
+    const hits = payload.data && payload.data.searchV2 && payload.data.searchV2.topResultsV2
+        ? payload.data.searchV2.topResultsV2.itemsV2 || []
+        : [];
+    for (let i = 0; i < hits.length; i++) {
+        const item = hits[i] && hits[i].item;
+        const data = item && item.data;
+        if (!item || item.__typename !== 'TrackResponseWrapper' || !data || !data.uri) continue;
+        if (data.playability && data.playability.playable === false) continue;
+        const artists = data.artists && data.artists.items ? data.artists.items : [];
+        return {
+            id: data.uri.split(':').pop(),
+            name: data.name || '',
+            artist: artists.map(function (artist) {
+                return artist.profile && artist.profile.name ? artist.profile.name : '';
+            }).filter(Boolean).join(', ')
+        };
+    }
+    return null;
+}
+
+async function renderChangelog() {
+    const response = await fetch('changelog.md', { cache: 'no-cache' });
+    if (!response.ok) throw new Error('changelog');
+    const markdown = await response.text();
+    const html = markdown.split(/\r?\n/).map(function (line) {
+        if (line.indexOf('## ') === 0) return '<div class="changelogVersion">' + escapeHtml(line.slice(3)) + '</div>';
+        if (line.indexOf('### ') === 0) return '<div class="changelogSection">' + escapeHtml(line.slice(4)) + '</div>';
+        if (line.indexOf('- ') === 0) return '<div class="changelogItem">' + escapeHtml(line.slice(2)) + '</div>';
+        if (line.indexOf('# ') === 0) return '<div>' + escapeHtml(line.slice(2)) + '</div>';
+        if (!line.trim()) return '';
+        return '<div>' + escapeHtml(line) + '</div>';
+    }).join('');
+    return '<div class="changelogText">' + html + '</div>';
 }
 
 function buildTgifMsg(days, hours, minutes, seconds) {

@@ -1,0 +1,115 @@
+# Changelog
+
+## 1.4.0 - 2026-09-29
+
+### Added
+- `changelog` lists site updates and dates.
+- `list music` lists songs already randomized, with the count against the full playlist.
+- `music` followed by a song name plays that song from Spotify.
+- Randomized songs are stored in Firebase, so the history survives when the browser clears local storage.
+
+### Changed
+- Liked songs are the 100 most recently added, newest first. The Spotify playlist player was showing the oldest tracks at the top.
+- Phone keyboard keys keep a short green highlight after a tap.
+
+### Fixed
+- `rick` keeps the terminal at the end after the picture and the song finish loading.
+
+## 1.3.0 - 2026-09-29
+
+### Added
+- Holding backspace repeats the delete.
+- Arrow keys recall earlier commands on desktop.
+- Spotify embeds show a loading state while the player starts.
+
+## 1.2.0 - 2026-09-28
+
+### Added
+- Fixed QWERTY keyboard on the phone terminal.
+- The next liked song can start on its own.
+- Snooker ranking for the closed 2024 season.
+- 2026 players can be hidden from the public tables.
+
+### Fixed
+- One song keeps playing without erasing the terminal history.
+- The phone terminal stays in one scroll, with the prompt above the keyboard.
+
+## 1.1.1 - 2026-06-08
+
+### Fixed
+- Snooker 2025 players and pins use the updated path.
+
+## 1.1.0 - 2026-02-24
+
+### Fixed
+- Terminal layout and social links fit small screens better.
+
+## 1.0.1 - 2026-01-28
+
+### Fixed
+- Snooker reports and history sort winners and losers.
+
+## 1.0.0 - 2026-01-18
+
+### Added
+- Snooker 2026 season, reports, and phone layout for the ranking.
+
+## 0.9.0 - 2025-08-09
+
+### Added
+- `snooker` command.
+- Walkover players, and the pin fields jump to the next box on their own.
+
+## 0.8.0 - 2025-06-02
+
+### Changed
+- The classification message explains who still needs more victories to qualify.
+
+## 0.7.1 - 2025-05-04
+
+### Changed
+- Ranking takes the number of victories into account.
+- The shared snooker result includes the match.
+
+## 0.7.0 - 2025-04-16
+
+### Added
+- Public snooker scoreboard, player pins, and dark and light theme.
+
+## 0.6.0 - 2025-03-29
+
+### Added
+- Rickroll counter, Kali photo, and the Next button on a random song.
+- New liked songs join the random pool.
+
+## 0.5.0 - 2025-02-13
+
+### Added
+- `rick`, `tgif`, and explanations for `lucaohost` and rickroll.
+- Liked songs play inside the terminal.
+
+## 0.4.0 - 2024-10-11
+
+### Added
+- `music` plays a random liked song and remembers what already played.
+
+## 0.3.0 - 2024-10-05
+
+### Added
+- Random music pages, YouTube in the social links, and the site logo.
+
+## 0.2.0 - 2024-10-02
+
+### Added
+- Help and social tables, `rmy`, `rms`, `rmym`, and `exit`.
+- Links use https, and the prompt fits a phone.
+
+## 0.1.0 - 2024-09-30
+
+### Added
+- Online terminal with `whoami`, `help`, and the favicon.
+
+## 0.0.1 - 2020-12-01
+
+### Added
+- First public page and the README.
