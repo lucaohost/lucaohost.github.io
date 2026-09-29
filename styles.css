@@ -150,6 +150,13 @@ body {
     background: #4CAF50;
 }
 
+.terminal-body.is-scrollLocked,
+.terminal-body.is-scrollLocked .trackList,
+.terminal-body.is-scrollLocked .trackPlay {
+    touch-action: none;
+    overscroll-behavior: none;
+}
+
 .output {
     white-space: pre-wrap;
     word-break: break-word;
@@ -314,6 +321,7 @@ iframe {
 }
 
 .trackPlay {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -326,7 +334,7 @@ iframe {
     background: #2c2c2c;
     color: #f2f2f2;
     cursor: pointer;
-    touch-action: manipulation;
+    touch-action: pan-y;
 }
 
 .trackPlay svg {
@@ -341,6 +349,38 @@ iframe {
 .trackRow.is-current .trackPlay {
     background: #4CAF50;
     color: #10210f;
+}
+
+.trackPlay.is-loading {
+    cursor: default;
+}
+
+.trackPlay.is-loading svg {
+    visibility: hidden;
+}
+
+.trackPlay.is-loading::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spotifySpin 0.7s linear infinite;
+}
+
+.trackPlay:disabled,
+.trackPlay:disabled:hover,
+.trackBlock.is-playLocked .trackPlay:not(.is-loading),
+.trackBlock.is-playLocked .trackPlay:not(.is-loading):hover {
+    background: #2c2c2c;
+    color: #f2f2f2;
+    opacity: 0.4;
+    cursor: default;
 }
 
 .trackCopy {

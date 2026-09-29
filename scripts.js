@@ -254,6 +254,50 @@ function alignCli(mode, node) {
     requestAnimationFrame(apply);
 }
 
+function blockLockedScroll(event) {
+    if (!cliView().classList.contains('is-scrollLocked')) return;
+    if (event.cancelable) event.preventDefault();
+}
+
+function lockPlaybackScroll() {
+    const view = cliView();
+    if (view.classList.contains('is-scrollLocked')) return;
+    const top = view.scrollTop;
+    view.classList.add('is-scrollLocked');
+    view._scrollLockTop = top;
+    view._scrollLockOverflow = view.style.overflow;
+    view.style.overflow = 'hidden';
+    view.scrollTop = top;
+    view._scrollLockPreviousUntil = cliScrollLockedUntil;
+    cliScrollLockedUntil = Date.now() + 20000;
+    view._scrollLockRestore = function () {
+        if (!view.classList.contains('is-scrollLocked')) return;
+        const locked = view._scrollLockTop;
+        if (Math.abs(view.scrollTop - locked) <= 1) return;
+        requestAnimationFrame(function () {
+            if (view.classList.contains('is-scrollLocked')) view.scrollTop = locked;
+        });
+    };
+    view.addEventListener('scroll', view._scrollLockRestore, { passive: true });
+    view.addEventListener('wheel', blockLockedScroll, { passive: false, capture: true });
+    view.addEventListener('touchmove', blockLockedScroll, { passive: false, capture: true });
+}
+
+function unlockPlaybackScroll() {
+    if (document.querySelector('.trackBlock.is-playLocked')) return;
+    const view = cliView();
+    if (!view.classList.contains('is-scrollLocked')) return;
+    const top = view._scrollLockTop;
+    view.classList.remove('is-scrollLocked');
+    view.style.overflow = view._scrollLockOverflow || '';
+    if (typeof top === 'number') view.scrollTop = top;
+    view.removeEventListener('scroll', view._scrollLockRestore);
+    view.removeEventListener('wheel', blockLockedScroll, true);
+    view.removeEventListener('touchmove', blockLockedScroll, true);
+    const previous = view._scrollLockPreviousUntil || 0;
+    cliScrollLockedUntil = previous > Date.now() ? previous : 0;
+}
+
 function holdCliPosition() {
     const view = cliView();
     const top = view.scrollTop;
@@ -452,6 +496,18 @@ document.addEventListener('touchstart', (event) => {
         event.preventDefault();
         return;
     }
+    if (control.classList.contains('trackPlay')) {
+        const touch = event.changedTouches[0];
+        trackTouch = {
+            id: touch.identifier,
+            x: touch.clientX,
+            y: touch.clientY,
+            scroll: cliView().scrollTop,
+            button: control,
+            dragged: false
+        };
+        return;
+    }
     event.preventDefault();
     if (control.tagName === 'A' && control.getAttribute('href')) {
         window.open(control.href, control.target || '_self', 'noopener');
@@ -460,6 +516,41 @@ document.addEventListener('touchstart', (event) => {
     }
     focusCliInput();
 }, { passive: false });
+
+document.addEventListener('touchmove', function (event) {
+    if (!trackTouch) return;
+    const touch = trackTouchPoint(event.touches, trackTouch.id) || trackTouchPoint(event.changedTouches, trackTouch.id);
+    if (!touch) return;
+    if (trackGestureMoved(trackTouch, touch.clientX, touch.clientY)) trackTouch.dragged = true;
+}, { passive: true });
+
+document.addEventListener('touchend', function (event) {
+    if (!trackTouch) return;
+    const touch = trackTouchPoint(event.changedTouches, trackTouch.id);
+    if (!touch) return;
+    const gesture = trackTouch;
+    trackTouch = null;
+    const dragged = gesture.dragged || trackGestureMoved(gesture, touch.clientX, touch.clientY);
+    if (dragged) {
+        armSuppressClick(gesture.button);
+        return;
+    }
+    const block = gesture.button.closest('.trackBlock');
+    if (gesture.button.disabled || (block && block.classList.contains('is-playLocked'))) {
+        event.preventDefault();
+        return;
+    }
+    event.preventDefault();
+    armSuppressClick(gesture.button);
+    playTrackSelection(gesture.button);
+    focusCliInput();
+}, { passive: false });
+
+document.addEventListener('touchcancel', function () {
+    if (!trackTouch) return;
+    armSuppressClick(trackTouch.button);
+    trackTouch = null;
+});
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') keepMobileKeyboard();
@@ -728,9 +819,83 @@ var likedCatalog = null;
 var likedCatalogPromise = null;
 var playedMusicState = null;
 
+var trackTouch = null;
+var trackPointer = null;
+var TRACK_TAP_SLOP = 12;
+var TRACK_SCROLL_SLOP = 8;
+
+function trackTouchPoint(touchList, id) {
+    if (!touchList) return null;
+    for (let i = 0; i < touchList.length; i++) {
+        if (touchList[i].identifier === id) return touchList[i];
+    }
+    return null;
+}
+
+function trackGestureMoved(gesture, x, y) {
+    const dx = x - gesture.x;
+    const dy = y - gesture.y;
+    if ((dx * dx) + (dy * dy) > TRACK_TAP_SLOP * TRACK_TAP_SLOP) return true;
+    return Math.abs(cliView().scrollTop - gesture.scroll) > TRACK_SCROLL_SLOP;
+}
+
+function armSuppressClick(button) {
+    if (!button) return;
+    button.dataset.suppressClick = '1';
+    window.setTimeout(function () {
+        if (button.dataset.suppressClick === '1') delete button.dataset.suppressClick;
+    }, 700);
+}
+
+function markTrackDrag() {
+    if (trackPointer) trackPointer.dragged = true;
+    if (trackTouch) trackTouch.dragged = true;
+}
+
+document.addEventListener('pointerdown', function (event) {
+    const button = event.target.closest && event.target.closest('.trackPlay');
+    if (!button) {
+        trackPointer = null;
+        return;
+    }
+    trackPointer = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        scroll: cliView().scrollTop,
+        button: button,
+        dragged: false
+    };
+}, true);
+
+document.addEventListener('pointermove', function (event) {
+    if (!trackPointer || event.pointerId !== trackPointer.id) return;
+    if (trackGestureMoved(trackPointer, event.clientX, event.clientY)) markTrackDrag();
+}, true);
+
+document.addEventListener('pointerup', function (event) {
+    if (!trackPointer || event.pointerId !== trackPointer.id) return;
+    if (trackGestureMoved(trackPointer, event.clientX, event.clientY)) markTrackDrag();
+    if (trackPointer.dragged) armSuppressClick(trackPointer.button);
+    trackPointer = null;
+}, true);
+
+document.addEventListener('pointercancel', function (event) {
+    if (!trackPointer || event.pointerId !== trackPointer.id) return;
+    markTrackDrag();
+    armSuppressClick(trackPointer.button);
+    trackPointer = null;
+}, true);
+
 terminalOutput.addEventListener('click', function (event) {
     const playButton = event.target.closest('.trackPlay');
     if (playButton) {
+        if (playButton.dataset.suppressClick === '1') {
+            delete playButton.dataset.suppressClick;
+            return;
+        }
+        const block = playButton.closest('.trackBlock');
+        if (playButton.disabled || (block && block.classList.contains('is-playLocked'))) return;
         playTrackSelection(playButton);
         return;
     }
@@ -886,16 +1051,23 @@ function activateEmbeddedMedia(root) {
         });
     });
     root.querySelectorAll('.spotifyHost').forEach(mountSpotifyHost);
+    root.querySelectorAll('.trackBlock').forEach(function (block) {
+        const host = block.querySelector('.spotifyHost');
+        if (!host || host.dataset.autoplay !== '1') return;
+        beginTrackPlayWait(block, block.querySelector('.trackRow.is-current .trackPlay'));
+    });
 }
 
 function discardSpotifyHost(host) {
     if (!host) return;
+    const block = host.closest('.trackBlock');
     clearTimeout(host._loadingTimer);
     clearTimeout(host._queueTimer);
     host._loadingTimer = 0;
     host._queueTimer = 0;
     if (host._spotifyObserver) host._spotifyObserver.disconnect();
     host.remove();
+    if (block) finishTrackPlay(block);
 }
 
 function releaseSpotifyHosts() {
@@ -1006,7 +1178,7 @@ function mountSpotifyHost(host) {
                 };
                 controller.addListener('ready', playWhenReady);
                 setTimeout(function () {
-                    if (!host.isConnected || host.dataset.playback === 'playing') return;
+                    if (!host.isConnected || host._heardUri === host.dataset.spotifyUri) return;
                     if (latestMediaElement() !== host) return;
                     startRequestedPlayback(controller, host);
                 }, 700);
@@ -1014,6 +1186,7 @@ function mountSpotifyHost(host) {
             controller.addListener('playback_update', function (event) {
                 const data = event && event.data ? event.data : {};
                 notePlayback(controller, host, data.isPaused);
+                noteTrackProgress(host, data);
                 watchLikedQueue(host, data);
             });
             controller.addListener('playback_started', function () {
@@ -1073,6 +1246,26 @@ function showSpotifyIframe() {
     });
     scrollCliToEnd();
 }
+
+function hostForSpotifySource(source) {
+    const iframes = terminalOutput.querySelectorAll('.spotifyHost iframe');
+    for (let i = 0; i < iframes.length; i++) {
+        if (iframes[i].contentWindow === source) return iframes[i].closest('.spotifyHost');
+    }
+    return null;
+}
+
+window.addEventListener('message', function (event) {
+    if (event.origin !== 'https://open.spotify.com') return;
+    let message = event.data;
+    if (typeof message === 'string') {
+        try { message = JSON.parse(message); } catch (error) { return; }
+    }
+    if (!message || message.type !== 'playback_update') return;
+    const host = hostForSpotifySource(event.source);
+    if (!host || host._controller) return;
+    noteTrackProgress(host, message.payload || message.data || {});
+});
 
 function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
@@ -1374,7 +1567,7 @@ async function renderPlayedMusic() {
     const items = rows.map(function (row, index) {
         return trackRowMarkup(row, index === 0, row.playedOn || '');
     }).join('');
-    return '<div class="musicList trackBlock">' + heading + spotifyHostMarkup('spotify:track:' + rows[0].id) + '<ol class="trackList">' + items + '</ol></div>';
+    return '<div class="musicList trackBlock">' + heading + spotifyHostMarkup('spotify:track:' + rows[0].id, true) + '<ol class="trackList">' + items + '</ol></div>';
 }
 
 async function clearPlayedMusic() {
@@ -1395,7 +1588,7 @@ async function renderLikedSongs() {
     const items = latest.map(function (track, index) {
         return trackRowMarkup(track, index === 0, '');
     }).join('');
-    return '<div class="trackBlock likedBlock"><div class="trackHeading">My Last 100 Liked Songs</div>' + spotifyHostMarkup('spotify:track:' + latest[0].id) + '<ol class="trackList">' + items + '</ol></div>';
+    return '<div class="trackBlock likedBlock"><div class="trackHeading">My Last 100 Liked Songs</div>' + spotifyHostMarkup('spotify:track:' + latest[0].id, true) + '<ol class="trackList">' + items + '</ol></div>';
 }
 
 function trackRowMarkup(track, current, meta) {
@@ -1406,11 +1599,93 @@ function trackRowMarkup(track, current, meta) {
     return '<li class="trackRow' + (current ? ' is-current' : '') + '"><button type="button" class="trackPlay" data-track-id="' + escapeHtml(track.id) + '" aria-label="Play ' + escapeHtml(label) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg></button><span class="trackCopy"><span class="trackName">' + escapeHtml(name) + '</span>' + artist + '</span>' + when + '</li>';
 }
 
+function beginTrackPlayWait(block, button) {
+    if (!block || !button) return;
+    window.clearTimeout(block._playWaitTimer);
+    window.clearTimeout(block._playGiveUp);
+    const token = (Number(block.dataset.playToken) || 0) + 1;
+    block.dataset.playToken = String(token);
+    clearTrackPlayUi(block);
+    block._playWaitTimer = window.setTimeout(function () {
+        block._playWaitTimer = 0;
+        if (block.dataset.playToken !== String(token) || !button.isConnected) return;
+        showTrackPlayLoading(block, button);
+    }, 400);
+    block._playGiveUp = window.setTimeout(function () {
+        if (block.dataset.playToken !== String(token)) return;
+        clearTrackPlayUi(block);
+    }, 12000);
+}
+
+function showTrackPlayLoading(block, button) {
+    button.classList.add('is-loading');
+    button.setAttribute('aria-busy', 'true');
+    block.classList.add('is-playLocked');
+    block.querySelectorAll('.trackPlay').forEach(function (item) {
+        if (item !== button) item.disabled = true;
+    });
+    lockPlaybackScroll();
+}
+
+function clearTrackPlayUi(block) {
+    if (!block) return;
+    window.clearTimeout(block._playWaitTimer);
+    window.clearTimeout(block._playGiveUp);
+    block._playWaitTimer = 0;
+    block._playGiveUp = 0;
+    block.classList.remove('is-playLocked');
+    block.querySelectorAll('.trackPlay').forEach(function (item) {
+        item.classList.remove('is-loading');
+        item.removeAttribute('aria-busy');
+        item.disabled = false;
+    });
+    unlockPlaybackScroll();
+}
+
+function finishTrackPlay(block) {
+    if (!block) return;
+    block.dataset.playToken = String((Number(block.dataset.playToken) || 0) + 1);
+    clearTrackPlayUi(block);
+}
+
+function sameTrackUri(left, right) {
+    if (!left || !right) return false;
+    if (left === right) return true;
+    return left.split(':').pop() === right.split(':').pop();
+}
+
+function noteTrackProgress(host, data) {
+    const uri = host && host.dataset.spotifyUri;
+    if (!uri || !data || !sameTrackUri(data.playingURI, uri)) return;
+    if (data.isPaused === false && !data.isBuffering) {
+        host._heardUri = uri;
+        host._playNudges = 0;
+        host._playGiveUp = false;
+        finishTrackPlay(host.closest('.trackBlock'));
+        return;
+    }
+    if (data.isPaused !== true || data.isBuffering || host._heardUri === uri || host._playGiveUp) return;
+    if (latestMediaElement() !== host || !host._controller) return;
+    const now = Date.now();
+    if (now - (host._playNudgeAt || 0) < 500) return;
+    if ((host._playNudges || 0) >= 6) {
+        host._playGiveUp = true;
+        return;
+    }
+    host._playNudges = (host._playNudges || 0) + 1;
+    host._playNudgeAt = now;
+    window.setTimeout(function () {
+        if (!host.isConnected || host._heardUri === uri || latestMediaElement() !== host) return;
+        startRequestedPlayback(host._controller, host);
+    }, 0);
+}
+
 function playTrackSelection(button) {
     const block = button.closest('.trackBlock');
     const host = block && block.querySelector('.spotifyHost');
     const trackId = button.dataset.trackId;
-    if (!host || !trackId) return;
+    if (!host || !trackId || button.disabled) return;
+    if (block.classList.contains('is-playLocked')) return;
     const row = button.closest('.trackRow');
     block.querySelectorAll('.trackRow').forEach(function (item) {
         item.classList.toggle('is-current', item === row);
@@ -1418,6 +1693,7 @@ function playTrackSelection(button) {
     cancelLikedQueue(host);
     host.dataset.autoplay = '1';
     holdCliPosition();
+    beginTrackPlayWait(block, button);
     playSpotifyUri(host, 'spotify:track:' + trackId);
 }
 
@@ -1484,6 +1760,11 @@ function playSpotifyUri(host, uri) {
     host.dataset.spotifyUri = uri;
     host.dataset.autoplay = '1';
     host.dataset.playback = '';
+    if (host._heardUri !== uri) {
+        host._heardUri = '';
+        host._playNudges = 0;
+        host._playGiveUp = false;
+    }
     if (host._controller && typeof host._controller.loadUri === 'function') {
         try {
             host._controller.loadUri(uri);

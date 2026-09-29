@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1 - 2026-09-29
+
+### Fixed
+- `liked` and `list music` start the first song.
+- A slow play button turns into a loading icon until the song starts. Other play buttons and scrolling wait.
+- Dragging across a play icon no longer starts the song. Playback starts on a tap.
+
 ## 1.5.0 - 2026-09-29
 
 ### Added
