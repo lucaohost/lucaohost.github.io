@@ -1355,9 +1355,9 @@ function mountSpotifyHost(host) {
                 mountSpotifyHost(host);
                 return;
             }
-            if (latestMediaElement() !== host) {
+            if (latestMediaElement() !== host || host.dataset.autoplay !== '1') {
                 silenceController(controller);
-            } else if (host.dataset.autoplay === '1') {
+            } else {
                 const playWhenReady = function () {
                     setTimeout(function () {
                         if (host._requestToken !== playbackToken) return;
@@ -1375,6 +1375,12 @@ function mountSpotifyHost(host) {
             controller.addListener('playback_update', function (event) {
                 if (host._controller !== controller) return;
                 const data = event && event.data ? event.data : {};
+                if (host.dataset.autoplay !== '1') {
+                    if (data.isPaused === false) {
+                        try { controller.pause(); } catch (error) {}
+                    }
+                    return;
+                }
                 if (data.playingURI) host._reportedUri = data.playingURI;
                 if (rejectStalePlayback(controller, host, data)) return;
                 notePlayback(controller, host, data.isPaused);
@@ -1383,6 +1389,10 @@ function mountSpotifyHost(host) {
             });
             controller.addListener('playback_started', function () {
                 if (host._controller !== controller) return;
+                if (host.dataset.autoplay !== '1') {
+                    try { controller.pause(); } catch (error) {}
+                    return;
+                }
                 if (reportedUriBlocksPlay(host)) return;
                 notePlayback(controller, host, false);
             });
@@ -1822,11 +1832,24 @@ async function renderPlayedMusic() {
     const totalLabel = total ? String(total) : '?';
     const heading = '<div class="trackHeading"><span>Randomized songs</span><span class="trackCount">' + rows.length + '/' + escapeHtml(totalLabel) + '</span></div>';
     if (!rows.length) return '<div class="musicList trackBlock">' + heading + '<p class="trackEmpty">None yet.</p></div>';
-    pauseEveryPlayer();
+    const keepCurrent = currentMusicTrackId() === rows[0].id;
+    if (!keepCurrent) pauseEveryPlayer();
     const items = rows.map(function (row, index) {
         return trackRowMarkup(row, index === 0, row.playedOn || '');
     }).join('');
-    return '<div class="musicList trackBlock">' + heading + spotifyHostMarkup('spotify:track:' + rows[0].id, true) + '<ol class="trackList">' + items + '</ol></div>';
+    return '<div class="musicList trackBlock">' + heading + spotifyHostMarkup('spotify:track:' + rows[0].id, !keepCurrent) + '<ol class="trackList">' + items + '</ol></div>';
+}
+
+function currentMusicTrackId() {
+    const hosts = terminalOutput.querySelectorAll('.musicPlay .spotifyHost');
+    for (let i = hosts.length - 1; i >= 0; i--) {
+        const host = hosts[i];
+        const uri = host.dataset.spotifyUri || '';
+        if (uri.indexOf('spotify:track:') !== 0) continue;
+        if (host.dataset.playback === 'paused') return '';
+        return uri.split(':').pop();
+    }
+    return '';
 }
 
 async function clearPlayedMusic() {

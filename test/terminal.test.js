@@ -527,8 +527,9 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.1\.1 - 2026-09-29/);
-    assert.match(top, /while one is still loading/);
+    assert.match(top, /^2\.1\.2 - 2026-09-29/);
+    assert.match(top, /leaves the song that is already playing/);
+    assert.match(changelog, /while one is still loading/);
     assert.match(changelog, /round skip button/);
     assert.match(changelog, /holds scrolling and typing/);
     assert.match(changelog, /player already open/);
@@ -908,6 +909,96 @@ test('clicking another song while one is still loading keeps the same player', a
             assert.deepEqual([...audible(page)], [uri]);
         });
     }
+});
+
+test('list after music leaves the song that is already playing', async () => {
+    const played = playedSongs(['a', 'b', 'c']);
+    for (const command of ['music', 'next music']) {
+        await withPage({ catalog: tracks(['a']), played: played }, async (page) => {
+            await runCommand(page, command);
+            await delay(30);
+            const musicHost = output(page).querySelector('.musicPlay .spotifyHost');
+            const musicUri = musicHost.dataset.spotifyUri;
+            await hear(page, musicUri);
+            await runCommand(page, 'list');
+            const listHost = output(page).querySelector('.musicList .spotifyHost');
+            const musicPlayer = page.api.created[0];
+            assert.equal(musicHost.dataset.playback, 'playing', command);
+            assert.equal(musicPlayer.paused, false, command);
+            assert.equal(listHost.dataset.spotifyUri, musicUri, command);
+            assert.equal(listHost.hasAttribute('data-autoplay'), false, command);
+            assert.equal(page.api.created[1].paused, true, command);
+            assert.equal(output(page).querySelector('.musicList .trackRow').classList.contains('is-current'), true);
+            musicPlayer.emit({
+                isPaused: true,
+                isBuffering: false,
+                playingURI: musicUri,
+                duration: 180000,
+                position: 179200
+            });
+            await delay(500);
+            const rows = output(page).querySelectorAll('.musicList .trackRow');
+            assert.equal(rows[0].classList.contains('is-current'), true, command);
+            assert.equal(rows[1].classList.contains('is-current'), false, command);
+            rows[1].querySelector('.trackPlay').click();
+            const picked = 'spotify:track:' + rows[1].querySelector('.trackPlay').dataset.trackId;
+            await finishSlowLoad(page, picked);
+            assert.deepEqual([...audible(page)], [picked], command);
+            livePlayer(page).emit({
+                isPaused: true,
+                isBuffering: false,
+                playingURI: picked,
+                duration: 180000,
+                position: 179200
+            });
+            await delay(500);
+            const nextId = output(page).querySelectorAll('.musicList .trackPlay')[2].dataset.trackId;
+            assert.equal(output(page).querySelector('.musicList .trackRow.is-current .trackPlay').dataset.trackId, nextId, command);
+            assert.equal(listHost.dataset.spotifyUri, 'spotify:track:' + nextId, command);
+        });
+    }
+});
+
+test('list still starts the first song when music is not already playing it', async () => {
+    await withPage({ catalog: tracks(['a', 'b', 'c']), played: playedSongs(['a', 'b', 'c']) }, async (page) => {
+        await runCommand(page, 'list');
+        assert.equal(output(page).querySelector('.musicList .spotifyHost').dataset.autoplay, '1');
+    });
+    await withPage({
+        catalog: tracks(['a']),
+        played: {
+            tracks: {
+                b: { name: 'Song b', artist: 'Artist b', playedOn: '2026-09-02', seq: 9 },
+                a: { name: 'Song a', artist: 'Artist a', playedOn: '2026-09-01', seq: 1 }
+            },
+            cycle: {},
+            generation: 1
+        }
+    }, async (page) => {
+        await runCommand(page, 'music');
+        await delay(30);
+        await hear(page, output(page).querySelector('.musicPlay .spotifyHost').dataset.spotifyUri);
+        await runCommand(page, 'list');
+        const listHost = output(page).querySelector('.musicList .spotifyHost');
+        assert.equal(listHost.dataset.spotifyUri, 'spotify:track:b');
+        assert.equal(listHost.dataset.autoplay, '1');
+        assert.equal(page.api.created[0].paused, true);
+    });
+});
+
+test('liked still starts its first song after music', async () => {
+    await withPage({ catalog: tracks(['a', 'b', 'c']), played: playedSongs(['a', 'b', 'c']) }, async (page) => {
+        await runCommand(page, 'music');
+        await delay(30);
+        await hear(page, output(page).querySelector('.musicPlay .spotifyHost').dataset.spotifyUri);
+        await runCommand(page, 'liked');
+        await delay(30);
+        const likedHost = output(page).querySelector('.likedBlock .spotifyHost');
+        assert.equal(likedHost.dataset.autoplay, '1');
+        assert.equal(likedHost.dataset.spotifyUri, 'spotify:track:a');
+        assert.equal(page.api.created[0].paused, true);
+        assert.equal(livePlayer(page).paused, false);
+    });
 });
 
 function playedSongs(ids) {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.2 - 2026-09-29
+
+### Changed
+- `list` after `music` or `next music` leaves the song that is already playing. Choosing a row starts playback from the list, and the following songs continue from there.
+
 ## 2.1.1 - 2026-09-29
 
 ### Fixed
