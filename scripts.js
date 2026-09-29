@@ -1085,6 +1085,11 @@ function notePlayback(controller, host, isPaused) {
         return;
     }
     if (host.dataset.playback === 'playing') return;
+    const latest = latestMediaElement();
+    if (latest && latest !== host && latest.classList && latest.classList.contains('spotifyHost') && latest.dataset.autoplay === '1') {
+        silenceController(controller);
+        return;
+    }
     host.dataset.playback = 'playing';
     pauseOthers({ controller: controller });
 }
@@ -1100,7 +1105,6 @@ function rejectStalePlayback(controller, host, data) {
         return false;
     }
     if (data.isPaused === false) {
-        try { controller.pause(); } catch (error) {}
         host._stuckUri = playingUri;
         if (!host._stuckTimer) {
             const token = host._requestToken;
@@ -1212,9 +1216,19 @@ function activateEmbeddedMedia(root) {
     root.querySelectorAll('.spotifyHost').forEach(mountSpotifyHost);
     root.querySelectorAll('.trackBlock').forEach(function (block) {
         const host = block.querySelector('.spotifyHost');
-        if (!host || host.dataset.autoplay !== '1') return;
+        if (!host) return;
+        pinTrackPlayer(host);
+        if (host.dataset.autoplay !== '1') return;
         beginTrackPlayWait(block, block.querySelector('.trackRow.is-current .trackPlay'));
     });
+}
+
+function pinTrackPlayer(host) {
+    if (!host || !host.closest('.trackBlock')) return;
+    terminalOutput.querySelectorAll('.spotifyHost.is-pinned').forEach(function (node) {
+        if (node !== host) node.classList.remove('is-pinned');
+    });
+    host.classList.add('is-pinned');
 }
 
 function clearTrackSwitch(host) {
@@ -1270,6 +1284,7 @@ function updateSpotifyLoading(host) {
 function bindSpotifyIframe(host, iframe) {
     if (!iframe || iframe.dataset.loadBound === '1') return;
     iframe.dataset.loadBound = '1';
+    iframe.loading = 'eager';
     iframe.classList.add('spotifyIframe');
     iframe.addEventListener('load', function () {
         const src = iframe.getAttribute('src') || '';
@@ -1974,6 +1989,11 @@ function playTrackSelection(button) {
     });
     cancelLikedQueue(host);
     host.dataset.autoplay = '1';
+    if (host._controller) {
+        host._controller._awaitingPause = false;
+        host._controller._ignorePlayUntil = 0;
+    }
+    pauseOthers({ controller: host._controller, host: host });
     holdCliPosition();
     beginTrackPlayWait(block, button);
     playSpotifyUri(host, 'spotify:track:' + trackId);
@@ -2059,9 +2079,7 @@ function scheduleTrackSwitch(host) {
                 return;
             }
             tries += 1;
-            if (tries <= 4 && typeof controller.loadUri === 'function') {
-                try { controller.loadUri(uri); } catch (error) {}
-            }
+            // One loadUri per click. Repeating it reloads the embed and cuts off the song that just started.
             // The live controller starts the track on play(). The test double sets pendingUri until that load finishes.
             if (!controller.pendingUri) {
                 try { controller.play(); } catch (error) {}
@@ -2097,6 +2115,9 @@ function playSpotifyUri(host, uri) {
             host._controller.pause();
             host._controller.loadUri(uri);
             host._controller._requestToken = host._requestToken;
+            if (!host._controller.pendingUri) {
+                try { host._controller.play(); } catch (error) {}
+            }
             scheduleTrackSwitch(host);
             return;
         } catch (error) {}

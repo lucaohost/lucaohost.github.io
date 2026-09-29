@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.3 - 2026-09-29
+
+### Fixed
+- Choosing a song in `list` while `music` is still playing keeps that song going.
+- A play tap in `list` or `liked` starts the song while the list stays put. The player remains on screen, so playback does not wait until you scroll back up to it.
+
 ## 2.1.2 - 2026-09-29
 
 ### Changed

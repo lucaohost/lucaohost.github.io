@@ -218,6 +218,14 @@ iframe {
     margin: 0;
 }
 
+.trackBlock > .spotifyHost.is-pinned {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin-top: 0;
+    background: #1b1b1b;
+}
+
 .musicPlay {
     display: flex;
     flex-direction: row;

@@ -57,6 +57,7 @@ function createSpotifyApi(options) {
                     if (!this.sticky) this.paused = false;
                 },
                 pause: function () {
+                    this.pauses = (this.pauses || 0) + 1;
                     if (this.destroyed || this.sticky) return;
                     this.paused = true;
                 },
@@ -527,8 +528,10 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.1\.2 - 2026-09-29/);
-    assert.match(top, /leaves the song that is already playing/);
+    assert.match(top, /^2\.1\.3 - 2026-09-29/);
+    assert.match(top, /keeps that song going/);
+    assert.match(top, /remains on screen/);
+    assert.match(changelog, /leaves the song that is already playing/);
     assert.match(changelog, /while one is still loading/);
     assert.match(changelog, /round skip button/);
     assert.match(changelog, /holds scrolling and typing/);
@@ -999,6 +1002,89 @@ test('liked still starts its first song after music', async () => {
         assert.equal(page.api.created[0].paused, true);
         assert.equal(livePlayer(page).paused, false);
     });
+});
+
+test('a list song stays playing when earlier music players are still reporting', async () => {
+    const played = playedSongs(['c', 'b', 'a']);
+    await withPage({ catalog: tracks(['c']), played: played }, async (page) => {
+        await runCommand(page, 'music');
+        await runCommand(page, 'next music');
+        await runCommand(page, 'next music');
+        await delay(30);
+        const musicHosts = [...output(page).querySelectorAll('.musicPlay .spotifyHost')];
+        assert.equal(musicHosts.length, 3);
+        await hear(page, musicHosts[musicHosts.length - 1].dataset.spotifyUri);
+        await runCommand(page, 'list');
+        const listHost = output(page).querySelector('.musicList .spotifyHost');
+        assert.equal(listHost.classList.contains('is-pinned'), true);
+        assert.equal(listHost.hasAttribute('data-autoplay'), false);
+        const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+        assert.match(css, /\.spotifyHost\.is-pinned\s*\{[^}]*position:\s*sticky/);
+        const rows = [...output(page).querySelectorAll('.musicList .trackRow')];
+        const button = rows[1].querySelector('.trackPlay');
+        const picked = 'spotify:track:' + button.dataset.trackId;
+        const previous = listHost.dataset.spotifyUri;
+        button.click();
+        const listPlayer = livePlayer(page);
+        const pauses = listPlayer.pauses || 0;
+        listPlayer.emit({
+            isPaused: false,
+            isBuffering: false,
+            playingURI: previous,
+            duration: 180000,
+            position: 2000
+        });
+        assert.equal(listPlayer.pauses || 0, pauses);
+        page.api.created.slice(0, 3).forEach((player) => {
+            player.emit({
+                isPaused: false,
+                isBuffering: false,
+                playingURI: 'spotify:track:c',
+                duration: 180000,
+                position: 2000
+            });
+        });
+        await finishSlowLoad(page, picked);
+        page.api.created[0].emit({
+            isPaused: false,
+            isBuffering: false,
+            playingURI: 'spotify:track:c',
+            duration: 180000,
+            position: 3000
+        });
+        await delay(50);
+        assert.equal(listPlayer.paused, false);
+        assert.equal(listPlayer.reportedUri, picked);
+        page.api.created.slice(0, 3).forEach((player, index) => {
+            assert.equal(player.paused, true, 'music player ' + index);
+        });
+        assert.equal(audible(page).has(picked), true);
+    });
+});
+
+test('a play tap loads that song once while the player stays put', async () => {
+    const ids = Array.from({ length: 30 }, (_, index) => 's' + index);
+    for (const command of ['list', 'liked']) {
+        const options = { catalog: tracks(ids) };
+        if (command === 'list') options.played = playedSongs(ids);
+        await withPage(options, async (page) => {
+            await runCommand(page, command);
+            const host = output(page).querySelector('.spotifyHost');
+            assert.equal(host.classList.contains('is-pinned'), true, command);
+            const buttons = () => [...output(page).querySelectorAll('.trackPlay')];
+            await hear(page, 'spotify:track:' + buttons()[0].dataset.trackId);
+            buttons()[9].click();
+            await delay(2500);
+            const tenth = 'spotify:track:' + buttons()[9].dataset.trackId;
+            assert.equal(livePlayer(page).loads.filter((uri) => uri === tenth).length, 1, command);
+            buttons()[29].click();
+            await delay(2500);
+            const later = 'spotify:track:' + buttons()[29].dataset.trackId;
+            assert.equal(livePlayer(page).loads.filter((uri) => uri === later).length, 1, command);
+            assert.equal(page.api.created.filter((player) => !player.destroyed).length, 1, command);
+            assert.equal(host.classList.contains('is-pinned'), true, command);
+        });
+    }
 });
 
 function playedSongs(ids) {
