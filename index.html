@@ -18,42 +18,49 @@
     </div>
     <div class="mobile-keyboard" id="mobile-keyboard">
         <div class="mobile-keyboard-row">
-            <button type="button" data-key="q">q</button>
-            <button type="button" data-key="w">w</button>
-            <button type="button" data-key="e">e</button>
-            <button type="button" data-key="r">r</button>
-            <button type="button" data-key="t">t</button>
-            <button type="button" data-key="y">y</button>
-            <button type="button" data-key="u">u</button>
-            <button type="button" data-key="i">i</button>
-            <button type="button" data-key="o">o</button>
-            <button type="button" data-key="p">p</button>
+            <button type="button" data-key="q" data-letter="q">q</button>
+            <button type="button" data-key="w" data-letter="w">w</button>
+            <button type="button" data-key="e" data-letter="e">e</button>
+            <button type="button" data-key="r" data-letter="r">r</button>
+            <button type="button" data-key="t" data-letter="t">t</button>
+            <button type="button" data-key="y" data-letter="y">y</button>
+            <button type="button" data-key="u" data-letter="u">u</button>
+            <button type="button" data-key="i" data-letter="i">i</button>
+            <button type="button" data-key="o" data-letter="o">o</button>
+            <button type="button" data-key="p" data-letter="p">p</button>
         </div>
-        <div class="mobile-keyboard-row">
-            <button type="button" data-key="a">a</button>
-            <button type="button" data-key="s">s</button>
-            <button type="button" data-key="d">d</button>
-            <button type="button" data-key="f">f</button>
-            <button type="button" data-key="g">g</button>
-            <button type="button" data-key="h">h</button>
-            <button type="button" data-key="j">j</button>
-            <button type="button" data-key="k">k</button>
-            <button type="button" data-key="l">l</button>
+        <div class="mobile-keyboard-row mobile-keyboard-row-home">
+            <button type="button" data-key="a" data-letter="a">a</button>
+            <button type="button" data-key="s" data-letter="s">s</button>
+            <button type="button" data-key="d" data-letter="d">d</button>
+            <button type="button" data-key="f" data-letter="f">f</button>
+            <button type="button" data-key="g" data-letter="g">g</button>
+            <button type="button" data-key="h" data-letter="h">h</button>
+            <button type="button" data-key="j" data-letter="j">j</button>
+            <button type="button" data-key="k" data-letter="k">k</button>
+            <button type="button" data-key="l" data-letter="l">l</button>
         </div>
-        <div class="mobile-keyboard-row">
-            <button type="button" data-key="z">z</button>
-            <button type="button" data-key="x">x</button>
-            <button type="button" data-key="c">c</button>
-            <button type="button" data-key="v">v</button>
-            <button type="button" data-key="b">b</button>
-            <button type="button" data-key="n">n</button>
-            <button type="button" data-key="m">m</button>
-            <button type="button" data-key="?">?</button>
+        <div class="mobile-keyboard-row mobile-keyboard-row-bottom">
+            <button type="button" data-key="shift" aria-label="Shift" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2 5.8 11h3.4V19h5.6v-8h3.4L12 4.2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
+            <button type="button" data-key="z" data-letter="z">z</button>
+            <button type="button" data-key="x" data-letter="x">x</button>
+            <button type="button" data-key="c" data-letter="c">c</button>
+            <button type="button" data-key="v" data-letter="v">v</button>
+            <button type="button" data-key="b" data-letter="b">b</button>
+            <button type="button" data-key="n" data-letter="n">n</button>
+            <button type="button" data-key="m" data-letter="m">m</button>
+            <button type="button" data-key="back" aria-label="Backspace">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.4 5.6h11a1.8 1.8 0 0 1 1.8 1.8v9.2a1.8 1.8 0 0 1-1.8 1.8h-11a1.8 1.8 0 0 1-1.35-.62L2.7 12l4.35-6.78A1.8 1.8 0 0 1 8.4 5.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m10.6 9.3 4.6 5.4M15.2 9.3l-4.6 5.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </button>
         </div>
-        <div class="mobile-keyboard-row">
-            <button type="button" data-key=" ">space</button>
-            <button type="button" data-key="back">⌫</button>
-            <button type="button" data-key="enter">enter</button>
+        <div class="mobile-keyboard-row mobile-keyboard-row-space">
+            <button type="button" data-key="?" aria-label="Question mark">?</button>
+            <button type="button" data-key=" " aria-label="Space"></button>
+            <button type="button" data-key="enter" aria-label="Enter">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7.2v6.1a2 2 0 0 1-2 2H6.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m9.3 12-3.4 3.3L9.3 18.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
         </div>
     </div>
     <script src="songs.js"></script>

@@ -307,7 +307,21 @@ function bindMobileKeyboard() {
     const keyboard = document.getElementById('mobile-keyboard');
     if (!keyboard || keyboard.dataset.bound === '1') return;
     keyboard.dataset.bound = '1';
+    const letterButtons = keyboard.querySelectorAll('button[data-letter]');
+    const shiftButton = keyboard.querySelector('[data-key="shift"]');
     let lastKeyboardInput = 0;
+    let shiftOn = false;
+
+    function setShift(on) {
+        shiftOn = on;
+        keyboard.classList.toggle('shift-on', on);
+        if (shiftButton) shiftButton.setAttribute('aria-pressed', on ? 'true' : 'false');
+        letterButtons.forEach((button) => {
+            const letter = button.dataset.letter;
+            button.textContent = on ? letter.toUpperCase() : letter;
+        });
+    }
+
     keyboard.addEventListener('click', (event) => {
         const now = Date.now();
         if (now - lastKeyboardInput < 40) return;
@@ -315,12 +329,18 @@ function bindMobileKeyboard() {
         const keyButton = event.target.closest('[data-key]');
         if (!keyButton || !isMobileCli() || inputField.tagName !== 'INPUT') return;
         const key = keyButton.dataset.key;
+        if (key === 'shift') {
+            setShift(!shiftOn);
+            return;
+        }
         if (key === 'back') {
             inputField.value = inputField.value.slice(0, -1);
         } else if (key === 'enter') {
             onEnter({ key: 'Enter', preventDefault() {} });
         } else {
-            inputField.value += key;
+            const typed = shiftOn && key >= 'a' && key <= 'z' ? key.toUpperCase() : key;
+            inputField.value += typed;
+            if (shiftOn) setShift(false);
         }
         syncMobileInputWidth();
     });
@@ -425,8 +445,9 @@ setTimeout(function () {
     pendingSpotifyHosts.splice(0).forEach(mountPlainSpotify);
 }, 5000);
 
-function spotifyHostMarkup(uri) {
-    return `<div class="spotifyHost" data-spotify-uri="${uri}"><div class="spotifyMount"></div></div>`;
+function spotifyHostMarkup(uri, autoplay) {
+    const autoplayAttr = autoplay ? ' data-autoplay="1"' : '';
+    return `<div class="spotifyHost"${autoplayAttr} data-spotify-uri="${uri}"><div class="spotifyMount"></div></div>`;
 }
 
 function nextMusicButton() {
@@ -448,9 +469,8 @@ async function playRandomLikedSong() {
             return;
         }
         const uri = `spotify:track:${trackId}`;
-        slot.insertAdjacentHTML('beforeend', spotifyHostMarkup(uri) + nextMusicButton());
+        slot.insertAdjacentHTML('beforeend', spotifyHostMarkup(uri, true) + nextMusicButton());
         activateEmbeddedMedia(slot);
-        pauseEveryPlayer();
         scrollCliToEnd();
     } catch (error) {
         if (!slot.isConnected || slot.querySelector('.spotifyHost')) return;
@@ -461,6 +481,46 @@ async function playRandomLikedSong() {
 
 function pauseEveryPlayer() {
     pauseOthers({});
+}
+
+function silenceController(controller) {
+    const token = (controller._pauseToken || 0) + 1;
+    controller._pauseToken = token;
+    controller._awaitingPause = true;
+    controller._ignorePlayUntil = Date.now() + 1500;
+    try { controller.pause(); } catch (error) {}
+    if (controller._host) controller._host.dataset.playback = 'paused';
+    setTimeout(function () {
+        if (controller._pauseToken === token) controller._awaitingPause = false;
+    }, 4000);
+}
+
+function notePlayback(controller, host, isPaused) {
+    if (isPaused === true) {
+        controller._awaitingPause = false;
+        host.dataset.playback = 'paused';
+        return;
+    }
+    if (isPaused !== false) return;
+    if (controller._awaitingPause || Date.now() < (controller._ignorePlayUntil || 0)) {
+        try { controller.pause(); } catch (error) {}
+        return;
+    }
+    if (host.dataset.playback === 'playing') return;
+    host.dataset.playback = 'playing';
+    pauseOthers({ controller: controller });
+}
+
+function startRequestedPlayback(controller, host) {
+    if (!host.isConnected || host.dataset.autoplay !== '1') return;
+    if (latestMediaElement() !== host) {
+        silenceController(controller);
+        return;
+    }
+    controller._awaitingPause = false;
+    controller._ignorePlayUntil = 0;
+    pauseOthers({ controller: controller });
+    try { controller.play(); } catch (error) {}
 }
 
 function latestMediaElement() {
@@ -474,18 +534,18 @@ function pauseOthers(active) {
     try {
         spotifyPlayers.forEach(function (controller) {
             if (controller === active.controller) return;
-            try { controller.pause(); } catch (error) {}
-            if (controller._host) controller._host.dataset.playback = 'paused';
+            silenceController(controller);
         });
         terminalOutput.querySelectorAll('audio').forEach(function (audio) {
             if (audio !== active.audio) audio.pause();
         });
         terminalOutput.querySelectorAll('.spotifyHost').forEach(function (host) {
+            if (active.host === host) return;
             if (active.controller && active.controller._host === host) return;
             if (host.dataset.mounted !== 'plain') return;
+            host.dataset.playback = 'paused';
             const iframe = host.querySelector('iframe');
             if (iframe) reloadSpotifyIframe(iframe);
-            host.dataset.playback = 'paused';
         });
     } finally {
         pausingPlayers = false;
@@ -532,20 +592,26 @@ function mountSpotifyHost(host) {
             host._controller = controller;
             spotifyPlayers.add(controller);
             if (latestMediaElement() !== host) {
-                try { controller.pause(); } catch (error) {}
-                host.dataset.playback = 'paused';
+                silenceController(controller);
+            } else if (host.dataset.autoplay === '1') {
+                const playWhenReady = function () {
+                    setTimeout(function () {
+                        startRequestedPlayback(controller, host);
+                    }, 0);
+                };
+                controller.addListener('ready', playWhenReady);
+                setTimeout(function () {
+                    if (!host.isConnected || host.dataset.playback === 'playing') return;
+                    if (latestMediaElement() !== host) return;
+                    startRequestedPlayback(controller, host);
+                }, 700);
             }
             controller.addListener('playback_update', function (event) {
                 const isPaused = event && event.data ? event.data.isPaused : undefined;
-                if (isPaused === true) host.dataset.playback = 'paused';
-                if (isPaused === false) {
-                    host.dataset.playback = 'playing';
-                    pauseOthers({ controller: controller });
-                }
+                notePlayback(controller, host, isPaused);
             });
             controller.addListener('playback_started', function () {
-                host.dataset.playback = 'playing';
-                pauseOthers({ controller: controller });
+                notePlayback(controller, host, false);
             });
             styleSpotifyIframe(host);
             scrollCliToEnd();
@@ -584,7 +650,15 @@ function mountPlainSpotify(host) {
     iframe.style.border = 'none';
     iframe.style.borderRadius = '12px';
     iframe.allow = 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture';
-    iframe.addEventListener('load', scrollCliToEnd);
+    iframe.addEventListener('load', function () {
+        scrollCliToEnd();
+        const src = iframe.getAttribute('src') || '';
+        if (src.indexOf('open.spotify.com/embed') === -1) return;
+        if (host.dataset.autoplay !== '1' || host.dataset.playback === 'paused') return;
+        if (latestMediaElement() !== host) return;
+        pauseOthers({ host: host });
+        try { iframe.contentWindow.postMessage({ command: 'play' }, '*'); } catch (error) {}
+    });
     mount.replaceWith(iframe);
     host.dataset.mounted = 'plain';
     scrollCliToEnd();

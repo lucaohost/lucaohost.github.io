@@ -144,12 +144,14 @@ iframe {
     }
 
     .mobile-keyboard {
+        --key-gap: 6px;
+        --key-size: calc((100% - 9 * var(--key-gap)) / 10);
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
         width: 100%;
         flex: 0 0 auto;
-        padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+        padding: 10px 5px calc(10px + env(safe-area-inset-bottom));
         background: #111;
         border-top: 1px solid #333;
     }
@@ -157,34 +159,64 @@ iframe {
     .mobile-keyboard-row {
         display: flex;
         justify-content: center;
-        gap: 4px;
+        gap: var(--key-gap);
     }
 
     .mobile-keyboard button {
         flex: 1 1 0;
         min-width: 0;
-        height: 42px;
+        height: 44px;
         border: 0;
-        border-radius: 6px;
+        border-radius: 10px;
         background: #2a2a2a;
         color: #fff;
-        font-family: monospace;
-        font-size: 16px;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 18px;
+        line-height: 1;
         touch-action: manipulation;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
     }
 
-    .mobile-keyboard button[data-key=" "] {
-        flex: 4 1 0;
+    .mobile-keyboard button:active {
+        background: #3d3d3d;
     }
 
-    .mobile-keyboard button[data-key="back"],
-    .mobile-keyboard button[data-key="enter"] {
-        flex: 1.6 1 0;
+    .mobile-keyboard button svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+        margin: 0 auto;
+        pointer-events: none;
+    }
+
+    .mobile-keyboard button[data-letter] {
+        flex: 0 0 var(--key-size);
+        width: var(--key-size);
+    }
+
+    .mobile-keyboard.shift-on button[data-key="shift"] {
+        background: #f2f2f2;
+        color: #111;
+    }
+
+    .mobile-keyboard-row-space button[data-key="?"],
+    .mobile-keyboard-row-space button[data-key="enter"] {
+        flex: 0 0 calc(var(--key-size) * 1.45);
+        width: calc(var(--key-size) * 1.45);
+    }
+
+    .mobile-keyboard-row-space button[data-key=" "] {
+        flex: 1 1 auto;
     }
 
     .mobile-keyboard button[data-key="enter"] {
         background: #4CAF50;
         color: #111;
+    }
+
+    .mobile-keyboard button[data-key="enter"]:active {
+        background: #3e8e41;
     }
 
     .output,
