@@ -532,8 +532,9 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.2\.1 - 2026-09-30/);
-    assert.match(top, /@lucaohost\.app/);
+    assert.match(top, /^2\.3\.0 - 2026-09-30/);
+    assert.match(top, /Password/);
+    assert.match(changelog, /@lucaohost\.app/);
     assert.match(changelog, /Rádio/);
     assert.match(changelog, /thick green block/);
     assert.match(changelog, /keeps that song going/);
@@ -598,14 +599,18 @@ test('Next sits on the right side of the Spotify player', async () => {
             await delay(40);
             const row = output(page).querySelector('.musicPlay');
             const host = row.querySelector('.spotifyHost');
-            const button = row.querySelector('.nextMusic');
-            assert.equal(host.nextElementSibling, button);
-            assert.equal(button.parentElement, row);
+            const rail = row.querySelector('.playRail');
+            const button = rail.querySelector('.nextMusic');
+            const radio = rail.querySelector('.trackRadio');
+            assert.equal(host.nextElementSibling, rail);
+            assert.equal(radio.nextElementSibling, button);
+            assert.equal(button.parentElement, rail);
         }
         const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
         assert.match(css, /\.musicPlay\s*\{[^}]*display:\s*flex/);
         assert.match(css, /\.musicPlay\s*\{[^}]*flex-direction:\s*row/);
         assert.match(css, /\.musicPlay \.spotifyHost\s*\{[^}]*flex:\s*1/);
+        assert.match(css, /\.playRail\s*\{[^}]*flex-direction:\s*column/);
     });
 });
 
@@ -695,7 +700,7 @@ test('letting go after the list scrolls does not play another song', async () =>
 
 test('Next keeps the play icon scroll gesture', () => {
     const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-    assert.match(css, /\.nextMusic\s*\{[^}]*touch-action:\s*pan-y/);
+    assert.match(css, /\.nextMusic,\s*\.trackRadio\s*\{[^}]*touch-action:\s*pan-y/);
     assert.match(css, /\.trackPlay\s*\{[^}]*touch-action:\s*pan-y/);
 });
 
@@ -761,8 +766,8 @@ test('Next is a round skip control', async () => {
         assert.ok(button.querySelector('svg'));
         assert.equal(button.textContent.trim(), '');
         const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-        assert.match(css, /\.nextMusic\s*\{[^}]*border-radius:\s*50%/);
-        assert.match(css, /\.nextMusic\s*\{[^}]*background:\s*#2c2c2c/);
+        assert.match(css, /\.nextMusic,\s*\.trackRadio\s*\{[^}]*border-radius:\s*50%/);
+        assert.match(css, /\.nextMusic,\s*\.trackRadio\s*\{[^}]*background:\s*#2c2c2c/);
     });
 });
 
@@ -1107,17 +1112,24 @@ function playedSongs(ids) {
     return { tracks: tracks, cycle: {}, generation: 1 };
 }
 
-test('login shows the account name with the fixed email beside it', async () => {
+test('login asks for the password and does not offer a user list', async () => {
     await withPage({}, async (page) => {
         await runCommand(page, 'login');
-        const form = output(page).querySelector('.loginForm');
-        assert.ok(form);
-        assert.equal(form.querySelector('.loginUser').value, 'lucas');
-        assert.equal(form.querySelector('.loginDomain').textContent, '@lucaohost.app');
-        form.querySelector('.loginWord').value = 'bola';
-        form.dispatchEvent(new page.window.Event('submit', { bubbles: true, cancelable: true }));
+        assert.match(output(page).textContent, /Password:/);
+        assert.equal(output(page).querySelector('.loginUser'), null);
+        await runCommand(page, 'bola');
         await delay(20);
-        assert.match(form.querySelector('.loginError').textContent, /Auth indisponível/);
+        assert.match(output(page).textContent, /Auth indisponível/);
+        assert.equal(output(page).textContent.includes('bola'), false);
+    });
+});
+
+test('the prompt names Lucas while that session is active', async () => {
+    await withPage({}, async (page) => {
+        page.window.SiteSession.isOperator = function () { return true; };
+        page.window.syncTerminalIdentity();
+        assert.match(page.document.querySelector('.input-line .path').textContent, /lucas@bash/);
+        assert.match(page.document.querySelector('.terminal-title').textContent, /lucas@bash/);
     });
 });
 
@@ -1127,9 +1139,11 @@ test('a visitor stores music apart from Lucas and cannot clear his list', async 
         await delay(20);
         assert.ok(page.fetches.some((entry) => entry.method === 'PUT' && entry.href.includes('visitorMusic/tracks/')));
         assert.equal(page.fetches.some((entry) => entry.href.includes('playedMusic')), false);
-        const radio = output(page).querySelector('.trackRadio');
-        assert.equal(radio.textContent, 'Rádio');
-        assert.match(radio.getAttribute('href'), /^https:\/\/open\.spotify\.com\/station\/track\/[ab]$/);
+        const rail = output(page).querySelector('.playRail');
+        const radio = rail.querySelector('.trackRadio');
+        assert.equal(radio.getAttribute('aria-label'), 'Radio');
+        assert.equal(radio.nextElementSibling.classList.contains('nextMusic'), true);
+        assert.match(radio.getAttribute('href'), /^https:\/\/open\.spotify\.com\/station\/track\/a$/);
         page.fetches.length = 0;
         await runCommand(page, 'clear music');
         assert.match(output(page).textContent, /Only Lucas can clear/);

@@ -46,9 +46,14 @@ function bindInputEvents() {
             event.preventDefault();
             return;
         }
+        if (awaitingPassword && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+            event.preventDefault();
+            return;
+        }
         if (navigateHistory(event)) return;
         onEnter(event);
     });
+    inputField.addEventListener('input', notePasswordEdit);
     inputField.addEventListener('blur', onMobileBlur);
 }
 
@@ -159,14 +164,16 @@ const commands = {
         return clearPlayedMusic();
     },
     login: function () {
-        var domain = (typeof SiteSession !== 'undefined' && SiteSession.DOMAIN) || '@lucaohost.app';
-        if (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) return 'Already signed in as lucas' + domain + '.';
-        return '<form class="loginForm"><label class="loginLabel">User</label><span class="loginIdentity"><select class="loginUser" aria-label="User"><option value="lucas">lucas</option></select><span class="loginDomain">' + domain + '</span></span><input class="loginWord" type="password" maxlength="4" autocomplete="current-password" placeholder="password" aria-label="Password"><button type="submit" class="loginSubmit">Sign in</button><p class="loginError"></p></form>';
+        if (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) return 'Already signed in.';
+        awaitingPassword = true;
+        passwordDraft = '';
+        return 'Password:';
     },
     logout: function () {
         if (typeof SiteSession === 'undefined' || !SiteSession.email()) return 'Not signed in.';
         return SiteSession.signOut().then(function () {
             playedMusicState = null;
+            syncTerminalIdentity();
             return 'Signed out.';
         });
     },
@@ -263,26 +270,6 @@ document.addEventListener('click', function (event) {
     }
 }, true);
 
-document.addEventListener('submit', function (event) {
-    const form = event.target.closest && event.target.closest('.loginForm');
-    if (!form) return;
-    event.preventDefault();
-    const word = form.querySelector('.loginWord');
-    const error = form.querySelector('.loginError');
-    const signIn = typeof SiteSession === 'undefined' ? null : SiteSession.signIn(form.querySelector('.loginUser').value, word.value);
-    if (!signIn) {
-        if (error) error.textContent = 'Auth indisponível.';
-        return;
-    }
-    signIn.then(function () {
-        playedMusicState = null;
-        if (error) error.textContent = '';
-        appendOutput('Signed in as lucas' + SiteSession.DOMAIN + '.');
-    }).catch(function (err) {
-        if (error) error.textContent = (err && err.message) || 'Could not sign in.';
-    });
-});
-
 document.addEventListener('click', function(event) {
     const selection = window.getSelection().toString();
     if (!isMobileCli() && !selection && !event.target.closest('.nextMusic, .terminal-bar, .trackBlock, .loginForm, .socialList, .trackRadio')) {
@@ -292,6 +279,13 @@ document.addEventListener('click', function(event) {
 
 
 async function processCommand(input) {
+    if (awaitingPassword) {
+        var secret = passwordDraft || input;
+        passwordDraft = '';
+        awaitingPassword = false;
+        submitTerminalPassword(secret);
+        return;
+    }
     const command = input.trim().toLocaleLowerCase();
     const namedMusic = command.startsWith('music ') ? input.trim().replace(/^music\s+/i, '').trim() : '';
     const runner = commands[command] ? command : (namedMusic ? 'music-search' : '');
@@ -549,6 +543,53 @@ function navigateHistory(event) {
     return true;
 }
 
+var awaitingPassword = false;
+var passwordDraft = '';
+var maskingPassword = false;
+
+function notePasswordEdit() {
+    if (!awaitingPassword || maskingPassword || !inputField) return;
+    var shown = readCommand().replace(/\n/g, '');
+    var extra = shown.replace(/•/g, '');
+    if (extra) passwordDraft += extra;
+    else if (shown.length < passwordDraft.length) passwordDraft = passwordDraft.slice(0, shown.length);
+    var masked = '•'.repeat(passwordDraft.length);
+    if (shown === masked) return;
+    maskingPassword = true;
+    setCommandText(masked);
+    maskingPassword = false;
+}
+
+function submitTerminalPassword(secret) {
+    awaitingPassword = false;
+    passwordDraft = '';
+    clearCommand();
+    if (!secret) {
+        appendOutput('Login cancelled.');
+        return;
+    }
+    if (typeof SiteSession === 'undefined') {
+        appendOutput('Auth indisponível.');
+        return;
+    }
+    SiteSession.signIn('lucas', secret).then(function () {
+        appendOutput('Signed in as lucas' + SiteSession.DOMAIN + '.');
+        syncTerminalIdentity();
+    }).catch(function (err) {
+        appendOutput((err && err.message) || 'Could not sign in.');
+    });
+}
+
+function syncTerminalIdentity() {
+    var signed = typeof SiteSession !== 'undefined' && SiteSession.isOperator();
+    var prompt = document.querySelector('.input-line .path');
+    if (prompt) prompt.textContent = (signed ? 'lucas@bash:~$' : 'lucaohost@bash:~$') + '\u00a0';
+    var title = document.querySelector('.terminal-title');
+    if (title) title.textContent = signed ? 'lucas@bash: ~' : 'lucaohost@bash: ~';
+}
+
+if (typeof SiteSession !== 'undefined') SiteSession.watch(syncTerminalIdentity);
+
 function onEnter(event) {
     if (commandInputLocked) {
         if (event.preventDefault) event.preventDefault();
@@ -556,6 +597,15 @@ function onEnter(event) {
     }
     if (event.key === 'Enter') {
         event.preventDefault();
+        if (awaitingPassword) {
+            var secret = passwordDraft;
+            passwordDraft = '';
+            awaitingPassword = false;
+            appendOutput('<span class="path">Password:</span> ' + (secret ? '••••' : ''));
+            clearCommand();
+            submitTerminalPassword(secret);
+            return;
+        }
         const input = readCommand().trim();
         if(input !== "") {
             appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
@@ -755,6 +805,7 @@ function bindMobileKeyboard() {
             }
             inputField.value = inputField.value.slice(0, -1);
             syncMobileInputWidth();
+            notePasswordEdit();
             delay = Math.max(30, delay - 8);
             repeatTimer = setTimeout(tick, delay);
         };
@@ -774,6 +825,7 @@ function bindMobileKeyboard() {
             if (inputField.value) {
                 inputField.value = inputField.value.slice(0, -1);
                 syncMobileInputWidth();
+                notePasswordEdit();
             }
             if (allowRepeat) startBackspaceRepeat();
             return;
@@ -786,6 +838,7 @@ function bindMobileKeyboard() {
             if (shiftOn) setShift(false);
         }
         syncMobileInputWidth();
+        notePasswordEdit();
     }
 
     function resolveKey(x, y) {
@@ -993,7 +1046,7 @@ function markTrackDrag() {
 }
 
 function guardedPressButton(target) {
-    return target && target.closest && target.closest('.trackPlay, .nextMusic');
+    return target && target.closest && target.closest('.trackPlay, .nextMusic, .trackRadio');
 }
 
 function startNextMusic() {
@@ -1068,14 +1121,18 @@ setTimeout(function () {
     pendingSpotifyHosts.splice(0).forEach(mountPlainSpotify);
 }, 5000);
 
-function radioLink(trackId) {
+function radioControl(trackId) {
     const id = String(trackId || '').split(':').pop();
-    return '<a class="trackRadio" href="https://open.spotify.com/station/track/' + escapeHtml(id) + '" target="_blank" rel="noopener">Rádio</a>';
+    return '<a class="trackRadio" href="https://open.spotify.com/station/track/' + escapeHtml(id) + '" target="_blank" rel="noopener" aria-label="Radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 9 16 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><circle cx="9" cy="14" r="1.4" fill="currentColor"></circle></svg></a>';
+}
+
+function playRailMarkup(trackId, withNext) {
+    return '<div class="playRail">' + radioControl(trackId) + (withNext ? nextMusicButton() : '') + '</div>';
 }
 
 function spotifyHostMarkup(uri, autoplay) {
     const autoplayAttr = autoplay ? ' data-autoplay="1"' : '';
-    return `<div class="spotifyHost"${autoplayAttr} data-spotify-uri="${uri}"><div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div>${radioLink(uri)}</div>`;
+    return `<div class="spotifyHost"${autoplayAttr} data-spotify-uri="${uri}"><div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div></div>`;
 }
 
 function nextMusicButton() {
@@ -1157,8 +1214,7 @@ async function playRandomLikedSong() {
             return;
         }
         host.dataset.spotifyUri = 'spotify:track:' + trackId;
-        host.insertAdjacentHTML('beforeend', radioLink(trackId));
-        row.insertAdjacentHTML('beforeend', nextMusicButton());
+        row.insertAdjacentHTML('beforeend', playRailMarkup(trackId, true));
         activateEmbeddedMedia(slot);
         scrollCliToEnd();
     } catch (error) {
@@ -1964,7 +2020,7 @@ async function renderPlayedMusic() {
     const items = rows.map(function (row, index) {
         return trackRowMarkup(row, index === 0, row.playedOn || '');
     }).join('');
-    return '<div class="musicList trackBlock">' + heading + spotifyHostMarkup('spotify:track:' + rows[0].id, !keepCurrent) + '<ol class="trackList">' + items + '</ol></div>';
+    return '<div class="musicList trackBlock">' + heading + '<div class="musicPlay">' + spotifyHostMarkup('spotify:track:' + rows[0].id, !keepCurrent) + playRailMarkup(rows[0].id, false) + '</div><ol class="trackList">' + items + '</ol></div>';
 }
 
 function currentMusicTrackId() {
@@ -2000,7 +2056,7 @@ async function renderLikedSongs() {
     const items = latest.map(function (track, index) {
         return trackRowMarkup(track, index === 0, '');
     }).join('');
-    return '<div class="trackBlock likedBlock"><div class="trackHeading">My Last 100 Liked Songs</div>' + spotifyHostMarkup('spotify:track:' + latest[0].id, true) + '<ol class="trackList">' + items + '</ol></div>';
+    return '<div class="trackBlock likedBlock"><div class="trackHeading">My Last 100 Liked Songs</div><div class="musicPlay">' + spotifyHostMarkup('spotify:track:' + latest[0].id, true) + playRailMarkup(latest[0].id, false) + '</div><ol class="trackList">' + items + '</ol></div>';
 }
 
 function trackRowMarkup(track, current, meta) {
@@ -2317,7 +2373,7 @@ async function playNamedSong(query) {
     if (!query) return 'Tell me which song to play.\nExample: music Never Gonna Give You Up';
     const track = await findNamedTrack(query);
     if (!track) return 'Couldn\'t find "' + escapeHtml(query) + '" on Spotify.';
-    return escapeHtml(trackLabel(track)) + '\n' + spotifyHostMarkup('spotify:track:' + track.id, true);
+    return escapeHtml(trackLabel(track)) + '\n<div class="musicPlay">' + spotifyHostMarkup('spotify:track:' + track.id, true) + playRailMarkup(track.id, false) + '</div>';
 }
 
 async function searchSpotifyTrack(query) {

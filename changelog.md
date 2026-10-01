@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.0 - 2026-09-30
+
+### Changed
+- The ranking sign-in opens a small card from the corner and shows Entrar, or the signed-in name.
+- `login` asks for Password, the way a terminal does.
+- While Lucas is signed in, the terminal prompt reads lucas@bash.
+- Radio sits in a round button above Next, on the right of the Spotify player.
+
 ## 2.2.1 - 2026-09-30
 
 ### Changed

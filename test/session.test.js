@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
+const { JSDOM } = require('jsdom');
 
 const root = path.resolve(__dirname, '..');
 const context = {};
@@ -49,6 +50,37 @@ test('firebase rules keep passwords unreadable and limit deletes to Lucas', () =
     assert.match(text, /visitorMusic/);
     assert.equal(text.includes('snooker.lucaohost.app'), false);
     assert.doesNotMatch(text, /"pins":\{"\.read":true/);
+});
+
+test('the ranking button shows Entrar or the signed-in name', () => {
+    const dom = new JSDOM('<!doctype html><body><button id="session-toggle" type="button"></button><form id="session-form" hidden><select id="session-user"></select><div class="session-fields"></div><div class="session-signed" hidden><p class="session-status"></p><button id="session-leave" type="button">Sair</button></div></form></body>');
+    const session = {
+        DOMAIN: '@lucaohost.app',
+        OPERATOR: 'lucas',
+        current: '',
+        email() { return this.current || ''; },
+        signedInId() { return this.current ? 'lucas' : ''; },
+        localPart(id) { return String(id || '').toLowerCase(); },
+        watch(fn) { fn(); return function () {}; },
+        signOut() { return Promise.resolve(); }
+    };
+    const sandbox = {
+        document: dom.window.document,
+        SiteSession: session
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(root, 'snooker', 'auth-bar.js'), 'utf8'), sandbox);
+    sandbox.syncSessionToggle();
+    assert.equal(dom.window.document.querySelector('.session-name').textContent, 'Entrar');
+    assert.equal(dom.window.document.getElementById('session-toggle').classList.contains('is-in'), false);
+    session.current = 'lucas@lucaohost.app';
+    dom.window.document.getElementById('session-user').innerHTML = '<option value="lucas">Lucas</option>';
+    sandbox.syncSessionToggle();
+    assert.equal(dom.window.document.querySelector('.session-name').textContent, 'Lucas');
+    assert.equal(dom.window.document.getElementById('session-toggle').classList.contains('is-in'), true);
+    sandbox.setSessionOpen(true);
+    assert.equal(dom.window.document.getElementById('session-form').hidden, false);
+    assert.match(dom.window.document.querySelector('.session-status').textContent, /Lucas/);
 });
 
 test('the ranking sign-in is a select with the domain beside it and the match form has no pins', () => {

@@ -94,10 +94,12 @@ body {
 
 /* Toggle */
 .session-wrap {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     margin: 8px 0;
+    z-index: 30;
 }
 
 .session-bar {
@@ -107,30 +109,102 @@ body {
 }
 
 .session-toggle {
-    width: 40px;
-    height: 40px;
-    border: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 0, 0, 0.14);
     border-radius: 999px;
     background: transparent;
     color: inherit;
-    opacity: 0.45;
+    font: inherit;
+    font-size: 0.95rem;
 }
 
-.session-toggle:hover,
-.session-toggle:focus-visible {
-    opacity: 1;
+.session-toggle.is-in {
+    background: #e7f6ea;
+    border-color: #2e7d32;
+    color: #146c2e;
+}
+
+.session-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2e7d32;
+    flex: 0 0 auto;
 }
 
 .session-panel {
-    width: min(320px, 100%);
-    margin-top: 8px;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 31;
+    width: min(280px, calc(100vw - 32px));
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+    background: #fff;
+    color: #212529;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+    transform-origin: top right;
+}
+
+.session-panel.is-open {
+    animation: session-in 180ms ease;
+}
+
+.session-panel[hidden] {
+    display: none !important;
+}
+
+.session-fields,
+.session-signed {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.session-panel[hidden] {
-    display: none !important;
+#session-word,
+#session-user {
+    min-height: 44px;
+    font-size: 16px;
+}
+
+.session-status {
+    margin: 0;
+}
+
+@keyframes session-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .session-panel.is-open {
+        animation: none;
+    }
+}
+
+body.dark-mode .session-toggle.is-in {
+    background: #16331c;
+    color: #b7e4c0;
+}
+
+body.dark-mode .session-panel {
+    background: #1e1e1e;
+    color: #e0e0e0;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
 
 .session-identity {
