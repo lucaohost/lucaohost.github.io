@@ -91,14 +91,16 @@ const commands = {
     lucaohost: "<p style='text-align: justify;'>Lucão is my Brazilian nickname, lucaohost is a programmer's joke since sounds like <a class='localhostExplanation'>localhost</a>.</p>",
     'localhost?': "<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Localhost' target='_blank'>localhost</a> is the local computer’s hostname, resolving to IP 127.0.0.1.</p>",
     'rickrolled?': `<p style='text-align: justify;'><a href='https://en.wikipedia.org/wiki/Rickrolling' target='_blank'>Rickrolling</a> is a meme where Rick’s song <a href='https://www.youtube.com/watch?v=dQw4w9WgXcQ' target='_blank'>Never Gonna Give You Up</a> appears unexpectedly.</p>`,
-    social: function() {
-        let socialMidias = [
-            "<a href='https://github.com/lucaohost' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/733/733553.png' alt='GitHub' width='24' height='24' style='filter: grayscale(100%);'></a>", this.github,
-            "<a href='https://linkedin.com/in/lucas-reginatto-de-lima' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/174/174857.png' alt='LinkedIn' width='24' height='24' style='filter: grayscale(100%);'></a>", this.linkedin,
-            "<a href='https://youtube.com/@lucasreginatto721' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png' alt='YouTube' width='24' height='24' style='filter: grayscale(100%);'></a>", this.youtube,
-            "<a href='https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC' target='_blank'><img src='https://cdn-icons-png.flaticon.com/512/174/174872.png' alt='Spotify' width='24' height='24' style='filter: grayscale(100%);'></a>", this.spotify
+    social: function () {
+        const rows = [
+            ['GitHub', 'https://github.com/lucaohost', 'lucaohost', 'https://cdn-icons-png.flaticon.com/512/733/733553.png'],
+            ['LinkedIn', 'https://linkedin.com/in/lucas-reginatto-de-lima', 'lucaohost', 'https://cdn-icons-png.flaticon.com/512/174/174857.png'],
+            ['YouTube', 'https://youtube.com/@lucasreginatto721', 'lucaohost', 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'],
+            ['Spotify', 'https://open.spotify.com/playlist/2kO4SQsSzH2wYMkNB9lVEC', 'liked songs', 'https://cdn-icons-png.flaticon.com/512/174/174872.png']
         ];
-        return buildSocialTable(socialMidias, 2);
+        return '<ul class="socialList">' + rows.map(function (row) {
+            return '<li><a class="socialLink" href="' + row[1] + '" target="_blank" rel="noopener"><img src="' + row[3] + '" alt="" width="28" height="28"><span class="socialCopy"><span class="socialName">' + row[0] + '</span><span class="socialHandle">' + row[2] + '</span></span></a></li>';
+        }).join('') + '</ul>';
     },
     snooker: "Snooker Scoreboard:\n<a href='https://lucaohost.github.io/snooker' target='_blank'>https://lucaohost.github.io/snooker</a>",
     clear: function() {
@@ -124,6 +126,8 @@ const commands = {
             'kali', "Kali Linux photo.",
             'snooker', "Snooker Scoreboard.",
             'help', "Show all Commands.",
+            'login', "Sign in as Lucas.",
+            'logout', "End the session.",
             'clear', "Clear the Terminal.",
             'exit', "Close the Terminal."
         ];
@@ -153,6 +157,17 @@ const commands = {
     },
     'clear music': function () {
         return clearPlayedMusic();
+    },
+    login: function () {
+        if (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) return 'Already signed in as lucas@s.co.';
+        return '<form class="loginForm"><label class="loginLabel">User</label><span class="loginIdentity"><select class="loginUser" aria-label="User"><option value="lucas">lucas</option></select><span class="loginDomain">@s.co</span></span><input class="loginWord" type="password" maxlength="4" autocomplete="current-password" placeholder="password" aria-label="Password"><button type="submit" class="loginSubmit">Sign in</button><p class="loginError"></p></form>';
+    },
+    logout: function () {
+        if (typeof SiteSession === 'undefined' || !SiteSession.email()) return 'Not signed in.';
+        return SiteSession.signOut().then(function () {
+            playedMusicState = null;
+            return 'Signed out.';
+        });
     },
     rick: function () {
         pauseEveryPlayer();
@@ -188,16 +203,88 @@ const commands = {
     }
 };
 
+function placeBlockCaret() {
+    const caret = document.querySelector('.block-caret');
+    if (!caret) return;
+    if (!inputField || isMobileCli()) {
+        caret.hidden = true;
+        return;
+    }
+    const active = document.activeElement === inputField;
+    caret.hidden = !active;
+    if (!active) return;
+    const line = inputField.closest('.input-line') || inputField.parentElement;
+    const lineRect = line.getBoundingClientRect();
+    const inputRect = inputField.getBoundingClientRect();
+    let left = inputRect.left;
+    let top = inputRect.top;
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount && inputField.contains(selection.anchorNode)) {
+        try {
+            const range = selection.getRangeAt(0).cloneRange();
+            range.collapse(true);
+            const rects = typeof range.getClientRects === 'function' ? range.getClientRects() : [];
+            const rect = rects.length ? rects[0] : (typeof range.getBoundingClientRect === 'function' ? range.getBoundingClientRect() : null);
+            if (rect && rect.left) {
+                left = rect.left;
+                if (rect.top) top = rect.top;
+            }
+        } catch (error) {}
+    }
+    caret.style.left = (left - lineRect.left) + 'px';
+    caret.style.top = (top - lineRect.top) + 'px';
+}
+
+function bindBlockCaret() {
+    if (!inputField || inputField.dataset.caretBound) return;
+    inputField.dataset.caretBound = '1';
+    ['keyup', 'click', 'focus', 'input'].forEach(function (type) {
+        inputField.addEventListener(type, placeBlockCaret);
+    });
+    inputField.addEventListener('blur', placeBlockCaret);
+    document.addEventListener('selectionchange', placeBlockCaret);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     appendOutput('Welcome to my online terminal!\nType "help" to see all commands.');
     loadLikedCatalog().catch(function () {});
     bindTerminalChrome();
+    bindBlockCaret();
     if (!isMobileCli()) inputField.focus();
+});
+bindBlockCaret();
+
+document.addEventListener('click', function (event) {
+    const link = event.target.closest && event.target.closest('.socialLink, .trackRadio');
+    if (link && link.dataset.suppressClick === '1') {
+        event.preventDefault();
+        delete link.dataset.suppressClick;
+    }
+}, true);
+
+document.addEventListener('submit', function (event) {
+    const form = event.target.closest && event.target.closest('.loginForm');
+    if (!form) return;
+    event.preventDefault();
+    const word = form.querySelector('.loginWord');
+    const error = form.querySelector('.loginError');
+    const signIn = typeof SiteSession === 'undefined' ? null : SiteSession.signIn(form.querySelector('.loginUser').value, word.value);
+    if (!signIn) {
+        if (error) error.textContent = 'Auth indisponível.';
+        return;
+    }
+    signIn.then(function () {
+        playedMusicState = null;
+        if (error) error.textContent = '';
+        appendOutput('Signed in as lucas@s.co.');
+    }).catch(function (err) {
+        if (error) error.textContent = (err && err.message) || 'Could not sign in.';
+    });
 });
 
 document.addEventListener('click', function(event) {
     const selection = window.getSelection().toString();
-    if (!isMobileCli() && !selection && !event.target.closest('.nextMusic, .terminal-bar, .trackBlock')) {
+    if (!isMobileCli() && !selection && !event.target.closest('.nextMusic, .terminal-bar, .trackBlock, .loginForm, .socialList, .trackRadio')) {
         inputField.focus();
     }
 });
@@ -519,7 +606,7 @@ document.addEventListener('touchstart', (event) => {
         event.preventDefault();
         return;
     }
-    if (control.classList.contains('trackPlay') || control.classList.contains('nextMusic')) {
+    if (control.classList.contains('trackPlay') || control.classList.contains('nextMusic') || control.classList.contains('socialLink') || control.classList.contains('trackRadio')) {
         const touch = event.changedTouches[0];
         trackTouch = {
             id: touch.identifier,
@@ -557,6 +644,13 @@ document.addEventListener('touchend', function (event) {
     if (dragged) {
         event.preventDefault();
         armSuppressClick(gesture.button);
+        return;
+    }
+    if (gesture.button.classList.contains('socialLink') || gesture.button.classList.contains('trackRadio')) {
+        event.preventDefault();
+        armSuppressClick(gesture.button);
+        if (!dragged) window.open(gesture.button.href, gesture.button.target || '_blank', 'noopener');
+        focusCliInput();
         return;
     }
     if (gesture.button.classList.contains('nextMusic')) {
@@ -841,6 +935,17 @@ var PLAYLIST_QUERY_HASH = '243c0ba2736f16da721e3a227004bbcdb8df6c846f198bd478172
 var SEARCH_QUERY_HASH = 'b50ebd72524415b132ddaca04158fd7aca529da28be322c9924643c0633df5bd';
 var HASH_STORAGE_KEY = 'spotifyPlaylistQueryHash';
 var PLAYED_MUSIC_URL = 'https://snooker-scoreboard2-default-rtdb.firebaseio.com/seasons/cli/playedMusic';
+var VISITOR_MUSIC_URL = 'https://snooker-scoreboard2-default-rtdb.firebaseio.com/seasons/cli/visitorMusic';
+var musicStoreKey = '';
+
+function musicStoreUrl() {
+    const url = (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) ? PLAYED_MUSIC_URL : VISITOR_MUSIC_URL;
+    if (musicStoreKey !== url) {
+        musicStoreKey = url;
+        playedMusicState = null;
+    }
+    return url;
+}
 var spotifyPlayers = new Set();
 var spotifyApi = null;
 var spotifyApiGaveUp = false;
@@ -962,9 +1067,14 @@ setTimeout(function () {
     pendingSpotifyHosts.splice(0).forEach(mountPlainSpotify);
 }, 5000);
 
+function radioLink(trackId) {
+    const id = String(trackId || '').split(':').pop();
+    return '<a class="trackRadio" href="https://open.spotify.com/station/track/' + escapeHtml(id) + '" target="_blank" rel="noopener">Rádio</a>';
+}
+
 function spotifyHostMarkup(uri, autoplay) {
     const autoplayAttr = autoplay ? ' data-autoplay="1"' : '';
-    return `<div class="spotifyHost"${autoplayAttr} data-spotify-uri="${uri}"><div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div></div>`;
+    return `<div class="spotifyHost"${autoplayAttr} data-spotify-uri="${uri}"><div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div>${radioLink(uri)}</div>`;
 }
 
 function nextMusicButton() {
@@ -1046,6 +1156,7 @@ async function playRandomLikedSong() {
             return;
         }
         host.dataset.spotifyUri = 'spotify:track:' + trackId;
+        host.insertAdjacentHTML('beforeend', radioLink(trackId));
         row.insertAdjacentHTML('beforeend', nextMusicButton());
         activateEmbeddedMedia(slot);
         scrollCliToEnd();
@@ -1678,7 +1789,7 @@ async function pickRandomLikedTrackId() {
     let remaining = ids.filter(function (id) { return state.cycle[id] !== generation; });
     if (!remaining.length) {
         state.generation = generation + 1;
-        fetch(PLAYED_MUSIC_URL + '/generation.json', {
+        fetch(musicStoreUrl() + '/generation.json', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: String(state.generation)
@@ -1698,12 +1809,12 @@ async function pickRandomLikedTrackId() {
     state.tracks[trackId] = record;
     writeLocalCycle(state);
     const headers = { 'Content-Type': 'application/json' };
-    fetch(PLAYED_MUSIC_URL + '/tracks/' + trackId + '.json', {
+    fetch(musicStoreUrl() + '/tracks/' + trackId + '.json', {
         method: 'PUT',
         headers: headers,
         body: JSON.stringify(record)
     }).catch(function () {});
-    fetch(PLAYED_MUSIC_URL + '/cycle/' + trackId + '.json', {
+    fetch(musicStoreUrl() + '/cycle/' + trackId + '.json', {
         method: 'PUT',
         headers: headers,
         body: String(state.generation || 1)
@@ -1730,8 +1841,8 @@ function withoutLegacyKeys(value) {
 }
 
 function deletePlayedKey(id) {
-    fetch(PLAYED_MUSIC_URL + '/tracks/' + id + '.json', { method: 'DELETE' }).catch(function () {});
-    fetch(PLAYED_MUSIC_URL + '/cycle/' + id + '.json', { method: 'DELETE' }).catch(function () {});
+    fetch(musicStoreUrl() + '/tracks/' + id + '.json', { method: 'DELETE' }).catch(function () {});
+    fetch(musicStoreUrl() + '/cycle/' + id + '.json', { method: 'DELETE' }).catch(function () {});
 }
 
 function readLocalCycle() {
@@ -1776,7 +1887,7 @@ async function readPlayedMusic(force) {
     const state = emptyPlayedState();
     const removed = [];
     try {
-        const response = await fetch(PLAYED_MUSIC_URL + '.json');
+        const response = await fetch(musicStoreUrl() + '.json');
         if (response.ok) {
             const data = await response.json();
             if (data && data.generation) state.generation = data.generation;
@@ -1805,12 +1916,12 @@ async function readPlayedMusic(force) {
     removed.forEach(deletePlayedKey);
     const headers = { 'Content-Type': 'application/json' };
     Object.keys(missing).forEach(function (id) {
-        fetch(PLAYED_MUSIC_URL + '/tracks/' + id + '.json', {
+        fetch(musicStoreUrl() + '/tracks/' + id + '.json', {
             method: 'PUT',
             headers: headers,
             body: JSON.stringify(state.tracks[id])
         }).catch(function () {});
-        fetch(PLAYED_MUSIC_URL + '/cycle/' + id + '.json', {
+        fetch(musicStoreUrl() + '/cycle/' + id + '.json', {
             method: 'PUT',
             headers: headers,
             body: String(state.generation)
@@ -1830,7 +1941,7 @@ async function renderPlayedMusic() {
             if (!saved || saved.name || !track.name) return;
             saved.name = track.name;
             saved.artist = track.artist || saved.artist || '';
-            fetch(PLAYED_MUSIC_URL + '/tracks/' + track.id + '.json', {
+            fetch(musicStoreUrl() + '/tracks/' + track.id + '.json', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: saved.name, artist: saved.artist })
@@ -1868,6 +1979,9 @@ function currentMusicTrackId() {
 }
 
 async function clearPlayedMusic() {
+    if (typeof SiteSession === 'undefined' || !SiteSession.isOperator()) {
+        return 'Only Lucas can clear the randomized songs. Use login.';
+    }
     const response = await fetch(PLAYED_MUSIC_URL + '.json', { method: 'DELETE' });
     if (!response.ok) return "Couldn't clear the randomized songs.";
     playedMusicState = emptyPlayedState();

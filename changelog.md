@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.2.0 - 2026-09-30
+
+### Added
+- `login` and `logout`. Sign-in is the account name with @s.co fixed beside it.
+- The ranking has a sign-in icon. Once someone is in, that same spot becomes the sign-out icon.
+- Saving a match asks for confirmation, and the history names who added it.
+- Each Spotify player has a Rádio link that opens that song's radio.
+
+### Changed
+- A match can be saved only while a player is signed in, without PIN boxes.
+- Adding a player, changing a password, hiding a player, and deleting a match need Lucas signed in. Deleting a match also takes those wins and games back.
+- `music` and `list` keep a visitor list, and a separate list while Lucas is signed in. `clear music` clears only Lucas's list.
+- The social list is a stack of links, and a drag no longer opens one.
+- Backup leaves passwords out.
+- The terminal caret on a computer is a thick green block.
+
 ## 2.1.3 - 2026-09-29
 
 ### Fixed

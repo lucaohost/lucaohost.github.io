@@ -1,6 +1,6 @@
 # Ranking de Sinuca
 
-Ranking das temporadas do grupo que joga sinuca.
+Ranking das temporadas do grupo que joga sinuca. O terminal do site usa a mesma sessão e o mesmo banco.
 
 ## Language
 
@@ -42,3 +42,29 @@ _Avoid_: corte
 **Histórico de partidas**:
 Lista das partidas registradas. Um jogador oculto continua nomeado ali.
 _Avoid_: log
+
+### Acesso
+
+**Visitante**:
+Quem usa o site sem sessão.
+_Avoid_: anônimo, usuário
+
+**Sessão**:
+Um jogador ou o operador autenticado neste navegador.
+_Avoid_: login, anônimo
+
+**PIN**:
+Palavra de 4 letras ou números de um jogador, usada para abrir a sessão dele.
+_Avoid_: senha, password, pin numérico
+
+**Operador**:
+A conta do Lucas.
+_Avoid_: admin, usuário admin
+
+**Lista do operador**:
+Histórico de músicas randomizadas gravado na sessão do operador.
+_Avoid_: lista do Lucas
+
+**Lista de visitantes**:
+Histórico de músicas randomizadas gravado fora da sessão do operador.
+_Avoid_: lista pública

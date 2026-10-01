@@ -8,7 +8,7 @@ const firebaseConfig = {
     appId: "1:695835616380:web:17fc21b1d88f26c63055f9"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 const playersTable = document.getElementById('players-table');
 const pinInputs = document.querySelectorAll('.pin-input');
@@ -28,9 +28,9 @@ const SEASON_2024_PLAYERS = [
 let secretUnlocked = false;
 
 // Buttons to hide/show based on season
-const addMatchBtn = document.querySelector('[data-bs-target="#addMatchModal"]');
-const addPlayerBtn = document.querySelector('[data-bs-target="#addPlayerModal"]');
-const editPlayerBtn = document.querySelector('[data-bs-target="#editPlayerModal"]');
+const addMatchBtn = document.getElementById('add-match-btn');
+const addPlayerBtn = document.getElementById('add-player-btn');
+const editPlayerBtn = document.getElementById('edit-player-btn');
 const reportsBtn = document.querySelector('a[href="reports.html"]');
 
 // Current season (default 2026)
@@ -243,6 +243,8 @@ function updatePlayerSelects(playersArray) {
         `<option value="${player.id || player.name.toLowerCase()}">${player.name}</option>`
         ).join('');
         
+        window.roster = playersArray;
+        fillSessionUsers(playersArray);
         playerSelects.forEach(select => {
             const currentValue = select.value;
             select.innerHTML = select.querySelector('option[value=""]').outerHTML + playerOptions;
@@ -287,9 +289,42 @@ async function validatePins(pins, selectedPlayers) {
     });
 }
 
+function signedInPlayerId() {
+    if (typeof SiteSession === 'undefined') return '';
+    return SiteSession.signedInId();
+}
+
+function canRecordMatch() {
+    if (typeof SiteSession === 'undefined' || !SiteSession.email()) return false;
+    return SiteSession.email().endsWith(SiteSession.DOMAIN);
+}
+
+function openGuardedModal(modalId) {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById(modalId)).show();
+}
+
+function guardAction(allowed, message, modalId) {
+    if (allowed) {
+        if (modalId) openGuardedModal(modalId);
+        return true;
+    }
+    showToast(message, 'danger');
+    const panel = document.getElementById('session-form');
+    if (panel && typeof SiteSession !== 'undefined' && !SiteSession.email()) {
+        fillSessionUsers(window.roster || []);
+        panel.hidden = false;
+    }
+    return false;
+}
+
 matchForm.addEventListener('submit', async (e) => {
     matchForm.querySelector('button[type="submit"]').disabled = true;
     e.preventDefault();
+    if (!canRecordMatch()) {
+        matchForm.querySelector('button[type="submit"]').disabled = false;
+        guardAction(false, 'Entre com um jogador para registrar a partida.');
+        return;
+    }
     
     // Ensure currentSeason is in sync with the select element
     if (seasonSelect) {
@@ -311,33 +346,7 @@ matchForm.addEventListener('submit', async (e) => {
         return;
     }
     
-    const pins = Array.from(pinInputs)
-        .map(input => input.value.trim())
-        .filter(pin => pin !== '');
-    
-    if (pins.length < 3) {
-        showToast('Pelo menos 3 PINs são necessários!', 'danger');
-        matchForm.querySelector('button[type="submit"]').disabled = false;
-        return;
-    }
-    
-    const selectedPlayers = [
-        team1Player1, 
-        team1Player2, 
-        team2Player1, 
-        team2Player2
-    ].filter(player => player !== '');
-    
-    const pinsValid = await validatePins(pins, selectedPlayers);
-    
-    if (!pinsValid) {
-        matchForm.querySelector('button[type="submit"]').disabled = false;
-        showToast('Necessário 3 PINs válidos dos jogadores envolvidos.', 'danger');
-        return;
-    }
-    
     try {
-        // Get player names for match history
         const playersPath = getPlayersPath();
         const playersSnapshot = await database.ref(playersPath).once('value');
         const playersData = playersSnapshot.val() || {};
@@ -349,6 +358,11 @@ matchForm.addEventListener('submit', async (e) => {
         
         const winners = [team1Player1, team1Player2].filter(p => p).map(getPlayerName);
         const losers = [team2Player1, team2Player2].filter(p => p).map(getPlayerName);
+        if (!window.confirm(SiteSession.confirmMatch(winners, losers))) {
+            matchForm.querySelector('button[type="submit"]').disabled = false;
+            return;
+        }
+        const addedBy = getPlayerName(signedInPlayerId()) || signedInPlayerId();
         
         // Update player stats
         await updatePlayerStats(team1Player1, true);
@@ -363,6 +377,7 @@ matchForm.addEventListener('submit', async (e) => {
             const matchData = {
                 winners: winners,
                 losers: losers,
+                addedBy: addedBy,
                 date: new Date().toISOString(),
                 timestamp: Date.now()
             };
@@ -424,31 +439,17 @@ function updatePlayerStats(playerId, isWinner) {
 const addPlayerForm = document.getElementById('add-player-form');
 addPlayerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!guardAction(typeof SiteSession !== 'undefined' && SiteSession.isOperator(), 'Só o Lucas pode adicionar um jogador.')) return;
     const playerName = document.getElementById('new-player-name').value.trim();
     const playerPassword = document.getElementById('new-player-password').value.trim();
-    const adminPassword = document.getElementById('admin-password-add').value.trim();
     
-    if (!playerName || !playerPassword || playerPassword.length !== 4) {
-        showToast('Nome e senha de 4 dígitos são obrigatórios!', 'danger');
-        return;
-    }
-    
-    if (!adminPassword) {
-        showToast('Senha admin é obrigatória!', 'danger');
+    if (!playerName || !SiteSession.wordOk(playerPassword)) {
+        showToast('Nome e senha de 4 letras ou números são obrigatórios!', 'danger');
         return;
     }
     
     try {
-        // Validate admin password
-        const adminPasswordHash = await sha256(adminPassword);
-        const expectedAdminHash = await sha256('godsmode');
-        if (adminPasswordHash !== expectedAdminHash) {
-            showToast('Senha admin incorreta!', 'danger');
-            return;
-        }
-        
         const playersPath = getPlayersPath();
-        const pinsPath = getPinsPath();
         
         // Check if player already exists
         const playersSnapshot = await database.ref(playersPath).once('value');
@@ -463,7 +464,11 @@ addPlayerForm.addEventListener('submit', async (e) => {
         }
         
         // Create player ID (lowercase name)
-        const playerId = playerName.toLowerCase();
+        const playerId = playerName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!playerId) {
+            showToast('O nome precisa ter uma letra ou número.', 'danger');
+            return;
+        }
         
         // Create player object
         const playerData = {
@@ -474,12 +479,9 @@ addPlayerForm.addEventListener('submit', async (e) => {
             hidden: false
         };
         
-        // Create password hash
-        const passwordHash = await sha256(playerPassword);
-        
-        // Save player and password
         await database.ref(`${playersPath}/${playerId}`).set(playerData);
-        await database.ref(`${pinsPath}/${playerId}`).set(passwordHash);
+        await database.ref(`seasons/${currentSeason}/logins/${SiteSession.localPart(playerId)}`).set(playerId);
+        await SiteSession.setPlayerPassword(playerId, '', playerPassword);
         
         showToast('Jogador adicionado com sucesso!', 'success');
         addPlayerForm.reset();
@@ -494,57 +496,24 @@ addPlayerForm.addEventListener('submit', async (e) => {
 const editPlayerForm = document.getElementById('edit-player-form');
 editPlayerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!guardAction(typeof SiteSession !== 'undefined' && SiteSession.isOperator(), 'Só o Lucas pode trocar a senha.')) return;
     const playerId = document.getElementById('edit-player-name').value;
     const oldPasswordOrAdmin = document.getElementById('old-player-password').value.trim();
     const newPassword = document.getElementById('new-edit-player-password').value.trim();
     
-    if (!playerId || !newPassword || newPassword.length !== 4) {
-        showToast('Jogador e nova senha de 4 dígitos são obrigatórios!', 'danger');
-        return;
-    }
-    
-    if (!oldPasswordOrAdmin) {
-        showToast('Senha antiga ou senha admin é obrigatória!', 'danger');
+    if (!playerId || !SiteSession.wordOk(newPassword)) {
+        showToast('Jogador e nova senha de 4 letras ou números são obrigatórios!', 'danger');
         return;
     }
     
     try {
-        const pinsPath = getPinsPath();
-        const pinsSnapshot = await database.ref(pinsPath).once('value');
-        const pinsData = pinsSnapshot.val() || {};
-        const currentPasswordHash = pinsData[playerId];
-        
-        let isValid = false;
-        
-        // Check if it's admin password
-        const inputHash = await sha256(oldPasswordOrAdmin);
-        const expectedAdminHash = await sha256('godsmode');
-        
-        if (inputHash === expectedAdminHash) {
-            // It's the admin password
-            isValid = true;
-        } else if (oldPasswordOrAdmin.length === 4) {
-            // Check if it's the old player password (4 digits)
-            const oldPasswordHash = await sha256(oldPasswordOrAdmin);
-            if (oldPasswordHash === currentPasswordHash) {
-                isValid = true;
-            }
-        }
-        
-        if (!isValid) {
-            showToast('Senha antiga incorreta ou senha admin inválida!', 'danger');
-            return;
-        }
-        
-        // Update password
-        const newPasswordHash = await sha256(newPassword);
-        await database.ref(`${pinsPath}/${playerId}`).set(newPasswordHash);
-        
+        await database.ref(`seasons/${currentSeason}/logins/${SiteSession.localPart(playerId)}`).set(playerId);
+        await SiteSession.setPlayerPassword(playerId, oldPasswordOrAdmin, newPassword);
         showToast('Senha atualizada com sucesso!', 'success');
         editPlayerForm.reset();
         bootstrap.Modal.getInstance(document.getElementById('editPlayerModal')).hide();
     } catch (error) {
-        showToast('Erro ao atualizar senha: ' + error.message, 'danger');
+        showToast(error.message || 'Erro ao atualizar senha.', 'danger');
     }
 });
 
@@ -669,26 +638,19 @@ async function downloadBackup() {
         };
         
         // Fetch 2025 data (old structure)
-        const [players2025, pins2025] = await Promise.all([
-            database.ref('players').once('value'),
-            database.ref('pins').once('value')
-        ]);
+        const players2025 = await database.ref('players').once('value');
         
         backupData.seasons['2025'] = {
-            players: players2025.val() || {},
-            pins: pins2025.val() || {}
+            players: players2025.val() || {}
         };
         
-        // Fetch 2026 data (new structure)
-        const [players2026, pins2026, matches2026] = await Promise.all([
+        const [players2026, matches2026] = await Promise.all([
             database.ref('seasons/2026/players').once('value'),
-            database.ref('seasons/2026/pins').once('value'),
             database.ref('seasons/2026/matches').once('value')
         ]);
         
         backupData.seasons['2026'] = {
             players: players2026.val() || {},
-            pins: pins2026.val() || {},
             matches: matches2026.val() || {}
         };
         
@@ -752,6 +714,29 @@ async function captureAndShare(shareMsg = "Ranking Sinuca") {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    bindSessionBar(function () {
+        fillSessionUsers(window.roster || []);
+    });
+    if (addMatchBtn) {
+        addMatchBtn.addEventListener('click', function () {
+            guardAction(canRecordMatch(), 'Entre com um jogador para registrar a partida.', 'addMatchModal');
+        });
+    }
+    if (addPlayerBtn) {
+        addPlayerBtn.addEventListener('click', function () {
+            guardAction(typeof SiteSession !== 'undefined' && SiteSession.isOperator(), 'Só o Lucas pode adicionar um jogador.', 'addPlayerModal');
+        });
+    }
+    if (editPlayerBtn) {
+        editPlayerBtn.addEventListener('click', function () {
+            guardAction(typeof SiteSession !== 'undefined' && SiteSession.isOperator(), 'Só o Lucas pode trocar a senha.', 'editPlayerModal');
+        });
+    }
+    if (hidePlayerBtn) {
+        hidePlayerBtn.addEventListener('click', function () {
+            guardAction(typeof SiteSession !== 'undefined' && SiteSession.isOperator(), 'Só o Lucas pode ocultar um jogador.', 'hidePlayerModal');
+        });
+    }
     const toggleButton = document.getElementById('darkModeToggle');
     const body = document.body;
     const html = document.documentElement;
@@ -861,8 +846,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const hidePlayerModal = document.getElementById('hidePlayerModal');
     const hidePlayerList = document.getElementById('hide-player-list');
-    const hideAdminPassword = document.getElementById('hide-admin-password');
-    let hideAdminUnlocked = false;
 
     function escapeHtml(text) {
         return String(text)
@@ -872,31 +855,14 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/"/g, '&quot;');
     }
 
-    async function ensureHideAdmin() {
-        if (hideAdminUnlocked) return true;
-        const password = hideAdminPassword ? hideAdminPassword.value.trim() : '';
-        if (!password) {
-            showToast('Senha admin é obrigatória!', 'danger');
-            return false;
-        }
-        const adminPasswordHash = await sha256(password);
-        const expectedAdminHash = await sha256('godsmode');
-        if (adminPasswordHash !== expectedAdminHash) {
-            showToast('Senha admin incorreta!', 'danger');
-            return false;
-        }
-        hideAdminUnlocked = true;
-        return true;
-    }
-
     async function onHidePlayerToggle(event) {
         const input = event.target;
         const wantHidden = input.checked;
         const playerId = input.dataset.playerId;
         const playerName = input.dataset.playerName;
-        const allowed = await ensureHideAdmin();
-        if (!allowed) {
+        if (typeof SiteSession === 'undefined' || !SiteSession.isOperator()) {
             input.checked = !wantHidden;
+            showToast('Só o Lucas pode ocultar um jogador.', 'danger');
             return;
         }
         try {
@@ -942,8 +908,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (hidePlayerModal) {
         hidePlayerModal.addEventListener('show.bs.modal', () => {
-            hideAdminUnlocked = false;
-            if (hideAdminPassword) hideAdminPassword.value = '';
             renderHidePlayerList().catch(error => {
                 showToast('Erro ao carregar jogadores: ' + error.message, 'danger');
             });

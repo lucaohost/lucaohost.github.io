@@ -2,38 +2,60 @@
   "rules": {
     "players": {
       ".read": true,
-      ".write": true
+      ".write": false
     },
     "pins": {
-      ".read": true,
-      ".write": true
+      ".read": false,
+      ".write": false
     },
     "seasons": {
-      ".read": true,
-      ".write": true,
       "cli": {
         "playedMusic": {
           ".read": true,
-          ".write": true
+          ".write": "auth.token.email == 'lucas@s.co'"
+        },
+        "visitorMusic": {
+          ".read": true,
+          ".write": "auth.token.email == 'lucas@s.co'",
+          "generation": {
+            ".write": "newData.isNumber()"
+          },
+          "tracks": {
+            "$trackId": {
+              ".write": "newData.hasChildren(['name', 'artist', 'playedOn', 'seq'])"
+            }
+          },
+          "cycle": {
+            "$trackId": {
+              ".write": "newData.isNumber()"
+            }
+          }
         }
       },
       "$season": {
-        ".read": true,
-        ".write": true,
+        "logins": {
+          "$login": {
+            ".read": false,
+            ".write": "auth.token.email == 'lucas@s.co'"
+          }
+        },
         "players": {
           ".read": true,
-          ".write": true
+          "$playerId": {
+            ".write": "auth != null && (auth.token.email == 'lucas@s.co' || ($season == '2026' && data.exists() && newData.exists() && newData.child('name').val() == data.child('name').val() && newData.child('hidden').val() == data.child('hidden').val() && (newData.child('season').val() == data.child('season').val() || (data.child('season').val() == null && newData.child('season').val() == 2026)) && newData.child('games').isNumber() && newData.child('wins').isNumber() && newData.child('games').val() == data.child('games').val() + 1 && newData.child('wins').val() >= data.child('wins').val() && newData.child('wins').val() <= data.child('wins').val() + 1 && auth.token.email.endsWith('@s.co') && root.child('seasons/2026/logins').child(auth.token.email.replace('@s.co', '')).exists()))"
+          }
         },
         "pins": {
-          ".read": true,
-          ".write": true
+          ".read": false,
+          ".write": false
         },
         "matches": {
           ".read": true,
-          ".write": true
+          "$matchId": {
+            ".write": "$season == '2026' && ((!data.exists() && newData.exists() && newData.child('winners').exists() && newData.child('losers').exists() && newData.child('date').isString() && newData.child('timestamp').isNumber() && (auth.token.email == 'lucas@s.co' || (auth.token.email.endsWith('@s.co') && root.child('seasons/2026/logins').child(auth.token.email.replace('@s.co', '')).exists()))) || (data.exists() && !newData.exists() && auth.token.email == 'lucas@s.co'))"
+          }
         }
       }
     }
   }
 }
-

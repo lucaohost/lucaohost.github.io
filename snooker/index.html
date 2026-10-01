@@ -114,7 +114,11 @@
 </head>
 <body>
     <div class="container" id="main-container">        
-        <div class="text-end my-2">
+        <div class="session-wrap">
+            <div class="session-bar">
+            <button id="session-toggle" class="session-toggle" type="button" aria-label="Entrar">
+                <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
+            </button>
             <button id="darkModeToggle" class="dark-mode-toggle" aria-label="Toggle dark mode">
                 <span class="toggle-track">
                     <span class="toggle-thumb">
@@ -123,6 +127,16 @@
                     </span>
                 </span>
             </button>
+            </div>
+            <form id="session-form" class="session-panel" hidden>
+                <div class="session-identity">
+                    <select id="session-user" class="form-select" aria-label="Jogador" required></select>
+                    <span class="session-domain">@s.co</span>
+                </div>
+                <input id="session-word" class="form-control" type="password" maxlength="4" autocomplete="current-password" placeholder="Senha" aria-label="Senha" required>
+                <button type="submit" class="btn btn-style">Entrar</button>
+                <p id="session-error" class="session-error"></p>
+            </form>
         </div>
         <h1 class="text-center my-4">Ranking Sinuca</h1>
         
@@ -165,16 +179,16 @@
             </ul>
         </div>
         <div class="text-center my-4 buttons-container"> 
-            <button class="btn btn-style" data-bs-toggle="modal" data-bs-target="#addMatchModal">
+            <button class="btn btn-style" id="add-match-btn" type="button">
                 <i class="fas fa-plus"></i> Adicionar Partida
             </button>
             <button class="btn btn-style" id="share-btn">
                 <i class="fas fa-share-alt"></i> Compartilhar
             </button>
-            <button class="btn btn-style" data-bs-toggle="modal" data-bs-target="#addPlayerModal">
+            <button class="btn btn-style" id="add-player-btn" type="button">
                 <i class="fas fa-user-plus"></i> Adicionar Jogador
             </button>
-            <button class="btn btn-style" data-bs-toggle="modal" data-bs-target="#editPlayerModal">
+            <button class="btn btn-style" id="edit-player-btn" type="button">
                 <i class="fas fa-key"></i> Atualizar PIN
             </button>
             <a href="reports.html" class="btn btn-style">
@@ -186,7 +200,7 @@
             <button class="btn btn-style btn-warning" id="backup-btn" style="display: none;">
                 <i class="fas fa-download"></i> Backup
             </button>
-            <button class="btn btn-style" id="hide-player-btn" style="display: none;" data-bs-toggle="modal" data-bs-target="#hidePlayerModal">
+            <button class="btn btn-style" id="hide-player-btn" style="display: none;" type="button">
                 <i class="fas fa-user-slash"></i> Ocultar Jogador
             </button>
         </div>
@@ -221,14 +235,6 @@
                             </select>
                         </div>
                         
-                        <div class="mb-3">
-                            <h6>PINs de Confirmação</h6>
-                            <input type="password"  maxlength="4" class="form-control mb-2 pin-input" placeholder="PIN 1" required>
-                            <input type="password"  maxlength="4" class="form-control mb-2 pin-input" placeholder="PIN 2" required>
-                            <input type="password"  maxlength="4" class="form-control mb-2 pin-input" placeholder="PIN 3" required>
-                            <input type="password"  maxlength="4" class="form-control mb-2 pin-input" placeholder="PIN 4 (se houver 4 jogadores)">
-                        </div>
-                        
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-success">Confirmar Partida</button>
                         </div>
@@ -253,12 +259,8 @@
                             <input type="text" class="form-control" id="new-player-name" required>
                         </div>
                         <div class="mb-3">
-                            <label for="new-player-password" class="form-label">Senha (PIN)</label>
-                            <input type="password" maxlength="4" class="form-control" id="new-player-password" placeholder="4 dígitos" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="admin-password-add" class="form-label">Senha Admin</label>
-                            <input type="password" class="form-control" id="admin-password-add" placeholder="Senha admin necessária" required>
+                            <label for="new-player-password" class="form-label">Senha</label>
+                            <input type="password" maxlength="4" class="form-control" id="new-player-password" placeholder="4 letras ou números" required>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-success">Adicionar Jogador</button>
@@ -286,12 +288,12 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="old-player-password" class="form-label">Senha Antiga ou Senha Admin</label>
-                            <input type="password" class="form-control" id="old-player-password" placeholder="Senha antiga (4 dígitos) ou senha admin">
+                            <label for="old-player-password" class="form-label">Senha atual</label>
+                            <input type="password" maxlength="4" class="form-control" id="old-player-password" placeholder="4 letras ou números, se a conta já existe" autocomplete="off">
                         </div>
                         <div class="mb-3">
-                            <label for="new-edit-player-password" class="form-label">Nova Senha (PIN)</label>
-                            <input type="password" maxlength="4" class="form-control" id="new-edit-player-password" placeholder="4 dígitos" required>
+                            <label for="new-edit-player-password" class="form-label">Nova senha</label>
+                            <input type="password" maxlength="4" class="form-control" id="new-edit-player-password" placeholder="4 letras ou números" required>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">Atualizar Senha</button>
@@ -337,10 +339,6 @@
                 </div>
                 <div class="modal-body">
                     <p class="mb-3">Quem fica oculto sai do ranking e do aproveitamento. O histórico de partidas continua igual. Desligar o interruptor faz o jogador voltar.</p>
-                    <div class="mb-3">
-                        <label for="hide-admin-password" class="form-label">Senha Admin</label>
-                        <input type="password" class="form-control" id="hide-admin-password" placeholder="Senha admin necessária" autocomplete="off">
-                    </div>
                     <div id="hide-player-list"></div>
                 </div>
             </div>
@@ -359,7 +357,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <script src="../session.js"></script>
+    <script src="auth-bar.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="app.js"></script>
 </body>

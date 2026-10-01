@@ -157,7 +157,10 @@ function boot(options) {
         if (href.includes('changelog.md')) {
             return jsonResponse(settings.changelog || '# Changelog\n\n## 9.9.9 - 2026-01-01\n\n### Added\n- Example item\n');
         }
-        if (href.includes('playedMusic')) return jsonResponse(method === 'GET' ? played : null);
+        if (href.includes('visitorMusic')) return jsonResponse(method === 'GET' ? played : null);
+        if (href.includes('playedMusic')) {
+            return jsonResponse(method === 'GET' ? (settings.operator || { tracks: {}, cycle: {}, generation: 1 }) : null);
+        }
         return jsonResponse(null);
     };
     function run(source) {
@@ -165,6 +168,7 @@ function boot(options) {
         script.textContent = source;
         window.document.body.appendChild(script);
     }
+    run(fs.readFileSync(path.join(root, 'session.js'), 'utf8'));
     run(fs.readFileSync(path.join(root, 'songs.js'), 'utf8'));
     run(fs.readFileSync(path.join(root, 'scripts.js'), 'utf8'));
     const api = createSpotifyApi(settings);
@@ -528,9 +532,11 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.1\.3 - 2026-09-29/);
-    assert.match(top, /keeps that song going/);
-    assert.match(top, /remains on screen/);
+    assert.match(top, /^2\.2\.0 - 2026-09-30/);
+    assert.match(top, /Rádio/);
+    assert.match(top, /thick green block|thick green/);
+    assert.match(changelog, /keeps that song going/);
+    assert.match(changelog, /remains on screen/);
     assert.match(changelog, /leaves the song that is already playing/);
     assert.match(changelog, /while one is still loading/);
     assert.match(changelog, /round skip button/);
@@ -1099,3 +1105,70 @@ function playedSongs(ids) {
     });
     return { tracks: tracks, cycle: {}, generation: 1 };
 }
+
+test('login shows the account name with the fixed email beside it', async () => {
+    await withPage({}, async (page) => {
+        await runCommand(page, 'login');
+        const form = output(page).querySelector('.loginForm');
+        assert.ok(form);
+        assert.equal(form.querySelector('.loginUser').value, 'lucas');
+        assert.equal(form.querySelector('.loginDomain').textContent, '@s.co');
+        form.querySelector('.loginWord').value = 'bola';
+        form.dispatchEvent(new page.window.Event('submit', { bubbles: true, cancelable: true }));
+        await delay(20);
+        assert.match(form.querySelector('.loginError').textContent, /Auth indisponível/);
+    });
+});
+
+test('a visitor stores music apart from Lucas and cannot clear his list', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        await runCommand(page, 'music');
+        await delay(20);
+        assert.ok(page.fetches.some((entry) => entry.method === 'PUT' && entry.href.includes('visitorMusic/tracks/')));
+        assert.equal(page.fetches.some((entry) => entry.href.includes('playedMusic')), false);
+        const radio = output(page).querySelector('.trackRadio');
+        assert.equal(radio.textContent, 'Rádio');
+        assert.match(radio.getAttribute('href'), /^https:\/\/open\.spotify\.com\/station\/track\/[ab]$/);
+        page.fetches.length = 0;
+        await runCommand(page, 'clear music');
+        assert.match(output(page).textContent, /Only Lucas can clear/);
+        assert.equal(page.fetches.some((entry) => entry.method === 'DELETE'), false);
+    });
+});
+
+test('Lucas stores and clears only his randomized list', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        page.window.SiteSession.isOperator = function () { return true; };
+        await runCommand(page, 'music');
+        await delay(20);
+        assert.ok(page.fetches.some((entry) => entry.method === 'PUT' && entry.href.includes('playedMusic/tracks/')));
+        assert.equal(page.fetches.some((entry) => entry.href.includes('visitorMusic')), false);
+        await runCommand(page, 'clear music');
+        assert.ok(page.fetches.some((entry) => entry.method === 'DELETE' && entry.href.includes('playedMusic.json')));
+        assert.match(output(page).textContent, /Randomized songs cleared/);
+    });
+});
+
+test('social links stay closed when the touch turns into a drag', async () => {
+    await withPage({}, async (page) => {
+        usePhone(page);
+        await runCommand(page, 'social');
+        const link = output(page).querySelector('.socialLink');
+        assert.equal(output(page).querySelectorAll('.socialLink').length, 4);
+        assert.equal(output(page).querySelector('table'), null);
+        let opened = 0;
+        page.window.open = function () { opened += 1; };
+        link.dispatchEvent(touchEvent(page, 'touchstart', 20, 20));
+        page.document.dispatchEvent(touchEvent(page, 'touchmove', 20, 80));
+        link.dispatchEvent(touchEvent(page, 'touchend', 20, 80));
+        assert.equal(opened, 0);
+        link.dispatchEvent(touchEvent(page, 'touchstart', 20, 20));
+        link.dispatchEvent(touchEvent(page, 'touchend', 22, 22));
+        assert.equal(opened, 1);
+    });
+});
+
+test('the desktop caret is a thick green block', () => {
+    const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+    assert.match(css, /@media \(min-width: 769px\)\s*\{[^}]*\.block-caret\s*\{[^}]*width:\s*0\.55ch;[^}]*background:\s*#4CAF50/s);
+});
