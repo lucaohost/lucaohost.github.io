@@ -110,8 +110,8 @@ seasonSelect.addEventListener('change', (e) => {
     currentSeason = parseInt(e.target.value);
     localStorage.setItem('currentSeason', currentSeason);
     
-    // Clear table immediately
-    playersTable.innerHTML = '<tr><td colspan="6" class="text-center">Carregando...</td></tr>';
+    playersTable.innerHTML = skeletonMarkup(6, 6);
+    playersTable.setAttribute('aria-busy', 'true');
     
     // Toggle buttons visibility
     toggleButtonsBySeason();
@@ -135,6 +135,11 @@ function loadPlayers() {
         return;
     }
 
+    if (playersTable && !playersTable.querySelector('.skeleton-row')) {
+        playersTable.innerHTML = skeletonMarkup(6, 6);
+        playersTable.setAttribute('aria-busy', 'true');
+    }
+
     const playersPath = getPlayersPath();
     database.ref(playersPath).once('value').then((snapshot) => {
         const playersData = snapshot.val() || {};
@@ -151,10 +156,26 @@ function loadPlayers() {
             };
         });
         renderRanking(playersArray);
+    }).catch(() => {
+        playersTable.innerHTML = '<tr><td colspan="6" class="text-center">Não foi possível carregar o ranking.</td></tr>';
+        playersTable.removeAttribute('aria-busy');
     });
 }
 
+function skeletonMarkup(columns, rows) {
+    let html = '';
+    for (let row = 0; row < rows; row += 1) {
+        html += '<tr class="skeleton-row" aria-hidden="true">';
+        for (let column = 0; column < columns; column += 1) {
+            html += '<td><span class="skeleton-bar"></span></td>';
+        }
+        html += '</tr>';
+    }
+    return html;
+}
+
 function renderRanking(playersArray) {
+    if (playersTable) playersTable.removeAttribute('aria-busy');
     updatePlayerSelects(playersArray);
     updateEditPlayerSelect(playersArray);
 

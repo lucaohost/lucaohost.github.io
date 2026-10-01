@@ -67,6 +67,13 @@ var SiteSession = (function () {
         return email() === emailFor(OPERATOR);
     }
 
+    function idToken() {
+        var client = auth();
+        var user = client && client.currentUser;
+        if (!user || typeof user.getIdToken !== 'function') return Promise.resolve('');
+        return user.getIdToken().catch(function () { return ''; });
+    }
+
     function signIn(id, word) {
         var client = auth();
         if (!client) return Promise.reject(new Error('Auth indisponível.'));
@@ -145,6 +152,7 @@ var SiteSession = (function () {
         email: email,
         signedInId: signedInId,
         isOperator: isOperator,
+        idToken: idToken,
         signIn: signIn,
         signInPlayer: signInPlayer,
         signOut: signOut,

@@ -294,9 +294,12 @@ async function processCommand(input) {
     }
     const command = input.trim().toLocaleLowerCase();
     const namedMusic = command.startsWith('music ') ? input.trim().replace(/^music\s+/i, '').trim() : '';
-    const runner = commands[command] ? command : (namedMusic ? 'music-search' : '');
+        const runner = commands[command] ? command : (namedMusic ? 'music-search' : '');
     if (runner) {
-        const wait = runner === 'music-search' ? beginSlowCommandWait('Searching Spotify…') : null;
+        const searching = runner === 'music-search';
+        const wait = (searching || commandNeedsWait(command))
+            ? beginSlowCommandWait(searching ? 'Searching Spotify…' : commandWaitLabel(command))
+            : null;
         try {
             const result = runner === 'music-search'
                 ? playNamedSong(namedMusic)
@@ -1249,6 +1252,20 @@ function nextMusicButton() {
     return '<button type="button" class="nextMusic" aria-label="Next song"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 5.2v13.6L12 12z" fill="currentColor"></path><path d="M12.4 5.2v13.6L20.8 12z" fill="currentColor"></path></svg></button>';
 }
 
+function commandNeedsWait(command) {
+    return command === 'list' || command === 'liked' || command === 'changelog'
+        || command === 'clear music' || command === 'clear visitor music' || command === 'logout';
+}
+
+function commandWaitLabel(command) {
+    if (command === 'list') return 'Loading songs…';
+    if (command === 'liked') return 'Loading liked songs…';
+    if (command === 'changelog') return 'Loading changelog…';
+    if (command === 'clear music' || command === 'clear visitor music') return 'Clearing songs…';
+    if (command === 'logout') return 'Signing out…';
+    return 'Loading…';
+}
+
 function beginSlowCommandWait(label) {
     const wait = { done: false, node: null, timer: 0 };
     wait.timer = window.setTimeout(function () {
@@ -1857,21 +1874,27 @@ async function discoverPlaylistQueryHash() {
 
 async function fetchTracksForHash(hash) {
     const token = await fetchSpotifyToken();
+    const limit = 100;
+    const first = await fetchPlaylistPage(token, hash, 0, limit);
     const tracks = [];
     const seen = new Set();
-    const limit = 100;
-    let offset = 0;
-    let total = Infinity;
-    while (offset < total && offset < 2000) {
-        const page = await fetchPlaylistPage(token, hash, offset, limit);
-        total = page.total;
+    function take(page) {
         page.tracks.forEach(function (track) {
             if (seen.has(track.id)) return;
             seen.add(track.id);
             tracks.push(track);
         });
-        if (!page.tracks.length) break;
-        offset += limit;
+    }
+    take(first);
+    const offsets = [];
+    const total = first.total || tracks.length;
+    for (let offset = limit; offset < total && offset < 2000; offset += limit) offsets.push(offset);
+    const width = 4;
+    for (let index = 0; index < offsets.length; index += width) {
+        const pages = await Promise.all(offsets.slice(index, index + width).map(function (offset) {
+            return fetchPlaylistPage(token, hash, offset, limit);
+        }));
+        pages.forEach(take);
     }
     if (!tracks.length) throw new Error('playlist empty');
     return tracks;
@@ -2097,24 +2120,67 @@ async function readPlayedMusic(force) {
     return state;
 }
 
+function applyCatalogNames(state, catalog) {
+    if (!catalog) return 0;
+    catalog.forEach(function (track) {
+        const saved = state.tracks[track.id];
+        if (!saved || saved.name || !track.name) return;
+        saved.name = track.name;
+        saved.artist = track.artist || saved.artist || '';
+        fetch(musicStoreUrl() + '/tracks/' + track.id + '.json', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: saved.name, artist: saved.artist })
+        }).catch(function () {});
+    });
+    return catalog.length;
+}
+
+function playedListNeedsNames(state) {
+    return Object.keys(state.tracks).some(function (id) {
+        if (isLegacyPositionKey(id)) return false;
+        const track = state.tracks[id];
+        return track && typeof track === 'object' && !track.name;
+    });
+}
+
+var listCountTicket = 0;
+
+function schedulePlayedListFill(state) {
+    const ticket = ++listCountTicket;
+    const needsNames = playedListNeedsNames(state);
+    loadLikedCatalog().then(function (catalog) {
+        if (!catalog || !catalog.length || ticket !== listCountTicket) return;
+        window.setTimeout(function () {
+            if (ticket !== listCountTicket) return;
+            const lists = terminalOutput.querySelectorAll('.musicList');
+            const block = lists[lists.length - 1];
+            if (!block) return;
+            if (needsNames) {
+                applyCatalogNames(state, catalog);
+                const holder = document.createElement('div');
+                holder.innerHTML = markupPlayedList(state, catalog.length);
+                const fresh = holder.firstElementChild;
+                if (!fresh) return;
+                block.replaceWith(fresh);
+                activateEmbeddedMedia(fresh);
+                return;
+            }
+            const count = block.querySelector('.trackCount');
+            if (!count || count.textContent.indexOf('/?') === -1) return;
+            count.textContent = count.textContent.replace('/?', '/' + catalog.length);
+        }, 0);
+    }).catch(function () {});
+}
+
 async function renderPlayedMusic() {
     const state = await readPlayedMusic(true);
-    let total = 0;
-    try {
-        const catalog = await loadLikedCatalog();
-        total = catalog.length;
-        catalog.forEach(function (track) {
-            const saved = state.tracks[track.id];
-            if (!saved || saved.name || !track.name) return;
-            saved.name = track.name;
-            saved.artist = track.artist || saved.artist || '';
-            fetch(musicStoreUrl() + '/tracks/' + track.id + '.json', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: saved.name, artist: saved.artist })
-            }).catch(function () {});
-        });
-    } catch (error) {}
+    const total = applyCatalogNames(state, likedCatalog);
+    if (!total || playedListNeedsNames(state)) schedulePlayedListFill(state);
+    return markupPlayedList(state, total);
+}
+
+function markupPlayedList(state, total) {
     const rows = Object.keys(state.tracks).filter(function (id) {
         return !isLegacyPositionKey(id) && state.tracks[id] && typeof state.tracks[id] === 'object';
     }).map(function (id) {
@@ -2145,11 +2211,19 @@ function currentMusicTrackId() {
     return '';
 }
 
+async function firebaseJsonUrl(base) {
+    let url = base + '.json';
+    if (typeof SiteSession === 'undefined' || typeof SiteSession.idToken !== 'function') return url;
+    const token = await SiteSession.idToken();
+    if (!token) return url;
+    return url + '?auth=' + encodeURIComponent(token);
+}
+
 async function clearPlayedMusic() {
     if (typeof SiteSession === 'undefined' || !SiteSession.isOperator()) {
         return 'Only Lucas can clear the randomized songs.\nUse login.';
     }
-    const response = await fetch(PLAYED_MUSIC_URL + '.json', { method: 'DELETE' });
+    const response = await fetch(await firebaseJsonUrl(PLAYED_MUSIC_URL), { method: 'DELETE' });
     if (!response.ok) return "Couldn't clear the randomized songs.";
     playedMusicState = emptyPlayedState();
     localStorage.removeItem('playedPositions');
@@ -2160,7 +2234,7 @@ async function clearVisitorMusic() {
     if (typeof SiteSession === 'undefined' || !SiteSession.isOperator()) {
         return 'Only Lucas can clear visitor randomized songs.\nUse login.';
     }
-    const response = await fetch(VISITOR_MUSIC_URL + '.json', { method: 'DELETE' });
+    const response = await fetch(await firebaseJsonUrl(VISITOR_MUSIC_URL), { method: 'DELETE' });
     if (!response.ok) return "Couldn't clear visitor randomized songs.";
     return 'Visitor randomized songs cleared.';
 }

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.5.0 - 2026-09-30
+
+### Added
+- A command that takes a moment shows a loading status in the terminal.
+- The ranking, match history, and reports show a skeleton while their data is loading.
+
+### Changed
+- `list` opens the randomized songs without waiting for every liked song to load.
+
+### Fixed
+- Lucas can clear the visitors' randomized songs after signing in.
+- Match history cards on a phone stay one color in light mode. The table on a computer still alternates rows.
+
 ## 2.4.0 - 2026-09-30
 
 ### Added

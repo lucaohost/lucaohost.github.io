@@ -378,6 +378,62 @@ test('the last song stays put when it ends', async () => {
     });
 });
 
+test('list shows stored songs before the liked catalog finishes', async () => {
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    await withPage({ played: playedSongs(['a', 'b']) }, async (page) => {
+        page.window.likedCatalog = null;
+        page.window.likedCatalogPromise = gate.then(() => tracks(['a', 'b', 'c', 'd']));
+        const pending = runCommand(page, 'list');
+        await delay(40);
+        const block = output(page).querySelector('.musicList');
+        assert.ok(block);
+        assert.equal(block.querySelector('.trackCount').textContent, '2/?');
+        release();
+        await pending;
+        await delay(30);
+        assert.equal(output(page).querySelector('.musicList .trackCount').textContent, '2/4');
+    });
+});
+
+test('a slow list and liked command show a loading status', async () => {
+    await withPage({ played: playedSongs(['a']) }, async (page) => {
+        const original = page.window.fetch;
+        let releaseFetch;
+        const fetchGate = new Promise((resolve) => { releaseFetch = resolve; });
+        page.window.fetch = (url, request) => {
+            const href = String(url);
+            if (href.includes('visitorMusic') || href.includes('playedMusic')) {
+                return fetchGate.then(() => original(url, request));
+            }
+            return original(url, request);
+        };
+        const pending = runCommand(page, 'list');
+        await delay(80);
+        assert.equal(output(page).querySelector('.commandWait'), null);
+        await delay(400);
+        assert.equal(output(page).querySelector('.commandWait').textContent, 'Loading songs…');
+        assert.equal(page.document.body.classList.contains('is-commandLocked'), true);
+        releaseFetch();
+        await pending;
+        assert.equal(output(page).querySelector('.commandWait'), null);
+        assert.ok(output(page).querySelector('.musicList'));
+        assert.equal(page.document.body.classList.contains('is-commandLocked'), false);
+
+        let releaseLiked;
+        const likedGate = new Promise((resolve) => { releaseLiked = resolve; });
+        page.window.likedCatalog = null;
+        page.window.likedCatalogPromise = likedGate.then(() => tracks(['a', 'b']));
+        const liked = runCommand(page, 'liked');
+        await delay(450);
+        assert.equal(output(page).querySelector('.commandWait').textContent, 'Loading liked songs…');
+        releaseLiked();
+        await liked;
+        assert.equal(output(page).querySelector('.commandWait'), null);
+        assert.equal(output(page).querySelectorAll('.likedBlock .trackName').length, 2);
+    });
+});
+
 test('list shows randomized songs newest first and the playlist count', async () => {
     const catalog = tracks(['a', 'b', 'c']);
     const played = {
@@ -561,13 +617,18 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.4\.0 - 2026-09-30/);
-    assert.match(top, /command typos/);
-    assert.match(top, /clear visitor music/);
-    assert.match(top, /sharing immediately/);
-    assert.match(top, /Hidden players/);
-    assert.match(top, /Only Lucas/);
-    assert.match(top, /password/i);
+    assert.match(top, /^2\.5\.0 - 2026-09-30/);
+    assert.match(top, /loading status/);
+    assert.match(top, /skeleton/);
+    assert.match(top, /without waiting/);
+    assert.match(top, /visitors' randomized songs/);
+    assert.match(top, /one color in light mode/);
+    assert.match(changelog, /command typos/);
+    assert.match(changelog, /clear visitor music/);
+    assert.match(changelog, /sharing immediately/);
+    assert.match(changelog, /Hidden players/);
+    assert.match(changelog, /Only Lucas/);
+    assert.match(changelog, /password/i);
     assert.match(changelog, /@lucaohost\.app/);
     assert.match(changelog, /Rádio/);
     assert.match(changelog, /thick green block/);
@@ -1211,6 +1272,19 @@ test('Lucas can clear his randomized list and the visitor list separately', asyn
         await runCommand(page, 'clear visitor music');
         assert.ok(page.fetches.some((entry) => entry.method === 'DELETE' && entry.href.includes('visitorMusic.json')));
         assert.equal(page.fetches.some((entry) => entry.href.includes('playedMusic')), false);
+        assert.match(output(page).textContent, /Visitor randomized songs cleared/);
+    });
+});
+
+test('clear visitor music sends Lucas Firebase token', async () => {
+    await withPage({}, async (page) => {
+        page.window.SiteSession.isOperator = function () { return true; };
+        page.window.SiteSession.idToken = function () { return Promise.resolve('lucas-token'); };
+        await runCommand(page, 'clear visitor music');
+        const deleted = page.fetches.find((entry) => entry.method === 'DELETE' && entry.href.includes('visitorMusic.json'));
+        assert.ok(deleted);
+        assert.match(deleted.href, /[?&]auth=lucas-token/);
+        assert.equal(page.fetches.some((entry) => entry.method === 'DELETE' && entry.href.includes('playedMusic')), false);
         assert.match(output(page).textContent, /Visitor randomized songs cleared/);
     });
 });

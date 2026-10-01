@@ -18,16 +18,16 @@
           ".read": true,
           ".write": "auth.token.email == 'lucas@lucaohost.app'",
           "generation": {
-            ".write": "newData.isNumber()"
+            ".write": "newData.isNumber() || (!newData.exists() && auth.token.email == 'lucas@lucaohost.app')"
           },
           "tracks": {
             "$trackId": {
-              ".write": "newData.hasChildren(['name', 'artist', 'playedOn', 'seq'])"
+              ".write": "newData.hasChildren(['name', 'artist', 'playedOn', 'seq']) || (!newData.exists() && auth.token.email == 'lucas@lucaohost.app')"
             }
           },
           "cycle": {
             "$trackId": {
-              ".write": "newData.isNumber()"
+              ".write": "newData.isNumber() || (!newData.exists() && auth.token.email == 'lucas@lucaohost.app')"
             }
           }
         }

@@ -11,6 +11,10 @@ vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(root, 'session.js'), 'utf8'), context);
 const SiteSession = context.SiteSession;
 
+test('idToken is empty when auth is unavailable', async () => {
+    assert.equal(await SiteSession.idToken(), '');
+});
+
 test('a player email is the name plus the fixed domain', () => {
     assert.equal(SiteSession.emailFor('Lucas'), 'lucas@lucaohost.app');
     assert.equal(SiteSession.emailFor('Lourenço'), 'lourenco@lucaohost.app');
@@ -48,6 +52,7 @@ test('firebase rules keep passwords unreadable and limit deletes to Lucas', () =
     const text = JSON.stringify(rules);
     assert.match(text, /lucas@lucaohost\.app/);
     assert.match(text, /visitorMusic/);
+    assert.match(text, /!newData\.exists\(\) && auth\.token\.email == 'lucas@lucaohost\.app'/);
     assert.equal(text.includes('snooker.lucaohost.app'), false);
     assert.doesNotMatch(text, /"pins":\{"\.read":true/);
 });
@@ -132,4 +137,9 @@ test('the phone history is rendered as wrapping cards without horizontal scrolli
     assert.match(css, /\.table-responsive:has\(\.history-table\)\s*\{[^}]*overflow:\s*visible/s);
     assert.match(css, /\.history-table tr\.history-match\s*\{[^}]*display:\s*grid/s);
     assert.match(css, /\.history-table tr\.history-match td\s*\{[^}]*overflow-wrap:\s*anywhere/s);
+    assert.match(css, /body:not\(\.dark-mode\) \.history-table\.table-striped > tbody > tr\.history-match:nth-of-type\(odd\)/);
+    assert.match(css, /--bs-table-bg-type:\s*transparent/);
+    assert.match(history, /skeleton-row/);
+    assert.match(fs.readFileSync(path.join(root, 'snooker', 'index.html'), 'utf8'), /skeleton-row/);
+    assert.match(fs.readFileSync(path.join(root, 'snooker', 'reports.html'), 'utf8'), /report-skeleton/);
 });

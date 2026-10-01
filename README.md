@@ -1,10 +1,10 @@
-# Online CLI
+# Online terminal
 
-I really like CLIs, so I decided to create my own online CLI.  
+I really like terminals, so I decided to create my own online terminal.  
 https://lucaohost.github.io/  
 
 ## Random Music
-This CLI contains commands to random musics, but if you prefer, you can access the links directly:
+This terminal contains commands to random musics, but if you prefer, you can access the links directly:
 Try it: https://lucaohost.github.io/random/music/  
 
 Short URLs:
