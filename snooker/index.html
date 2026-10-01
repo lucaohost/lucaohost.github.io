@@ -109,7 +109,7 @@
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=20260930-3">
+    <link rel="stylesheet" href="style.css?v=20260930-4">
     <link rel="icon" href="https://github.com/lucaohost/lucaohost.github.io/blob/master/snooker-scoreboard/assets/favicon3.png?raw=true" />
 </head>
 <body>
@@ -246,6 +246,29 @@
                             <button type="submit" class="btn btn-success">Confirmar Partida</button>
                         </div>
                     </form>
+                    <section id="match-confirmation" class="match-confirmation" hidden>
+                        <div class="match-confirmation-icon" aria-hidden="true">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <p class="match-confirmation-intro">Confira o resultado antes de adicionar a partida.</p>
+                        <div class="match-confirmation-sides">
+                            <div class="match-confirmation-side is-winner">
+                                <span class="match-confirmation-label"><i class="fas fa-trophy" aria-hidden="true"></i> Vencedores</span>
+                                <strong id="confirm-match-winners"></strong>
+                            </div>
+                            <div class="match-confirmation-versus" aria-hidden="true">×</div>
+                            <div class="match-confirmation-side is-loser">
+                                <span class="match-confirmation-label"><i class="fas fa-circle-xmark" aria-hidden="true"></i> Perdedores</span>
+                                <strong id="confirm-match-losers"></strong>
+                            </div>
+                        </div>
+                        <div class="match-confirmation-actions">
+                            <button type="button" class="btn match-confirmation-back" id="confirm-match-back">Voltar</button>
+                            <button type="button" class="btn btn-success" id="confirm-match-submit">
+                                <i class="fas fa-check" aria-hidden="true"></i> Adicionar partida
+                            </button>
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>
@@ -367,8 +390,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <script src="../session.js"></script>
-    <script src="auth-bar.js"></script>
+    <script src="auth-bar.js?v=20260930-4"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=20260930-4"></script>
 </body>
 </html>

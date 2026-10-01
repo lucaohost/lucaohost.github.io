@@ -59,7 +59,8 @@ function getMatchesPath() {
 
 function updateSecretButtons() {
     const backupBtn = document.getElementById('backup-btn');
-    if (!secretUnlocked) {
+    const signedInAsLucas = typeof SiteSession !== 'undefined' && SiteSession.isOperator();
+    if (!secretUnlocked || !signedInAsLucas) {
         if (backupBtn) backupBtn.style.display = 'none';
         if (hidePlayerBtn) hidePlayerBtn.style.display = 'none';
         return;
@@ -317,6 +318,63 @@ function guardAction(allowed, message, modalId) {
     return false;
 }
 
+function matchNamesLabel(names) {
+    return names.join(' e ');
+}
+
+function confirmMatchAddition(winners, losers) {
+    const panel = document.getElementById('match-confirmation');
+    const confirmButton = document.getElementById('confirm-match-submit');
+    const backButton = document.getElementById('confirm-match-back');
+    const modal = document.getElementById('addMatchModal');
+    const title = document.getElementById('addMatchModalLabel');
+    if (!panel || !confirmButton || !backButton || !modal) {
+        return Promise.resolve(window.confirm(SiteSession.confirmMatch(winners, losers)));
+    }
+
+    document.getElementById('confirm-match-winners').textContent = matchNamesLabel(winners);
+    document.getElementById('confirm-match-losers').textContent = matchNamesLabel(losers);
+    matchForm.hidden = true;
+    panel.hidden = false;
+    confirmButton.disabled = false;
+    if (title) title.textContent = 'Confirmar Partida';
+
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (confirmed) => {
+            if (settled) return;
+            settled = true;
+            confirmButton.removeEventListener('click', onConfirm);
+            backButton.removeEventListener('click', onBack);
+            modal.removeEventListener('hidden.bs.modal', onHidden);
+            panel.hidden = true;
+            matchForm.hidden = false;
+            if (title) title.textContent = 'Adicionar Nova Partida';
+            resolve(confirmed);
+        };
+        const onConfirm = () => {
+            confirmButton.disabled = true;
+            finish(true);
+        };
+        const onBack = () => finish(false);
+        const onHidden = () => finish(false);
+        confirmButton.addEventListener('click', onConfirm);
+        backButton.addEventListener('click', onBack);
+        modal.addEventListener('hidden.bs.modal', onHidden);
+    });
+}
+
+function rankingAfterMatch(playersData, winnerIds, loserIds) {
+    return Object.keys(playersData).map((id) => {
+        const player = { id, ...playersData[id] };
+        const winsAdded = winnerIds.filter((playerId) => playerId === id).length;
+        const gamesAdded = winsAdded + loserIds.filter((playerId) => playerId === id).length;
+        player.wins = (player.wins || 0) + winsAdded;
+        player.games = (player.games || 0) + gamesAdded;
+        return player;
+    });
+}
+
 matchForm.addEventListener('submit', async (e) => {
     matchForm.querySelector('button[type="submit"]').disabled = true;
     e.preventDefault();
@@ -358,18 +416,28 @@ matchForm.addEventListener('submit', async (e) => {
         
         const winners = [team1Player1, team1Player2].filter(p => p).map(getPlayerName);
         const losers = [team2Player1, team2Player2].filter(p => p).map(getPlayerName);
-        if (!window.confirm(SiteSession.confirmMatch(winners, losers))) {
+        if (!await confirmMatchAddition(winners, losers)) {
             matchForm.querySelector('button[type="submit"]').disabled = false;
             return;
         }
         const addedBy = getPlayerName(signedInPlayerId()) || signedInPlayerId();
+        const winnerIds = [team1Player1, team1Player2].filter(Boolean);
+        const loserIds = [team2Player1, team2Player2].filter(Boolean);
+        const winnersStr = matchNamesLabel(winners);
+        const losersStr = matchNamesLabel(losers);
+        const shareMessage = `Vencedores: ${winnersStr}\nPerdedores: ${losersStr}`;
+
+        renderRanking(rankingAfterMatch(playersData, winnerIds, loserIds));
+        const preparedShare = prepareRankingShare(shareMessage).then(
+            (value) => ({ value }),
+            (error) => ({ error })
+        );
         
         // Update player stats
-        await updatePlayerStats(team1Player1, true);
-        if (team1Player2) await updatePlayerStats(team1Player2, true);
-
-        await updatePlayerStats(team2Player1, false);
-        if (team2Player2) await updatePlayerStats(team2Player2, false);
+        await Promise.all([
+            ...winnerIds.map((playerId) => updatePlayerStats(playerId, true)),
+            ...loserIds.map((playerId) => updatePlayerStats(playerId, false))
+        ]);
         
         // Save match history (only for 2026+)
         if (currentSeason === 2026) {
@@ -386,17 +454,23 @@ matchForm.addEventListener('submit', async (e) => {
         
         showToast('Partida registrada com sucesso!', 'success');
         matchForm.reset();
-        bootstrap.Modal.getInstance(document.getElementById('addMatchModal')).hide();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('addMatchModal')).hide();
         loadPlayers();
-        setTimeout(() => {
-            const winnersStr = winners.join(' e ');
-            const losersStr = losers.join(' e ');
-            const shareMessage = `Vencedores: ${winnersStr}\nPerdedores: ${losersStr}`;
-            captureAndShare(shareMessage);
-            matchForm.querySelector('button[type="submit"]').disabled = false;
-        }, 1500);
+        const share = await preparedShare;
+        if (share.error) {
+            showToast('Partida salva, mas não foi possível preparar o compartilhamento.', 'danger');
+        } else {
+            try {
+                await sharePreparedRanking(share.value);
+            } catch (shareError) {
+                console.error('Erro ao compartilhar:', shareError);
+                showToast('Partida salva, mas não foi possível compartilhar o ranking.', 'danger');
+            }
+        }
+        matchForm.querySelector('button[type="submit"]').disabled = false;
     } catch (error) {
         matchForm.querySelector('button[type="submit"]').disabled = false;
+        loadPlayers();
         showToast('Erro ao registrar partida: ' + error.message, 'danger');
     }
 });
@@ -620,6 +694,10 @@ const shareBtn = document.getElementById('share-btn');
 
 // Backup function to download all data from Firebase
 async function downloadBackup() {
+    if (typeof SiteSession === 'undefined' || !SiteSession.isOperator()) {
+        showToast('Só o Lucas pode baixar o backup.', 'danger');
+        return;
+    }
     try {
         showToast('Gerando backup...', 'primary');
         
@@ -678,35 +756,75 @@ async function downloadBackup() {
     }
 }
 
-async function captureAndShare(shareMsg = "Ranking Sinuca") {
-    try {
-        const container = document.querySelector('.container');
-        const canvas = await html2canvas(container, {
-            logging: false,
-            useCORS: true,
-            allowTaint: true
+function canvasBlob(canvas) {
+    if (typeof canvas.toBlob === 'function') {
+        return new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error('Não foi possível gerar a imagem.'));
+            }, 'image/png');
         });
-        const dataUrl = canvas.toDataURL('image/png');
-        if (navigator.share) {
-            const blob = await (await fetch(dataUrl)).blob();
-            const file = new File([blob], 'snooker-ranking.png', { 
-                type: 'image/png' 
-            });
-            
+    }
+    return fetch(canvas.toDataURL('image/png')).then((response) => response.blob());
+}
+
+async function prepareRankingShare(shareMsg = 'Ranking Sinuca') {
+    const container = document.querySelector('.container');
+    const canvas = await html2canvas(container, {
+        logging: false,
+        useCORS: true,
+        allowTaint: true
+    });
+    const blob = await canvasBlob(canvas);
+    return {
+        title: shareMsg,
+        text: shareMsg,
+        file: new File([blob], 'snooker-ranking.png', { type: 'image/png' })
+    };
+}
+
+function downloadPreparedRanking(prepared) {
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(prepared.file);
+    link.download = 'snooker-ranking-' + new Date().toISOString().slice(0, 10) + '.png';
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Imagem do ranking baixada!', 'info');
+}
+
+function canShareRankingFile(file) {
+    if (!navigator.share) return false;
+    if (!navigator.canShare) return true;
+    try {
+        return navigator.canShare({ files: [file] });
+    } catch (error) {
+        return false;
+    }
+}
+
+async function sharePreparedRanking(prepared) {
+    if (canShareRankingFile(prepared.file)) {
+        try {
             await navigator.share({
-                title: shareMsg,
-                text: shareMsg,
-                files: [file]
+                title: prepared.title,
+                text: prepared.text,
+                files: [prepared.file]
             });
-        } else {
-            const link = document.createElement('a');
-            link.download = 'snooker-ranking-' + new Date().toISOString().slice(0, 10) + '.png';
-            link.href = dataUrl;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast('Imagem do ranking baixada!', 'info');
+            return;
+        } catch (error) {
+            if (error && error.name === 'AbortError') return;
+            console.error('Erro ao compartilhar:', error);
         }
+    }
+    downloadPreparedRanking(prepared);
+}
+
+async function captureAndShare(shareMsg = 'Ranking Sinuca') {
+    try {
+        await sharePreparedRanking(await prepareRankingShare(shareMsg));
     } catch (error) {
         console.error('Erro ao compartilhar:', error);
         showToast('Erro ao compartilhar: ' + error.message, 'danger');
@@ -717,6 +835,9 @@ document.addEventListener('DOMContentLoaded', function() {
     bindSessionBar(function () {
         fillSessionUsers(window.roster || []);
     });
+    if (typeof SiteSession !== 'undefined') {
+        SiteSession.watch(updateSecretButtons);
+    }
     if (addMatchBtn) {
         addMatchBtn.addEventListener('click', function () {
             guardAction(canRecordMatch(), 'Entre com um jogador para registrar a partida.', 'addMatchModal');

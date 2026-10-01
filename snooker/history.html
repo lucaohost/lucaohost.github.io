@@ -109,7 +109,7 @@
     </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=20260930-3">
+    <link rel="stylesheet" href="style.css?v=20260930-4">
     <link rel="icon" href="https://github.com/lucaohost/lucaohost.github.io/blob/master/snooker-scoreboard/assets/favicon3.png?raw=true" />
 </head>
 <body>
@@ -154,7 +154,7 @@
         </div>
         
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
+            <table class="table table-striped table-hover history-table">
                 <thead class="table-dark">
                     <tr>
                         <th>#</th>
@@ -188,7 +188,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <script src="../session.js"></script>
-    <script src="auth-bar.js"></script>
+    <script src="auth-bar.js?v=20260930-4"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBsP4YSbp3qeK-ViyVXhWp8Jf3KetimveU",
@@ -238,19 +238,20 @@
                         minute: '2-digit'
                     });
                     
-                    const winners = Array.isArray(match.winners) ? [...match.winners].sort().join(' e ') : match.winners || '';
-                    const losers = Array.isArray(match.losers) ? [...match.losers].sort().join(' e ') : match.losers || '';
+                    const winners = escapeHistoryText(Array.isArray(match.winners) ? [...match.winners].sort().join(' e ') : match.winners || '');
+                    const losers = escapeHistoryText(Array.isArray(match.losers) ? [...match.losers].sort().join(' e ') : match.losers || '');
                     const addedBy = match.addedBy ? escapeHistoryText(match.addedBy) : '';
                     const removeCell = (typeof SiteSession !== 'undefined' && SiteSession.isOperator())
                         ? `<button type="button" class="btn btn-sm btn-outline-danger delete-match" data-match-id="${escapeHistoryText(match.id)}">Excluir</button>`
                         : '';
 
+                    row.className = 'history-match';
                     row.innerHTML = `
-                        <td>${matches.length - index}</td>
-                        <td>${dateStr}</td>
-                        <td><strong class="text-success">${winners}</strong></td>
-                        <td><strong class="text-danger">${losers}</strong></td>
-                        <td>${addedBy} ${removeCell}</td>
+                        <td class="history-number" data-label="Partida">${matches.length - index}</td>
+                        <td class="history-date" data-label="Data">${dateStr}</td>
+                        <td class="history-side history-winners" data-label="Vencedores"><strong class="text-success">${winners}</strong></td>
+                        <td class="history-side history-losers" data-label="Perdedores"><strong class="text-danger">${losers}</strong></td>
+                        <td class="history-author" data-label="Registrou"><span>${addedBy}</span>${removeCell}</td>
                     `;
                     matchesTable.appendChild(row);
                 });
@@ -406,7 +407,8 @@
                     const data = snapshot.val() || {};
                     fillSessionUsers(Object.keys(data).map((id) => ({
                         id: id,
-                        name: (data[id] && data[id].name) || id
+                        name: (data[id] && data[id].name) || id,
+                        hidden: !!(data[id] && data[id].hidden)
                     })));
                 });
             });

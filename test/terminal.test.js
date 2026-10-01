@@ -504,9 +504,38 @@ test('list music is not a command anymore', async () => {
     });
 });
 
+test('likely command typos are explained and run automatically', async () => {
+    await withPage({ catalog: tracks(['a', 'b']) }, async (page) => {
+        await runCommand(page, 'githu');
+        assert.match(output(page).textContent, /I think you meant "github"\. Running it/);
+        assert.equal(output(page).querySelector('a').href, 'https://github.com/lucaohost');
+
+        output(page).replaceChildren();
+        await runCommand(page, 'muisc Song a');
+        assert.match(output(page).textContent, /I think you meant "music Song a"\. Running it/);
+        assert.equal(output(page).querySelector('.spotifyHost').dataset.spotifyUri, 'spotify:track:a');
+
+        output(page).replaceChildren();
+        await runCommand(page, 'chagnelog');
+        assert.match(output(page).textContent, /I think you meant "changelog"\. Running it/);
+        assert.ok(output(page).querySelector('.changelogVersion'));
+    });
+});
+
+test('an ambiguous short typo is not run as a command', async () => {
+    await withPage({}, async (page) => {
+        await runCommand(page, 'rmx');
+        assert.match(output(page).textContent, /not found/);
+        assert.doesNotMatch(output(page).textContent, /I think you meant/);
+    });
+});
+
 test('an unknown command reports that it was not found', async () => {
     await withPage({}, async (page) => {
         await runCommand(page, 'definitely-missing');
+        assert.match(output(page).textContent, /not found/);
+        output(page).replaceChildren();
+        await runCommand(page, 'helpdesc');
         assert.match(output(page).textContent, /not found/);
     });
 });
@@ -532,8 +561,13 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.3\.0 - 2026-09-30/);
-    assert.match(top, /Password/);
+    assert.match(top, /^2\.4\.0 - 2026-09-30/);
+    assert.match(top, /command typos/);
+    assert.match(top, /clear visitor music/);
+    assert.match(top, /sharing immediately/);
+    assert.match(top, /Hidden players/);
+    assert.match(top, /Only Lucas/);
+    assert.match(top, /password/i);
     assert.match(changelog, /@lucaohost\.app/);
     assert.match(changelog, /Rádio/);
     assert.match(changelog, /thick green block/);
@@ -1115,12 +1149,23 @@ function playedSongs(ids) {
 test('login asks for the password and does not offer a user list', async () => {
     await withPage({}, async (page) => {
         await runCommand(page, 'login');
-        assert.match(output(page).textContent, /Password:/);
+        assert.match(output(page).textContent, /Type the password for lucas@lucaohost\.app/);
         assert.equal(output(page).querySelector('.loginUser'), null);
         await runCommand(page, 'bola');
         await delay(20);
         assert.match(output(page).textContent, /Auth indisponível/);
         assert.equal(output(page).textContent.includes('bola'), false);
+    });
+});
+
+test('a successful terminal login ends at the account name without a period', async () => {
+    await withPage({}, async (page) => {
+        page.window.SiteSession.isOperator = function () { return false; };
+        page.window.SiteSession.signIn = function () { return Promise.resolve(); };
+        await runCommand(page, 'login');
+        await runCommand(page, 'bola');
+        await delay(20);
+        assert.equal(output(page).lastElementChild.textContent, 'Signed in as lucas@lucaohost.app');
     });
 });
 
@@ -1146,12 +1191,13 @@ test('a visitor stores music apart from Lucas and cannot clear his list', async 
         assert.match(radio.getAttribute('href'), /^https:\/\/open\.spotify\.com\/station\/track\/a$/);
         page.fetches.length = 0;
         await runCommand(page, 'clear music');
-        assert.match(output(page).textContent, /Only Lucas can clear/);
+        assert.equal(output(page).lastElementChild.textContent, 'Only Lucas can clear the randomized songs.\nUse login.');
+        await runCommand(page, 'clear visitor music');
         assert.equal(page.fetches.some((entry) => entry.method === 'DELETE'), false);
     });
 });
 
-test('Lucas stores and clears only his randomized list', async () => {
+test('Lucas can clear his randomized list and the visitor list separately', async () => {
     await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
         page.window.SiteSession.isOperator = function () { return true; };
         await runCommand(page, 'music');
@@ -1161,6 +1207,11 @@ test('Lucas stores and clears only his randomized list', async () => {
         await runCommand(page, 'clear music');
         assert.ok(page.fetches.some((entry) => entry.method === 'DELETE' && entry.href.includes('playedMusic.json')));
         assert.match(output(page).textContent, /Randomized songs cleared/);
+        page.fetches.length = 0;
+        await runCommand(page, 'clear visitor music');
+        assert.ok(page.fetches.some((entry) => entry.method === 'DELETE' && entry.href.includes('visitorMusic.json')));
+        assert.equal(page.fetches.some((entry) => entry.href.includes('playedMusic')), false);
+        assert.match(output(page).textContent, /Visitor randomized songs cleared/);
     });
 });
 

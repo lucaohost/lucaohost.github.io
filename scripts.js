@@ -163,11 +163,17 @@ const commands = {
     'clear music': function () {
         return clearPlayedMusic();
     },
+    'clear visitor music': function () {
+        return clearVisitorMusic();
+    },
     login: function () {
         if (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) return 'Already signed in.';
         awaitingPassword = true;
         passwordDraft = '';
-        return 'Password:';
+        const address = typeof SiteSession !== 'undefined'
+            ? SiteSession.emailFor(SiteSession.OPERATOR)
+            : 'lucas@lucaohost.app';
+        return 'Type the password for ' + address;
     },
     logout: function () {
         if (typeof SiteSession === 'undefined' || !SiteSession.email()) return 'Not signed in.';
@@ -307,8 +313,112 @@ async function processCommand(input) {
         }
         addEvents(runner === 'music-search' ? 'music' : command);
     } else {
+        const corrected = correctCommandTypo(input);
+        if (corrected) {
+            appendOutput('I think you meant "' + escapeHtml(corrected) + '". Running it…');
+            return processCommand(corrected);
+        }
         appendOutput(`Command "${escapeHtml(input)}" not found.\n${commands.helpDesc}`);
     }
+}
+
+const commonCommandTypos = {
+    hlep: 'help',
+    hepl: 'help',
+    heelp: 'help',
+    whomai: 'whoami',
+    whaomi: 'whoami',
+    guthib: 'github',
+    linkedn: 'linkedin',
+    spotfy: 'spotify',
+    instragram: 'instagram',
+    twtiter: 'twitter',
+    yotube: 'youtube',
+    lucahost: 'lucaohost',
+    'locahost?': 'localhost?',
+    socail: 'social',
+    soical: 'social',
+    sahre: 'share',
+    shrae: 'share',
+    msuic: 'music',
+    muisc: 'music',
+    musci: 'music',
+    liekd: 'liked',
+    lsit: 'list',
+    lits: 'list',
+    chagnelog: 'changelog',
+    chnageolg: 'changelog',
+    snoker: 'snooker',
+    snokker: 'snooker',
+    logni: 'login',
+    lgoin: 'login',
+    logotu: 'logout',
+    lgout: 'logout',
+    claer: 'clear',
+    clera: 'clear',
+    exti: 'exit'
+};
+
+function commandDistance(left, right) {
+    const rows = left.length + 1;
+    const cols = right.length + 1;
+    const matrix = Array.from({ length: rows }, function () {
+        return Array(cols).fill(0);
+    });
+    for (let row = 0; row < rows; row += 1) matrix[row][0] = row;
+    for (let col = 0; col < cols; col += 1) matrix[0][col] = col;
+    for (let row = 1; row < rows; row += 1) {
+        for (let col = 1; col < cols; col += 1) {
+            const cost = left[row - 1] === right[col - 1] ? 0 : 1;
+            matrix[row][col] = Math.min(
+                matrix[row - 1][col] + 1,
+                matrix[row][col - 1] + 1,
+                matrix[row - 1][col - 1] + cost
+            );
+            if (
+                row > 1 &&
+                col > 1 &&
+                left[row - 1] === right[col - 2] &&
+                left[row - 2] === right[col - 1]
+            ) {
+                matrix[row][col] = Math.min(matrix[row][col], matrix[row - 2][col - 2] + 1);
+            }
+        }
+    }
+    return matrix[left.length][right.length];
+}
+
+function closestCommandTypo(value) {
+    if (commonCommandTypos[value]) return commonCommandTypos[value];
+    const candidates = Object.keys(commands).filter(function (name) {
+        return name !== 'helpDesc';
+    }).map(function (name) {
+        return { name: name, distance: commandDistance(value, name) };
+    });
+    const bestDistance = Math.min.apply(null, candidates.map(function (candidate) {
+        return candidate.distance;
+    }));
+    const limit = value.length >= 8 ? 2 : 1;
+    const nearest = candidates.filter(function (candidate) {
+        return candidate.distance === bestDistance && candidate.distance <= limit;
+    });
+    return nearest.length === 1 ? nearest[0].name : '';
+}
+
+function correctCommandTypo(input) {
+    const raw = String(input || '').trim();
+    const normalized = raw.toLocaleLowerCase().replace(/\s+/g, ' ');
+    if (!normalized) return '';
+    if (commands[normalized]) return normalized;
+    const firstSpace = normalized.indexOf(' ');
+    if (firstSpace > 0) {
+        const prefix = normalized.slice(0, firstSpace);
+        const query = raw.slice(raw.search(/\s/) + 1).trim();
+        if (query && prefix !== 'music' && commandDistance(prefix, 'music') <= 1) {
+            return 'music ' + query;
+        }
+    }
+    return closestCommandTypo(normalized);
 }
 
 function pinMobileCli() {
@@ -573,7 +683,7 @@ function submitTerminalPassword(secret) {
         return;
     }
     SiteSession.signIn('lucas', secret).then(function () {
-        appendOutput('Signed in as lucas' + SiteSession.DOMAIN + '.');
+        appendOutput('Signed in as lucas' + SiteSession.DOMAIN);
         syncTerminalIdentity();
     }).catch(function (err) {
         appendOutput((err && err.message) || 'Could not sign in.');
@@ -2037,13 +2147,22 @@ function currentMusicTrackId() {
 
 async function clearPlayedMusic() {
     if (typeof SiteSession === 'undefined' || !SiteSession.isOperator()) {
-        return 'Only Lucas can clear the randomized songs. Use login.';
+        return 'Only Lucas can clear the randomized songs.\nUse login.';
     }
     const response = await fetch(PLAYED_MUSIC_URL + '.json', { method: 'DELETE' });
     if (!response.ok) return "Couldn't clear the randomized songs.";
     playedMusicState = emptyPlayedState();
     localStorage.removeItem('playedPositions');
     return 'Randomized songs cleared.';
+}
+
+async function clearVisitorMusic() {
+    if (typeof SiteSession === 'undefined' || !SiteSession.isOperator()) {
+        return 'Only Lucas can clear visitor randomized songs.\nUse login.';
+    }
+    const response = await fetch(VISITOR_MUSIC_URL + '.json', { method: 'DELETE' });
+    if (!response.ok) return "Couldn't clear visitor randomized songs.";
+    return 'Visitor randomized songs cleared.';
 }
 
 async function renderLikedSongs() {

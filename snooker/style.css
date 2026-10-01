@@ -88,6 +88,10 @@ body {
     background-color: var(--table-hover-light);
 }
 
+.history-author .delete-match {
+    margin-left: 0.5rem;
+}
+
 .table tr.unclassified td {
     background-color: var(--table-unclassified-light);
 }
@@ -288,6 +292,154 @@ body.dark-mode .session-panel {
 
 .modal-footer {
     border-top: 1px solid var(--table-border-light);
+}
+
+.match-confirmation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 8px 4px 4px;
+    text-align: center;
+}
+
+.match-confirmation[hidden] {
+    display: none;
+}
+
+.match-confirmation-icon {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #e8f1ff, #d9e8ff);
+    color: var(--primary-blue);
+    box-shadow: 0 8px 20px rgba(11, 94, 215, 0.16);
+    font-size: 1.3rem;
+}
+
+.match-confirmation-intro {
+    max-width: 32rem;
+    margin: -4px 0 0;
+    color: #5f6873;
+}
+
+.match-confirmation-sides {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+}
+
+.match-confirmation-side {
+    display: flex;
+    min-width: 0;
+    min-height: 112px;
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid;
+    border-radius: 14px;
+    text-align: left;
+}
+
+.match-confirmation-side strong {
+    width: 100%;
+    font-size: 1.05rem;
+    overflow-wrap: anywhere;
+}
+
+.match-confirmation-side.is-winner {
+    border-color: #a7d7b5;
+    background: #f0faf3;
+}
+
+.match-confirmation-side.is-loser {
+    border-color: #efb2b8;
+    background: #fff4f5;
+}
+
+.match-confirmation-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #606a75;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.match-confirmation-side.is-winner .match-confirmation-label {
+    color: #157347;
+}
+
+.match-confirmation-side.is-loser .match-confirmation-label {
+    color: #b02a37;
+}
+
+.match-confirmation-versus {
+    align-self: center;
+    color: #7d8792;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.match-confirmation-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+    padding-top: 2px;
+}
+
+.match-confirmation-actions .btn {
+    min-height: 44px;
+    padding-inline: 18px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.match-confirmation-back {
+    border: 1px solid #c9d0d7;
+    background: transparent;
+    color: inherit;
+}
+
+body.dark-mode .match-confirmation-icon {
+    background: linear-gradient(145deg, #17345b, #142945);
+    color: #8db9f5;
+}
+
+body.dark-mode .match-confirmation-intro,
+body.dark-mode .match-confirmation-label {
+    color: #b7c0ca;
+}
+
+body.dark-mode .match-confirmation-side.is-winner {
+    border-color: #2d6d46;
+    background: #172b1e;
+}
+
+body.dark-mode .match-confirmation-side.is-loser {
+    border-color: #7f3942;
+    background: #321c20;
+}
+
+body.dark-mode .match-confirmation-side.is-winner .match-confirmation-label {
+    color: #83d59e;
+}
+
+body.dark-mode .match-confirmation-side.is-loser .match-confirmation-label {
+    color: #f3a0a9;
+}
+
+body.dark-mode .match-confirmation-back {
+    border-color: #59626c;
 }
 
 /* Toast */
@@ -675,6 +827,33 @@ body.dark-mode .toast-header {
         width: 100%;
         margin: 0.25rem 0;
     }
+
+    .match-confirmation {
+        gap: 14px;
+        padding-top: 2px;
+    }
+
+    .match-confirmation-sides {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .match-confirmation-side {
+        min-height: 0;
+        padding: 13px 14px;
+    }
+
+    .match-confirmation-versus {
+        line-height: 1;
+    }
+
+    .match-confirmation-actions {
+        flex-direction: column-reverse;
+    }
+
+    .match-confirmation-actions .btn {
+        width: 100%;
+    }
     
     label {
         font-size: 0.9rem;
@@ -731,47 +910,170 @@ body.dark-mode .toast-header {
         margin: 0.25rem 0;
     }
     
-    /* History table - different column sizing (only for history page) */
-    .table:has(#matches-table) {
-        table-layout: auto;
+    /* Match history becomes compact cards instead of a wide scrolling table. */
+    .table-responsive:has(.history-table) {
+        overflow: visible;
     }
-    
-    .table:has(#matches-table) th:nth-child(1),
-    .table:has(#matches-table) td:nth-child(1) {
-        min-width: 30px;
-        width: 30px;
-        padding: 0.35rem 0.2rem;
+
+    .history-table,
+    .history-table tbody {
+        display: block;
+        width: 100%;
     }
-    
-    .table:has(#matches-table) th:nth-child(2),
-    .table:has(#matches-table) td:nth-child(2) {
-        min-width: 70px;
-        width: 80px;
-        padding: 0.35rem 0.3rem;
-        font-size: 0.65rem;
+
+    .history-table {
+        overflow: visible;
+        border-radius: 0;
+        background: transparent !important;
     }
-    
-    .table:has(#matches-table) th:nth-child(3),
-    .table:has(#matches-table) td:nth-child(3),
-    .table:has(#matches-table) th:nth-child(4),
-    .table:has(#matches-table) td:nth-child(4) {
-        min-width: 100px;
-        width: auto;
-        padding: 0.45rem 0.4rem;
-        word-break: break-word;
+
+    .history-table thead {
+        display: none;
+    }
+
+    .history-table tbody {
+        display: grid;
+        gap: 12px;
+    }
+
+    .history-table tr.history-match {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "date number"
+            "winners winners"
+            "losers losers"
+            "author author";
+        gap: 9px;
+        min-width: 0;
+        padding: 12px;
+        border: 1px solid var(--table-border-light);
+        border-radius: 14px;
+        background: var(--container-light);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    }
+
+    .history-table tr.history-match td {
+        display: flex;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: transparent !important;
         white-space: normal;
-        overflow-wrap: break-word;
-        hyphens: auto;
+        overflow-wrap: anywhere;
     }
-    
-    /* Better text wrapping for long names in history table */
-    .table:has(#matches-table) td.text-success,
-    .table:has(#matches-table) td.text-danger,
-    .table:has(#matches-table) td strong {
-        word-break: break-word;
-        line-height: 1.5;
-        overflow-wrap: break-word;
-        white-space: normal;
+
+    .history-table td::before {
+        color: #6c757d;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .history-table .history-number {
+        grid-area: number;
+        align-items: center;
+        align-self: start;
+        justify-content: center;
+        min-width: 34px;
+        height: 26px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: #e8f1ff !important;
+        color: var(--primary-blue);
+        font-size: 0.75rem;
+    }
+
+    .history-table .history-number::before {
+        content: "#";
+        color: inherit;
+        font-size: inherit;
+    }
+
+    .history-table .history-date {
+        grid-area: date;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 0.78rem;
+    }
+
+    .history-table .history-date::before,
+    .history-table .history-side::before,
+    .history-table .history-author::before {
+        content: attr(data-label);
+    }
+
+    .history-table .history-side {
+        flex-direction: column;
+        gap: 3px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        line-height: 1.35;
+    }
+
+    .history-table .history-side strong {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .history-table .history-winners {
+        grid-area: winners;
+        background: #f0faf3 !important;
+    }
+
+    .history-table .history-losers {
+        grid-area: losers;
+        background: #fff4f5 !important;
+    }
+
+    .history-table .history-author {
+        grid-area: author;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-top: 2px;
+    }
+
+    .history-table .history-author::before {
+        margin-right: auto;
+    }
+
+    .history-table .history-author span {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .history-table .history-author span:empty::after {
+        content: "—";
+    }
+
+    .history-table .delete-match {
+        flex: 0 0 auto;
+        margin-left: 0;
+    }
+
+    body.dark-mode .history-table tr.history-match {
+        border-color: var(--table-border-dark);
+        background: var(--table-row-dark);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.24);
+    }
+
+    body.dark-mode .history-table .history-number {
+        background: #17345b !important;
+        color: #9cc2f5;
+    }
+
+    body.dark-mode .history-table .history-winners {
+        background: #172b1e !important;
+    }
+
+    body.dark-mode .history-table .history-losers {
+        background: #321c20 !important;
+    }
+
+    body.dark-mode .history-table td::before {
+        color: #aeb7c1;
     }
     
     /* Toast adjustments for mobile */

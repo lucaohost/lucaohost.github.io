@@ -10,7 +10,9 @@ function fillSessionUsers(players) {
     var select = document.getElementById('session-user');
     if (!select || typeof SiteSession === 'undefined') return;
     var current = select.value;
-    var options = (players || []).map(function (player) {
+    var options = (players || []).filter(function (player) {
+        return player && player.hidden !== true;
+    }).map(function (player) {
         return {
             id: SiteSession.localPart(player.id || player.name),
             name: player.name || player.id

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.4.0 - 2026-09-30
+
+### Added
+- Likely command typos are explained and run automatically in the terminal.
+- Lucas can use `clear visitor music` to clear the visitors' randomized-song list.
+
+### Changed
+- `login` names lucas@lucaohost.app when it asks for the password, and the successful sign-in message no longer ends with a period.
+- Match confirmation uses a clear winners-and-losers card that fits phones and computers.
+- Match history becomes compact cards on a phone instead of a wide scrolling table.
+- The signed-out `clear music` message puts the login instruction on a new line.
+
+### Fixed
+- Saving a match opens sharing immediately again on phones and computers.
+- Hidden players no longer appear in the snooker sign-in list.
+- Only Lucas can reveal or download the snooker backup.
+
 ## 2.3.0 - 2026-09-30
 
 ### Changed

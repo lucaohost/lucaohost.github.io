@@ -83,6 +83,26 @@ test('the ranking button shows Entrar or the signed-in name', () => {
     assert.match(dom.window.document.querySelector('.session-status').textContent, /Lucas/);
 });
 
+test('hidden players are left out of the ranking sign-in choices', () => {
+    const dom = new JSDOM('<!doctype html><body><select id="session-user"></select></body>');
+    const sandbox = {
+        document: dom.window.document,
+        SiteSession: {
+            OPERATOR: 'lucas',
+            localPart(id) { return String(id || '').toLowerCase(); }
+        }
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(root, 'snooker', 'auth-bar.js'), 'utf8'), sandbox);
+    sandbox.fillSessionUsers([
+        { id: 'paulinho', name: 'Paulinho' },
+        { id: 'raquel', name: 'Raquel', hidden: true }
+    ]);
+    const options = [...dom.window.document.querySelectorAll('#session-user option')].map((option) => option.value);
+    assert.deepEqual(options, ['lucas', 'paulinho']);
+    assert.equal(options.includes('raquel'), false);
+});
+
 test('the ranking sign-in is a select with the domain beside it and the match form has no pins', () => {
     const ranking = fs.readFileSync(path.join(root, 'snooker', 'index.html'), 'utf8');
     assert.match(ranking, /id="session-user"/);
@@ -92,4 +112,24 @@ test('the ranking sign-in is a select with the domain beside it and the match fo
     const history = fs.readFileSync(path.join(root, 'snooker', 'history.html'), 'utf8');
     assert.match(history, /Registrou/);
     assert.match(history, /delete-match/);
+});
+
+test('match confirmation uses the site modal instead of the browser confirm', () => {
+    const ranking = fs.readFileSync(path.join(root, 'snooker', 'index.html'), 'utf8');
+    const app = fs.readFileSync(path.join(root, 'snooker', 'app.js'), 'utf8');
+    assert.match(ranking, /id="match-confirmation"/);
+    assert.match(ranking, /id="confirm-match-winners"/);
+    assert.match(ranking, /id="confirm-match-losers"/);
+    assert.match(ranking, /id="confirm-match-submit"/);
+    assert.match(app, /await confirmMatchAddition\(winners, losers\)/);
+});
+
+test('the phone history is rendered as wrapping cards without horizontal scrolling', () => {
+    const history = fs.readFileSync(path.join(root, 'snooker', 'history.html'), 'utf8');
+    const css = fs.readFileSync(path.join(root, 'snooker', 'style.css'), 'utf8');
+    assert.match(history, /class="table table-striped table-hover history-table"/);
+    assert.match(history, /class="history-author"/);
+    assert.match(css, /\.table-responsive:has\(\.history-table\)\s*\{[^}]*overflow:\s*visible/s);
+    assert.match(css, /\.history-table tr\.history-match\s*\{[^}]*display:\s*grid/s);
+    assert.match(css, /\.history-table tr\.history-match td\s*\{[^}]*overflow-wrap:\s*anywhere/s);
 });
