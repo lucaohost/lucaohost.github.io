@@ -22,6 +22,22 @@ test('a player email is the name plus the fixed domain', () => {
     assert.equal(SiteSession.DOMAIN, '@lucaohost.app');
 });
 
+function installFirebase(signIn) {
+    function auth() {
+        return {
+            setPersistence() { return Promise.resolve(); },
+            signInWithEmailAndPassword: signIn,
+            currentUser: null
+        };
+    }
+    auth.Auth = { Persistence: { LOCAL: 'local' } };
+    context.firebase = {
+        apps: [{ name: '[DEFAULT]' }],
+        initializeApp() { return { name: '[DEFAULT]' }; },
+        auth: auth
+    };
+}
+
 test('a password is the 4-character word plus the two fixed characters', () => {
     assert.equal(SiteSession.wordOk('bola'), true);
     assert.equal(SiteSession.wordOk('Bola'), true);
@@ -30,6 +46,84 @@ test('a password is the 4-character word plus the two fixed characters', () => {
     assert.equal(SiteSession.wordOk('bolas'), false);
     assert.equal(SiteSession.passwordFor('bola'), 'bolasn');
     assert.equal(SiteSession.passwordFor('Ab12'), 'Ab12sn');
+});
+
+test('sign-in says the password is incorrect and does not describe its shape', async () => {
+    const calls = [];
+    installFirebase((email, password) => {
+        calls.push({ email: email, password: password });
+        const error = new Error('The password is invalid or the user does not have a password.');
+        error.code = 'auth/wrong-password';
+        return Promise.reject(error);
+    });
+    try {
+        const short = await SiteSession.signIn('lucas', 'no').then(() => null, (error) => error);
+        const wrong = await SiteSession.signIn('lucas', 'bola').then(() => null, (error) => error);
+        assert.equal(short.message, 'Incorrect password.');
+        assert.equal(wrong.message, 'Incorrect password.');
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].password, 'bolasn');
+        const playerShort = await SiteSession.signInPlayer('paulinho', '12').then(() => null, (error) => error);
+        const playerWrong = await SiteSession.signInPlayer('paulinho', 'bola').then(() => null, (error) => error);
+        assert.equal(playerShort.message, 'Senha incorreta.');
+        assert.equal(playerWrong.message, 'Senha incorreta.');
+        assert.equal(calls.length, 2);
+        const said = short.message + wrong.message + playerShort.message + playerWrong.message;
+        assert.doesNotMatch(said, /4|quatro|letra|número|numero|dígito|digito/i);
+    } finally {
+        delete context.firebase;
+    }
+});
+
+test('snooker sign-in shows an incorrect password and the field has no length cap', async () => {
+    const dom = new JSDOM('<!doctype html><body><form id="session-form"><select id="session-user"><option value="paulinho">Paulinho</option></select><input id="session-word" type="password"><p id="session-error"></p></form></body>');
+    const sandbox = { document: dom.window.document, console: console };
+    function auth() {
+        return {
+            setPersistence() { return Promise.resolve(); },
+            signInWithEmailAndPassword() {
+                const error = new Error('The password is invalid or the user does not have a password.');
+                error.code = 'auth/invalid-credential';
+                return Promise.reject(error);
+            },
+            onAuthStateChanged(fn) {
+                if (fn) fn(null);
+                return function () {};
+            },
+            currentUser: null
+        };
+    }
+    auth.Auth = { Persistence: { LOCAL: 'local' } };
+    sandbox.firebase = {
+        apps: [{ name: '[DEFAULT]' }],
+        initializeApp() { return { name: '[DEFAULT]' }; },
+        auth: auth
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(root, 'session.js'), 'utf8'), sandbox);
+    vm.runInContext(fs.readFileSync(path.join(root, 'snooker', 'auth-bar.js'), 'utf8'), sandbox);
+    sandbox.bindSessionBar();
+    const form = dom.window.document.getElementById('session-form');
+    const word = dom.window.document.getElementById('session-word');
+    const error = dom.window.document.getElementById('session-error');
+    word.value = 'no';
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(error.textContent, 'Senha incorreta.');
+    word.value = 'bola';
+    form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(error.textContent, 'Senha incorreta.');
+    const ranking = fs.readFileSync(path.join(root, 'snooker', 'index.html'), 'utf8');
+    const history = fs.readFileSync(path.join(root, 'snooker', 'history.html'), 'utf8');
+    const app = fs.readFileSync(path.join(root, 'snooker', 'app.js'), 'utf8');
+    const sessionSource = fs.readFileSync(path.join(root, 'session.js'), 'utf8');
+    [ranking, history, app, sessionSource].forEach((source) => {
+        assert.equal(source.includes('maxlength="4"'), false);
+        assert.equal(source.includes('4 letras'), false);
+        assert.equal(source.includes('A senha tem'), false);
+        assert.equal(source.includes('A senha nova tem'), false);
+    });
 });
 
 test('match confirmation names winners and losers', () => {

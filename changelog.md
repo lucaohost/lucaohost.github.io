@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.6.1 - 2026-10-01
+
+### Fixed
+- A wrong password in the terminal says the password is incorrect.
+- Snooker sign-in says the password is incorrect.
+
+### Changed
+- The snooker password box no longer cuts the password short.
+
 ## 2.5.0 - 2026-09-30
 
 ### Added

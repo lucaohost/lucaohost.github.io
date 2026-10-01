@@ -617,12 +617,16 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.5\.0 - 2026-09-30/);
-    assert.match(top, /loading status/);
-    assert.match(top, /skeleton/);
-    assert.match(top, /without waiting/);
-    assert.match(top, /visitors' randomized songs/);
-    assert.match(top, /one color in light mode/);
+    assert.match(top, /^2\.6\.1 - 2026-10-01/);
+    assert.match(top, /password is incorrect/);
+    assert.match(top, /Snooker sign-in says the password is incorrect/);
+    assert.match(top, /no longer cuts the password short/);
+    assert.match(changelog, /2\.5\.0 - 2026-09-30/);
+    assert.match(changelog, /loading status/);
+    assert.match(changelog, /skeleton/);
+    assert.match(changelog, /without waiting/);
+    assert.match(changelog, /visitors' randomized songs/);
+    assert.match(changelog, /one color in light mode/);
     assert.match(changelog, /command typos/);
     assert.match(changelog, /clear visitor music/);
     assert.match(changelog, /sharing immediately/);
@@ -1216,6 +1220,38 @@ test('login asks for the password and does not offer a user list', async () => {
         await delay(20);
         assert.match(output(page).textContent, /Auth indisponível/);
         assert.equal(output(page).textContent.includes('bola'), false);
+    });
+});
+
+test('a wrong terminal password says it is incorrect and does not describe its shape', async () => {
+    await withPage({}, async (page) => {
+        function auth() {
+            return {
+                setPersistence() { return Promise.resolve(); },
+                signInWithEmailAndPassword() {
+                    const error = new Error('The password is invalid or the user does not have a password.');
+                    error.code = 'auth/wrong-password';
+                    return Promise.reject(error);
+                },
+                currentUser: null
+            };
+        }
+        auth.Auth = { Persistence: { LOCAL: 'local' } };
+        page.window.firebase = {
+            apps: [{ name: '[DEFAULT]' }],
+            initializeApp() { return {}; },
+            auth: auth
+        };
+        await runCommand(page, 'login');
+        await runCommand(page, 'no');
+        await delay(20);
+        assert.equal(output(page).lastElementChild.textContent, 'Incorrect password.');
+        await runCommand(page, 'login');
+        await runCommand(page, 'bola');
+        await delay(20);
+        assert.equal(output(page).lastElementChild.textContent, 'Incorrect password.');
+        assert.equal(output(page).textContent.includes('bola'), false);
+        assert.doesNotMatch(output(page).textContent, /4 letras|quatro|dígito|digito/i);
     });
 });
 

@@ -538,8 +538,12 @@ addPlayerForm.addEventListener('submit', async (e) => {
     const playerName = document.getElementById('new-player-name').value.trim();
     const playerPassword = document.getElementById('new-player-password').value.trim();
     
-    if (!playerName || !SiteSession.wordOk(playerPassword)) {
-        showToast('Nome e senha de 4 letras ou números são obrigatórios!', 'danger');
+    if (!playerName || !playerPassword) {
+        showToast('Nome e senha são obrigatórios!', 'danger');
+        return;
+    }
+    if (!SiteSession.wordOk(playerPassword)) {
+        showToast('Não foi possível salvar a senha.', 'danger');
         return;
     }
     
@@ -596,8 +600,12 @@ editPlayerForm.addEventListener('submit', async (e) => {
     const oldPasswordOrAdmin = document.getElementById('old-player-password').value.trim();
     const newPassword = document.getElementById('new-edit-player-password').value.trim();
     
-    if (!playerId || !SiteSession.wordOk(newPassword)) {
-        showToast('Jogador e nova senha de 4 letras ou números são obrigatórios!', 'danger');
+    if (!playerId || !newPassword) {
+        showToast('Jogador e nova senha são obrigatórios!', 'danger');
+        return;
+    }
+    if (!SiteSession.wordOk(newPassword)) {
+        showToast('Não foi possível atualizar a senha.', 'danger');
         return;
     }
     

@@ -74,26 +74,43 @@ var SiteSession = (function () {
         return user.getIdToken().catch(function () { return ''; });
     }
 
+    function incorrectPassword(message) {
+        var error = new Error(message);
+        error.code = 'auth/wrong-password';
+        return error;
+    }
+
+    function sameAsIncorrectPassword(error, message) {
+        var code = error && error.code;
+        if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || code === 'auth/user-not-found') {
+            return incorrectPassword(message);
+        }
+        return error;
+    }
+
+    function signInWithWord(client, email, word, message) {
+        if (!wordOk(word)) return Promise.reject(incorrectPassword(message));
+        return client.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function () {
+            return client.signInWithEmailAndPassword(email, passwordFor(word));
+        }).catch(function (error) {
+            return Promise.reject(sameAsIncorrectPassword(error, message));
+        });
+    }
+
     function signIn(id, word) {
         var client = auth();
         if (!client) return Promise.reject(new Error('Auth indisponível.'));
         if (localPart(id) !== OPERATOR && id !== OPERATOR) {
             return Promise.reject(new Error('Só o Lucas entra por aqui.'));
         }
-        if (!wordOk(word)) return Promise.reject(new Error('A senha tem 4 letras ou números.'));
-        return client.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function () {
-            return client.signInWithEmailAndPassword(emailFor(OPERATOR), passwordFor(word));
-        });
+        return signInWithWord(client, emailFor(OPERATOR), word, 'Incorrect password.');
     }
 
     function signInPlayer(id, word) {
         var client = auth();
         if (!client) return Promise.reject(new Error('Auth indisponível.'));
         if (!localPart(id)) return Promise.reject(new Error('Escolha um jogador.'));
-        if (!wordOk(word)) return Promise.reject(new Error('A senha tem 4 letras ou números.'));
-        return client.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function () {
-            return client.signInWithEmailAndPassword(emailFor(id), passwordFor(word));
-        });
+        return signInWithWord(client, emailFor(id), word, 'Senha incorreta.');
     }
 
     function signOut() {
@@ -110,7 +127,7 @@ var SiteSession = (function () {
 
     function setPlayerPassword(id, currentWord, nextWord) {
         if (!isOperator()) return Promise.reject(new Error('Só o Lucas troca a senha.'));
-        if (!wordOk(nextWord)) return Promise.reject(new Error('A senha nova tem 4 letras ou números.'));
+        if (!wordOk(nextWord)) return Promise.reject(new Error('Não foi possível atualizar a senha.'));
         var client = writer();
         if (!client) return Promise.reject(new Error('Auth indisponível.'));
         var address = emailFor(id);

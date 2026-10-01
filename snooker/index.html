@@ -135,7 +135,7 @@
                         <select id="session-user" class="form-select" aria-label="Jogador" required></select>
                         <span class="session-domain">@lucaohost.app</span>
                     </div>
-                    <input id="session-word" class="form-control" type="password" maxlength="4" autocomplete="current-password" placeholder="Senha" aria-label="Senha" required>
+                    <input id="session-word" class="form-control" type="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha" required>
                     <button type="submit" class="btn btn-style">Entrar</button>
                     <p id="session-error" class="session-error"></p>
                 </div>
@@ -296,7 +296,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="new-player-password" class="form-label">Senha</label>
-                            <input type="password" maxlength="4" class="form-control" id="new-player-password" placeholder="4 letras ou números" required>
+                            <input type="password" class="form-control" id="new-player-password" placeholder="Senha" required>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-success">Adicionar Jogador</button>
@@ -325,11 +325,11 @@
                         </div>
                         <div class="mb-3">
                             <label for="old-player-password" class="form-label">Senha atual</label>
-                            <input type="password" maxlength="4" class="form-control" id="old-player-password" placeholder="4 letras ou números, se a conta já existe" autocomplete="off">
+                            <input type="password" class="form-control" id="old-player-password" placeholder="Se a conta já existe" autocomplete="off">
                         </div>
                         <div class="mb-3">
                             <label for="new-edit-player-password" class="form-label">Nova senha</label>
-                            <input type="password" maxlength="4" class="form-control" id="new-edit-player-password" placeholder="4 letras ou números" required>
+                            <input type="password" class="form-control" id="new-edit-player-password" placeholder="Senha" required>
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">Atualizar Senha</button>
@@ -395,9 +395,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
-    <script src="../session.js"></script>
+    <script src="../session.js?v=20261001-1"></script>
     <script src="auth-bar.js?v=20260930-4"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <script src="app.js?v=20260930-5"></script>
+    <script src="app.js?v=20261001-1"></script>
 </body>
 </html>
