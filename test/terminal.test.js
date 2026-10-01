@@ -532,9 +532,10 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.2\.0 - 2026-09-30/);
-    assert.match(top, /Rádio/);
-    assert.match(top, /thick green block|thick green/);
+    assert.match(top, /^2\.2\.1 - 2026-09-30/);
+    assert.match(top, /@lucaohost\.app/);
+    assert.match(changelog, /Rádio/);
+    assert.match(changelog, /thick green block/);
     assert.match(changelog, /keeps that song going/);
     assert.match(changelog, /remains on screen/);
     assert.match(changelog, /leaves the song that is already playing/);
@@ -1112,7 +1113,7 @@ test('login shows the account name with the fixed email beside it', async () => 
         const form = output(page).querySelector('.loginForm');
         assert.ok(form);
         assert.equal(form.querySelector('.loginUser').value, 'lucas');
-        assert.equal(form.querySelector('.loginDomain').textContent, '@s.co');
+        assert.equal(form.querySelector('.loginDomain').textContent, '@lucaohost.app');
         form.querySelector('.loginWord').value = 'bola';
         form.dispatchEvent(new page.window.Event('submit', { bubbles: true, cancelable: true }));
         await delay(20);

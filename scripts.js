@@ -159,8 +159,9 @@ const commands = {
         return clearPlayedMusic();
     },
     login: function () {
-        if (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) return 'Already signed in as lucas@s.co.';
-        return '<form class="loginForm"><label class="loginLabel">User</label><span class="loginIdentity"><select class="loginUser" aria-label="User"><option value="lucas">lucas</option></select><span class="loginDomain">@s.co</span></span><input class="loginWord" type="password" maxlength="4" autocomplete="current-password" placeholder="password" aria-label="Password"><button type="submit" class="loginSubmit">Sign in</button><p class="loginError"></p></form>';
+        var domain = (typeof SiteSession !== 'undefined' && SiteSession.DOMAIN) || '@lucaohost.app';
+        if (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) return 'Already signed in as lucas' + domain + '.';
+        return '<form class="loginForm"><label class="loginLabel">User</label><span class="loginIdentity"><select class="loginUser" aria-label="User"><option value="lucas">lucas</option></select><span class="loginDomain">' + domain + '</span></span><input class="loginWord" type="password" maxlength="4" autocomplete="current-password" placeholder="password" aria-label="Password"><button type="submit" class="loginSubmit">Sign in</button><p class="loginError"></p></form>';
     },
     logout: function () {
         if (typeof SiteSession === 'undefined' || !SiteSession.email()) return 'Not signed in.';
@@ -276,7 +277,7 @@ document.addEventListener('submit', function (event) {
     signIn.then(function () {
         playedMusicState = null;
         if (error) error.textContent = '';
-        appendOutput('Signed in as lucas@s.co.');
+        appendOutput('Signed in as lucas' + SiteSession.DOMAIN + '.');
     }).catch(function (err) {
         if (error) error.textContent = (err && err.message) || 'Could not sign in.';
     });

@@ -11,10 +11,10 @@ vm.runInContext(fs.readFileSync(path.join(root, 'session.js'), 'utf8'), context)
 const SiteSession = context.SiteSession;
 
 test('a player email is the name plus the fixed domain', () => {
-    assert.equal(SiteSession.emailFor('Lucas'), 'lucas@s.co');
-    assert.equal(SiteSession.emailFor('Lourenço'), 'lourenco@s.co');
-    assert.equal(SiteSession.emailFor('paulinho'), 'paulinho@s.co');
-    assert.equal(SiteSession.DOMAIN, '@s.co');
+    assert.equal(SiteSession.emailFor('Lucas'), 'lucas@lucaohost.app');
+    assert.equal(SiteSession.emailFor('Lourenço'), 'lourenco@lucaohost.app');
+    assert.equal(SiteSession.emailFor('paulinho'), 'paulinho@lucaohost.app');
+    assert.equal(SiteSession.DOMAIN, '@lucaohost.app');
 });
 
 test('a password is the 4-character word plus the two fixed characters', () => {
@@ -45,7 +45,7 @@ test('firebase rules keep passwords unreadable and limit deletes to Lucas', () =
     assert.equal(rules.rules.seasons.$season.pins['.read'], false);
     assert.equal(rules.rules.seasons.$season.pins['.write'], false);
     const text = JSON.stringify(rules);
-    assert.match(text, /lucas@s\.co/);
+    assert.match(text, /lucas@lucaohost\.app/);
     assert.match(text, /visitorMusic/);
     assert.equal(text.includes('snooker.lucaohost.app'), false);
     assert.doesNotMatch(text, /"pins":\{"\.read":true/);

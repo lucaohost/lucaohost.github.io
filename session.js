@@ -1,5 +1,5 @@
 var SiteSession = (function () {
-    var DOMAIN = '@s.co';
+    var DOMAIN = '@lucaohost.app';
     var TAIL = 'sn';
     var OPERATOR = 'lucas';
     var config = {

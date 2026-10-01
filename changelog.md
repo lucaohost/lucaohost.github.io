@@ -1,9 +1,14 @@
 # Changelog
 
+## 2.2.1 - 2026-09-30
+
+### Changed
+- Sign-in shows @lucaohost.app beside the account name.
+
 ## 2.2.0 - 2026-09-30
 
 ### Added
-- `login` and `logout`. Sign-in is the account name with @s.co fixed beside it.
+- `login` and `logout`. Sign-in is the account name with the domain fixed beside it.
 - The ranking has a sign-in icon. Once someone is in, that same spot becomes the sign-out icon.
 - Saving a match asks for confirmation, and the history names who added it.
 - Each Spotify player has a Rádio link that opens that song's radio.

@@ -12,11 +12,11 @@
       "cli": {
         "playedMusic": {
           ".read": true,
-          ".write": "auth.token.email == 'lucas@s.co'"
+          ".write": "auth.token.email == 'lucas@lucaohost.app'"
         },
         "visitorMusic": {
           ".read": true,
-          ".write": "auth.token.email == 'lucas@s.co'",
+          ".write": "auth.token.email == 'lucas@lucaohost.app'",
           "generation": {
             ".write": "newData.isNumber()"
           },
@@ -36,13 +36,13 @@
         "logins": {
           "$login": {
             ".read": false,
-            ".write": "auth.token.email == 'lucas@s.co'"
+            ".write": "auth.token.email == 'lucas@lucaohost.app'"
           }
         },
         "players": {
           ".read": true,
           "$playerId": {
-            ".write": "auth != null && (auth.token.email == 'lucas@s.co' || ($season == '2026' && data.exists() && newData.exists() && newData.child('name').val() == data.child('name').val() && newData.child('hidden').val() == data.child('hidden').val() && (newData.child('season').val() == data.child('season').val() || (data.child('season').val() == null && newData.child('season').val() == 2026)) && newData.child('games').isNumber() && newData.child('wins').isNumber() && newData.child('games').val() == data.child('games').val() + 1 && newData.child('wins').val() >= data.child('wins').val() && newData.child('wins').val() <= data.child('wins').val() + 1 && auth.token.email.endsWith('@s.co') && root.child('seasons/2026/logins').child(auth.token.email.replace('@s.co', '')).exists()))"
+            ".write": "auth != null && (auth.token.email == 'lucas@lucaohost.app' || ($season == '2026' && data.exists() && newData.exists() && newData.child('name').val() == data.child('name').val() && newData.child('hidden').val() == data.child('hidden').val() && (newData.child('season').val() == data.child('season').val() || (data.child('season').val() == null && newData.child('season').val() == 2026)) && newData.child('games').isNumber() && newData.child('wins').isNumber() && newData.child('games').val() == data.child('games').val() + 1 && newData.child('wins').val() >= data.child('wins').val() && newData.child('wins').val() <= data.child('wins').val() + 1 && auth.token.email.endsWith('@lucaohost.app') && root.child('seasons/2026/logins').child(auth.token.email.replace('@lucaohost.app', '')).exists()))"
           }
         },
         "pins": {
@@ -52,7 +52,7 @@
         "matches": {
           ".read": true,
           "$matchId": {
-            ".write": "$season == '2026' && ((!data.exists() && newData.exists() && newData.child('winners').exists() && newData.child('losers').exists() && newData.child('date').isString() && newData.child('timestamp').isNumber() && (auth.token.email == 'lucas@s.co' || (auth.token.email.endsWith('@s.co') && root.child('seasons/2026/logins').child(auth.token.email.replace('@s.co', '')).exists()))) || (data.exists() && !newData.exists() && auth.token.email == 'lucas@s.co'))"
+            ".write": "$season == '2026' && ((!data.exists() && newData.exists() && newData.child('winners').exists() && newData.child('losers').exists() && newData.child('date').isString() && newData.child('timestamp').isNumber() && (auth.token.email == 'lucas@lucaohost.app' || (auth.token.email.endsWith('@lucaohost.app') && root.child('seasons/2026/logins').child(auth.token.email.replace('@lucaohost.app', '')).exists()))) || (data.exists() && !newData.exists() && auth.token.email == 'lucas@lucaohost.app'))"
           }
         }
       }
