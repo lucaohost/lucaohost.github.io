@@ -16,6 +16,7 @@ function clearCommand() {
         inputField.value = '';
     } else {
         inputField.innerText = '';
+        inputField.textContent = '';
     }
     syncMobileInputWidth();
 }
@@ -146,10 +147,7 @@ const commands = {
     },
     helpDesc: `Type "help" to see all commands.`,
     exit: function() {
-        if (window.opener && !window.opener.closed) window.close();
-        window.setTimeout(function () {
-            if (!window.closed) window.location.replace('about:blank');
-        }, 0);
+        window.close();
     },
     liked: function() {
         return renderLikedSongs();
@@ -693,8 +691,16 @@ function submitTerminalPassword(secret) {
     });
 }
 
+function signedInTerminal() {
+    return typeof SiteSession !== 'undefined' && SiteSession.isOperator();
+}
+
+function commandPromptHtml() {
+    return '<span class="path">' + (signedInTerminal() ? 'lucas@bash:~$' : 'lucaohost@bash:~$') + '</span>';
+}
+
 function syncTerminalIdentity() {
-    var signed = typeof SiteSession !== 'undefined' && SiteSession.isOperator();
+    var signed = signedInTerminal();
     var prompt = document.querySelector('.input-line .path');
     if (prompt) prompt.textContent = (signed ? 'lucas@bash:~$' : 'lucaohost@bash:~$') + '\u00a0';
     var title = document.querySelector('.terminal-title');
@@ -720,11 +726,11 @@ function onEnter(event) {
             return;
         }
         const input = readCommand().trim();
-        if(input !== "") {
-            appendOutput(`<span class="path">lucaohost@bash:~$</span> ${input}`);
+        appendOutput(commandPromptHtml() + (input ? ' ' + input : ''));
+        clearCommand();
+        if (input !== '') {
             pushHistory(input);
             processCommand(input);
-            clearCommand();
         }
     }
 }
@@ -1234,9 +1240,21 @@ setTimeout(function () {
     pendingSpotifyHosts.splice(0).forEach(mountPlainSpotify);
 }, 5000);
 
+function spotifyOpenHref(trackId) {
+    const id = encodeURIComponent(String(trackId || '').split(':').pop());
+    const medium = isMobileCli() ? 'mobile' : 'desktop';
+    return 'https://open.spotify.com/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + medium;
+}
+
 function radioControl(trackId) {
-    const id = String(trackId || '').split(':').pop();
-    return '<a class="trackRadio" href="https://open.spotify.com/station/track/' + escapeHtml(id) + '" target="_blank" rel="noopener" aria-label="Radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 9 16 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><circle cx="9" cy="14" r="1.4" fill="currentColor"></circle></svg></a>';
+    return '<a class="trackRadio" href="' + escapeHtml(spotifyOpenHref(trackId)) + '" target="_blank" rel="noopener" aria-label="Radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 9 16 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><circle cx="9" cy="14" r="1.4" fill="currentColor"></circle></svg></a>';
+}
+
+function syncTrackRadio(host) {
+    const play = host && host.closest && host.closest('.musicPlay');
+    const radio = play && play.querySelector('.trackRadio');
+    if (!radio) return;
+    radio.href = spotifyOpenHref(host.dataset.spotifyUri || '');
 }
 
 function playRailMarkup(trackId, withNext) {
@@ -2459,6 +2477,7 @@ function playSpotifyUri(host, uri) {
     const previous = host.dataset.spotifyUri || '';
     const switching = !!(previous && previous !== uri);
     host.dataset.spotifyUri = uri;
+    syncTrackRadio(host);
     host.dataset.autoplay = '1';
     host.dataset.playback = '';
     if (host._heardUri !== uri) {

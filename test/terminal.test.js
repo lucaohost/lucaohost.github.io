@@ -621,6 +621,10 @@ test('the changelog records list playback and single-song changes', () => {
     assert.match(top, /password is incorrect/);
     assert.match(top, /Snooker sign-in says the password is incorrect/);
     assert.match(top, /no longer cuts the password short/);
+    assert.match(changelog, /nothing typed/);
+    assert.match(changelog, /lucas@bash/);
+    assert.match(changelog, /already playing/);
+    assert.match(changelog, /closes the browser tab/);
     assert.match(changelog, /2\.5\.0 - 2026-09-30/);
     assert.match(changelog, /loading status/);
     assert.match(changelog, /skeleton/);
@@ -850,8 +854,16 @@ function installSearch(page, track, gate) {
     };
 }
 
-function pressEnter(page) {
-    page.document.getElementById('input').dispatchEvent(new page.window.KeyboardEvent('keydown', {
+function pressEnter(page, value) {
+    const input = page.document.getElementById('input');
+    if (value !== undefined) {
+        if (input.tagName === 'INPUT') input.value = value;
+        else {
+            input.innerText = value;
+            input.textContent = value;
+        }
+    }
+    input.dispatchEvent(new page.window.KeyboardEvent('keydown', {
         key: 'Enter',
         bubbles: true,
         cancelable: true
@@ -1285,7 +1297,7 @@ test('a visitor stores music apart from Lucas and cannot clear his list', async 
         const radio = rail.querySelector('.trackRadio');
         assert.equal(radio.getAttribute('aria-label'), 'Radio');
         assert.equal(radio.nextElementSibling.classList.contains('nextMusic'), true);
-        assert.match(radio.getAttribute('href'), /^https:\/\/open\.spotify\.com\/station\/track\/a$/);
+        assert.equal(radio.getAttribute('href'), 'https://open.spotify.com/track/a?go=1&utm_source=embed_player_p&utm_medium=desktop');
         page.fetches.length = 0;
         await runCommand(page, 'clear music');
         assert.equal(output(page).lastElementChild.textContent, 'Only Lucas can clear the randomized songs.\nUse login.');
@@ -1347,4 +1359,90 @@ test('social links stay closed when the touch turns into a drag', async () => {
 test('the desktop caret is a thick green block', () => {
     const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
     assert.match(css, /@media \(min-width: 769px\)\s*\{[^}]*\.block-caret\s*\{[^}]*width:\s*0\.55ch;[^}]*background:\s*#4CAF50/s);
+});
+
+function spotifyOpenHref(id, medium) {
+    return 'https://open.spotify.com/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + (medium || 'desktop');
+}
+
+test('the radio link opens the track the way the Spotify cover does', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        await runCommand(page, 'music');
+        await delay(20);
+        const radio = output(page).querySelector('.trackRadio');
+        assert.equal(radio.getAttribute('href'), spotifyOpenHref('a'));
+        assert.equal(radio.getAttribute('target'), '_blank');
+        assert.equal(radio.getAttribute('href').includes('/station/'), false);
+    });
+});
+
+test('the radio link on a phone uses the mobile handoff', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        usePhone(page);
+        await runCommand(page, 'music');
+        await delay(20);
+        assert.equal(output(page).querySelector('.trackRadio').getAttribute('href'), spotifyOpenHref('a', 'mobile'));
+    });
+});
+
+test('the radio link follows the song now in the player', async () => {
+    await withPage({ catalog: tracks(['a', 'b', 'c']) }, async (page) => {
+        await runCommand(page, 'liked');
+        const buttons = () => output(page).querySelectorAll('.trackPlay');
+        const radio = () => output(page).querySelector('.trackRadio');
+        assert.equal(radio().getAttribute('href'), spotifyOpenHref(buttons()[0].dataset.trackId));
+        buttons()[1].click();
+        assert.equal(radio().getAttribute('href'), spotifyOpenHref(buttons()[1].dataset.trackId));
+    });
+});
+
+test('enter with nothing typed skips a line and keeps the prompt', async () => {
+    await withPage({}, async (page) => {
+        pressEnter(page, '');
+        pressEnter(page, '   ');
+        const lines = [...output(page).children];
+        assert.equal(lines.length, 2);
+        lines.forEach((line) => {
+            assert.equal(line.querySelector('.path').textContent, 'lucaohost@bash:~$');
+            assert.equal(line.textContent.trim(), 'lucaohost@bash:~$');
+        });
+        const input = page.document.getElementById('input');
+        assert.equal(input.textContent, '');
+        assert.equal(input.innerText, '');
+        assert.match(page.document.querySelector('.input-line .path').textContent, /lucaohost@bash/);
+        page.document.getElementById('input').dispatchEvent(new page.window.KeyboardEvent('keydown', {
+            key: 'ArrowUp',
+            bubbles: true,
+            cancelable: true
+        }));
+        assert.equal(page.document.getElementById('input').textContent, '');
+    });
+});
+
+test('enter with nothing typed keeps Lucas on the new line', async () => {
+    await withPage({}, async (page) => {
+        page.window.SiteSession.isOperator = function () { return true; };
+        page.window.syncTerminalIdentity();
+        pressEnter(page, '');
+        pressEnter(page, 'whoami');
+        const lines = [...output(page).children];
+        assert.equal(lines[0].querySelector('.path').textContent, 'lucas@bash:~$');
+        assert.equal(lines[1].querySelector('.path').textContent, 'lucas@bash:~$');
+        assert.match(lines[1].textContent, /whoami/);
+        assert.match(page.document.querySelector('.input-line .path').textContent, /lucas@bash/);
+    });
+});
+
+test('exit closes the tab instead of a blank page', async () => {
+    await withPage({}, async (page) => {
+        const calls = [];
+        page.window.close = function () { calls.push('close'); };
+        page.window.opener = null;
+        const before = page.window.location.href;
+        await runCommand(page, 'exit');
+        await delay(20);
+        assert.deepEqual(calls, ['close']);
+        assert.equal(page.window.location.href, before);
+        assert.equal(page.window.location.href.includes('about:blank'), false);
+    });
 });

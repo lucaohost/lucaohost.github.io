@@ -9,6 +9,15 @@
 ### Changed
 - The snooker password box no longer cuts the password short.
 
+## 2.6.0 - 2026-10-01
+
+### Added
+- Pressing Enter with nothing typed starts a new line. The name on that line stays lucas@bash while Lucas is signed in.
+
+### Fixed
+- The radio button opens Spotify already playing that song, on a computer and on a phone.
+- `exit` closes the browser tab.
+
 ## 2.5.0 - 2026-09-30
 
 ### Added
