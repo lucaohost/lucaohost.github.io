@@ -268,10 +268,24 @@ bindBlockCaret();
 
 document.addEventListener('click', function (event) {
     const link = event.target.closest && event.target.closest('.socialLink, .trackRadio');
-    if (link && link.dataset.suppressClick === '1') {
+    if (!link) return;
+    if (link.dataset.suppressClick === '1') {
         event.preventDefault();
         delete link.dataset.suppressClick;
+        return;
     }
+    if (!link.classList.contains('trackRadio')) return;
+    const href = link.getAttribute('href') || '';
+    if (href.indexOf('https://open.spotify.com/playlist/') === 0) return;
+    event.preventDefault();
+    if (link.dataset.radioOpening === '1') return;
+    link.dataset.radioOpening = '1';
+    lookupSongRadio(link.dataset.trackId).then(function (next) {
+        delete link.dataset.radioOpening;
+        if (!next || !link.isConnected) return;
+        link.href = next;
+        window.open(next, '_blank', 'noopener');
+    });
 }, true);
 
 document.addEventListener('click', function(event) {
@@ -1240,21 +1254,74 @@ setTimeout(function () {
     pendingSpotifyHosts.splice(0).forEach(mountPlainSpotify);
 }, 5000);
 
-function spotifyOpenHref(trackId) {
-    const id = encodeURIComponent(String(trackId || '').split(':').pop());
+function trackIdFrom(value) {
+    return String(value || '').split(':').pop();
+}
+
+function songRadioHref(playlistId) {
+    const id = encodeURIComponent(trackIdFrom(playlistId));
     const medium = isMobileCli() ? 'mobile' : 'desktop';
-    return 'https://open.spotify.com/station/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + medium;
+    return 'https://open.spotify.com/playlist/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + medium;
+}
+
+const songRadioLookups = new Map();
+
+function lookupSongRadio(trackId) {
+    const id = trackIdFrom(trackId);
+    if (!id) return Promise.resolve('');
+    if (songRadioLookups.has(id)) return songRadioLookups.get(id);
+    const pending = fetchSongRadioPlaylistId(id).then(function (playlistId) {
+        return playlistId ? songRadioHref(playlistId) : '';
+    }).catch(function () {
+        songRadioLookups.delete(id);
+        return '';
+    });
+    songRadioLookups.set(id, pending);
+    return pending;
+}
+
+async function fetchSongRadioPlaylistId(trackId) {
+    const token = await fetchSpotifyToken();
+    const seed = encodeURIComponent('spotify:track:' + trackId);
+    const response = await fetch('https://spclient.wg.spotify.com/inspiredby-mix/v2/seed_to_playlist/' + seed + '?response-format=json', {
+        headers: {
+            Accept: 'application/json',
+            Authorization: 'Bearer ' + token
+        }
+    });
+    if (!response.ok) throw new Error('song radio');
+    const payload = await response.json();
+    const item = payload && payload.mediaItems && payload.mediaItems[0];
+    const uri = item && item.uri ? item.uri : '';
+    if (uri.indexOf('spotify:playlist:') !== 0) throw new Error('song radio');
+    return trackIdFrom(uri);
+}
+
+function armTrackRadio(radio, trackId) {
+    if (!radio) return;
+    const id = trackIdFrom(trackId);
+    if (!id) return;
+    const href = radio.getAttribute('href') || '';
+    if (radio.dataset.trackId === id && href.indexOf('https://open.spotify.com/playlist/') === 0) return;
+    radio.dataset.trackId = id;
+    const token = (Number(radio.dataset.radioToken) || 0) + 1;
+    radio.dataset.radioToken = String(token);
+    radio.setAttribute('href', '#');
+    lookupSongRadio(id).then(function (next) {
+        if (!radio.isConnected || radio.dataset.radioToken !== String(token) || radio.dataset.trackId !== id) return;
+        if (next) radio.href = next;
+    });
 }
 
 function radioControl(trackId) {
-    return '<a class="trackRadio" href="' + escapeHtml(spotifyOpenHref(trackId)) + '" target="_blank" rel="noopener" aria-label="Radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 9 16 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><circle cx="9" cy="14" r="1.4" fill="currentColor"></circle></svg></a>';
+    return '<a class="trackRadio" href="#" data-track-id="' + escapeHtml(trackIdFrom(trackId)) + '" target="_blank" rel="noopener" aria-label="Radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="9" width="16" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 9 16 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><circle cx="9" cy="14" r="1.4" fill="currentColor"></circle></svg></a>';
 }
 
 function syncTrackRadio(host) {
     const play = host && host.closest && host.closest('.musicPlay');
     const radio = play && play.querySelector('.trackRadio');
     if (!radio) return;
-    radio.href = spotifyOpenHref(host.dataset.spotifyUri || '');
+    armTrackRadio(radio, host.dataset.spotifyUri || radio.dataset.trackId || '');
 }
 
 function playRailMarkup(trackId, withNext) {
@@ -1527,6 +1594,11 @@ function activateEmbeddedMedia(root) {
         });
     });
     root.querySelectorAll('.spotifyHost').forEach(mountSpotifyHost);
+    root.querySelectorAll('.trackRadio').forEach(function (radio) {
+        const play = radio.closest('.musicPlay');
+        const host = play && play.querySelector('.spotifyHost');
+        armTrackRadio(radio, (host && host.dataset.spotifyUri) || radio.dataset.trackId || '');
+    });
     root.querySelectorAll('.trackBlock').forEach(function (block) {
         const host = block.querySelector('.spotifyHost');
         if (!host) return;

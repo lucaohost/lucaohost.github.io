@@ -153,9 +153,27 @@ function boot(options) {
     window.fetch = async (url, request) => {
         const href = String(url);
         const method = (request && request.method) || 'GET';
-        fetches.push({ href: href, method: method, body: request && request.body });
+        fetches.push({
+            href: href,
+            method: method,
+            body: request && request.body,
+            headers: request && request.headers
+        });
         if (href.includes('changelog.md')) {
             return jsonResponse(settings.changelog || '# Changelog\n\n## 9.9.9 - 2026-01-01\n\n### Added\n- Example item\n');
+        }
+        if (href.includes('embed/api/token')) {
+            return jsonResponse({
+                accessToken: 'embed-token',
+                accessTokenExpirationTimestampMs: Date.now() + 60 * 60 * 1000
+            });
+        }
+        if (href.includes('/seed_to_playlist/')) {
+            const trackId = decodeURIComponent(href.split('/seed_to_playlist/')[1].split('?')[0]).split(':').pop();
+            const playlistId = settings.songRadio && settings.songRadio[trackId]
+                ? settings.songRadio[trackId]
+                : 'radio-' + trackId;
+            return jsonResponse({ total: 1, mediaItems: [{ uri: 'spotify:playlist:' + playlistId }] });
         }
         if (href.includes('visitorMusic')) return jsonResponse(method === 'GET' ? played : null);
         if (href.includes('playedMusic')) {
@@ -617,8 +635,8 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.6\.2 - 2026-10-01/);
-    assert.match(top, /song's radio/);
+    assert.match(top, /^2\.6\.3 - 2026-10-01/);
+    assert.match(top, /radio playlist/);
     assert.match(top, /similar songs queued/);
     assert.match(changelog, /password is incorrect/);
     assert.match(changelog, /Snooker sign-in says the password is incorrect/);
@@ -1299,7 +1317,7 @@ test('a visitor stores music apart from Lucas and cannot clear his list', async 
         const radio = rail.querySelector('.trackRadio');
         assert.equal(radio.getAttribute('aria-label'), 'Radio');
         assert.equal(radio.nextElementSibling.classList.contains('nextMusic'), true);
-        assert.equal(radio.getAttribute('href'), 'https://open.spotify.com/station/track/a?go=1&utm_source=embed_player_p&utm_medium=desktop');
+        assert.equal(await radioHref(page), songRadioHref('radio-a'));
         page.fetches.length = 0;
         await runCommand(page, 'clear music');
         assert.equal(output(page).lastElementChild.textContent, 'Only Lucas can clear the randomized songs.\nUse login.');
@@ -1363,18 +1381,37 @@ test('the desktop caret is a thick green block', () => {
     assert.match(css, /@media \(min-width: 769px\)\s*\{[^}]*\.block-caret\s*\{[^}]*width:\s*0\.55ch;[^}]*background:\s*#4CAF50/s);
 });
 
-function spotifyOpenHref(id, medium) {
-    return 'https://open.spotify.com/station/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + (medium || 'desktop');
+function songRadioHref(playlistId, medium) {
+    return 'https://open.spotify.com/playlist/' + playlistId + '?go=1&utm_source=embed_player_p&utm_medium=' + (medium || 'desktop');
 }
 
-test('the radio link opens that song\'s radio and starts it playing', async () => {
-    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+async function radioHref(page) {
+    const radio = output(page).querySelector('.trackRadio');
+    for (let i = 0; i < 20; i++) {
+        const href = radio.getAttribute('href') || '';
+        if (href.indexOf('https://open.spotify.com/playlist/') === 0) return href;
+        await delay(10);
+    }
+    return radio.getAttribute('href');
+}
+
+test('the radio link opens the song radio playlist Spotify returns for that track', async () => {
+    const trackId = '352FuGmGJClPjojSYjNrXG';
+    const playlistId = '37i9dQZF1E8RSu251xkcZc';
+    await withPage({
+        catalog: tracks([trackId]),
+        played: { tracks: {}, cycle: {}, generation: 1 },
+        songRadio: { [trackId]: playlistId }
+    }, async (page) => {
         await runCommand(page, 'music');
-        await delay(20);
-        const radio = output(page).querySelector('.trackRadio');
-        assert.equal(radio.getAttribute('href'), spotifyOpenHref('a'));
-        assert.equal(radio.getAttribute('target'), '_blank');
-        assert.match(radio.getAttribute('href'), /\/station\/track\/a\?go=1/);
+        const href = await radioHref(page);
+        assert.equal(href, songRadioHref(playlistId));
+        assert.equal(href.includes('/station/'), false);
+        const lookup = page.fetches.find((entry) => entry.href.includes('/seed_to_playlist/'));
+        assert.ok(lookup);
+        assert.match(decodeURIComponent(lookup.href), new RegExp('spotify:track:' + trackId));
+        const authorization = lookup.headers.Authorization || lookup.headers.authorization;
+        assert.equal(authorization, 'Bearer embed-token');
     });
 });
 
@@ -1382,8 +1419,7 @@ test('the radio link on a phone uses the mobile handoff', async () => {
     await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
         usePhone(page);
         await runCommand(page, 'music');
-        await delay(20);
-        assert.equal(output(page).querySelector('.trackRadio').getAttribute('href'), spotifyOpenHref('a', 'mobile'));
+        assert.equal(await radioHref(page), songRadioHref('radio-a', 'mobile'));
     });
 });
 
@@ -1391,10 +1427,9 @@ test('the radio link follows the song now in the player', async () => {
     await withPage({ catalog: tracks(['a', 'b', 'c']) }, async (page) => {
         await runCommand(page, 'liked');
         const buttons = () => output(page).querySelectorAll('.trackPlay');
-        const radio = () => output(page).querySelector('.trackRadio');
-        assert.equal(radio().getAttribute('href'), spotifyOpenHref(buttons()[0].dataset.trackId));
+        assert.equal(await radioHref(page), songRadioHref('radio-' + buttons()[0].dataset.trackId));
         buttons()[1].click();
-        assert.equal(radio().getAttribute('href'), spotifyOpenHref(buttons()[1].dataset.trackId));
+        assert.equal(await radioHref(page), songRadioHref('radio-' + buttons()[1].dataset.trackId));
     });
 });
 
