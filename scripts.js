@@ -276,7 +276,7 @@ document.addEventListener('click', function (event) {
     }
     if (!link.classList.contains('trackRadio')) return;
     const href = link.getAttribute('href') || '';
-    if (href.indexOf('https://open.spotify.com/playlist/') === 0) return;
+    if (href.indexOf('https://open.spotify.com/track/') === 0) return;
     event.preventDefault();
     if (link.dataset.radioOpening === '1') return;
     link.dataset.radioOpening = '1';
@@ -1258,10 +1258,13 @@ function trackIdFrom(value) {
     return String(value || '').split(':').pop();
 }
 
-function songRadioHref(playlistId) {
-    const id = encodeURIComponent(trackIdFrom(playlistId));
+function songRadioHref(trackId, playlistId) {
+    const track = encodeURIComponent(trackIdFrom(trackId));
+    const playlist = trackIdFrom(playlistId);
     const medium = isMobileCli() ? 'mobile' : 'desktop';
-    return 'https://open.spotify.com/playlist/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + medium;
+    return 'https://open.spotify.com/track/' + track
+        + '?go=1&utm_source=embed_player_p&utm_medium=' + medium
+        + '&play=true&context=' + encodeURIComponent('spotify:playlist:' + playlist);
 }
 
 const songRadioLookups = new Map();
@@ -1271,7 +1274,7 @@ function lookupSongRadio(trackId) {
     if (!id) return Promise.resolve('');
     if (songRadioLookups.has(id)) return songRadioLookups.get(id);
     const pending = fetchSongRadioPlaylistId(id).then(function (playlistId) {
-        return playlistId ? songRadioHref(playlistId) : '';
+        return playlistId ? songRadioHref(id, playlistId) : '';
     }).catch(function () {
         songRadioLookups.delete(id);
         return '';
@@ -1302,7 +1305,7 @@ function armTrackRadio(radio, trackId) {
     const id = trackIdFrom(trackId);
     if (!id) return;
     const href = radio.getAttribute('href') || '';
-    if (radio.dataset.trackId === id && href.indexOf('https://open.spotify.com/playlist/') === 0) return;
+    if (radio.dataset.trackId === id && href.indexOf('https://open.spotify.com/track/') === 0) return;
     radio.dataset.trackId = id;
     const token = (Number(radio.dataset.radioToken) || 0) + 1;
     radio.dataset.radioToken = String(token);

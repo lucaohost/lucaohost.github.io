@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.6.4 - 2026-10-01
+
+### Fixed
+- The radio button starts that song's radio as soon as Spotify opens.
+
 ## 2.6.3 - 2026-10-01
 
 ### Fixed
