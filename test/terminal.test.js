@@ -617,10 +617,12 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.6\.1 - 2026-10-01/);
-    assert.match(top, /password is incorrect/);
-    assert.match(top, /Snooker sign-in says the password is incorrect/);
-    assert.match(top, /no longer cuts the password short/);
+    assert.match(top, /^2\.6\.2 - 2026-10-01/);
+    assert.match(top, /song's radio/);
+    assert.match(top, /similar songs queued/);
+    assert.match(changelog, /password is incorrect/);
+    assert.match(changelog, /Snooker sign-in says the password is incorrect/);
+    assert.match(changelog, /no longer cuts the password short/);
     assert.match(changelog, /nothing typed/);
     assert.match(changelog, /lucas@bash/);
     assert.match(changelog, /already playing/);
@@ -1297,7 +1299,7 @@ test('a visitor stores music apart from Lucas and cannot clear his list', async 
         const radio = rail.querySelector('.trackRadio');
         assert.equal(radio.getAttribute('aria-label'), 'Radio');
         assert.equal(radio.nextElementSibling.classList.contains('nextMusic'), true);
-        assert.equal(radio.getAttribute('href'), 'https://open.spotify.com/track/a?go=1&utm_source=embed_player_p&utm_medium=desktop');
+        assert.equal(radio.getAttribute('href'), 'https://open.spotify.com/station/track/a?go=1&utm_source=embed_player_p&utm_medium=desktop');
         page.fetches.length = 0;
         await runCommand(page, 'clear music');
         assert.equal(output(page).lastElementChild.textContent, 'Only Lucas can clear the randomized songs.\nUse login.');
@@ -1362,17 +1364,17 @@ test('the desktop caret is a thick green block', () => {
 });
 
 function spotifyOpenHref(id, medium) {
-    return 'https://open.spotify.com/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + (medium || 'desktop');
+    return 'https://open.spotify.com/station/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + (medium || 'desktop');
 }
 
-test('the radio link opens the track the way the Spotify cover does', async () => {
+test('the radio link opens that song\'s radio and starts it playing', async () => {
     await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
         await runCommand(page, 'music');
         await delay(20);
         const radio = output(page).querySelector('.trackRadio');
         assert.equal(radio.getAttribute('href'), spotifyOpenHref('a'));
         assert.equal(radio.getAttribute('target'), '_blank');
-        assert.equal(radio.getAttribute('href').includes('/station/'), false);
+        assert.match(radio.getAttribute('href'), /\/station\/track\/a\?go=1/);
     });
 });
 

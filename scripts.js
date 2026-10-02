@@ -1243,7 +1243,7 @@ setTimeout(function () {
 function spotifyOpenHref(trackId) {
     const id = encodeURIComponent(String(trackId || '').split(':').pop());
     const medium = isMobileCli() ? 'mobile' : 'desktop';
-    return 'https://open.spotify.com/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + medium;
+    return 'https://open.spotify.com/station/track/' + id + '?go=1&utm_source=embed_player_p&utm_medium=' + medium;
 }
 
 function radioControl(trackId) {

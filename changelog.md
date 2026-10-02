@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.6.2 - 2026-10-01
+
+### Fixed
+- The radio button opens that song's radio and starts it playing, with similar songs queued after it.
+
 ## 2.6.1 - 2026-10-01
 
 ### Fixed
