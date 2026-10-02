@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.7.0 - 2026-10-01
+
+### Added
+- The on-screen keyboard vibrates on each key.
+- `install` adds this site to the home screen on a phone or a computer. The same control sits in the terminal bar.
+- Pressing Enter with nothing typed plays a random liked song while Lucas is signed in.
+
+### Changed
+- Share this site is a card with the address.
+- `list` shows randomized songs from the newest one at the top down to the oldest.
+
+### Fixed
+- The terminal prompt and the randomized-song list follow Lucas as soon as the saved sign-in is ready.
+- A song played with `music` or `next music` is saved only on the list of whoever is signed in, and that song is the first one `list` shows.
+- Typing after pressing play on Spotify returns to the terminal cursor and keeps the key.
+
 ## 2.6.4 - 2026-10-01
 
 ### Fixed

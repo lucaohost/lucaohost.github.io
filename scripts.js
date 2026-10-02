@@ -51,6 +51,18 @@ function bindInputEvents() {
             event.preventDefault();
             return;
         }
+        if (inputField.tagName === 'INPUT' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            if (event.key === 'Backspace') {
+                event.preventDefault();
+                deleteTerminalChar();
+                return;
+            }
+            if (event.key && event.key.length === 1) {
+                event.preventDefault();
+                insertTerminalChar(event.key);
+                return;
+            }
+        }
         if (navigateHistory(event)) return;
         onEnter(event);
     });
@@ -89,7 +101,7 @@ const commands = {
     spotify: "<a href='https://open.spotify.com/user/blood.dota' target='_blank'>https://spotify.com/lucaohost</a>",
     instagram: "<a href='https://instagram.com/lucaohost' target='_blank'>https://instagram.com/lucaohost</a>",
     twitter: "<a href='https://twitter.com/lucaohost' target='_blank'>https://twitter.com/lucaohost</a>",
-    share: "<p><button class='shareButton' style='margin-top: 10px; margin-bottom: 10px; background-color: #4CAF50; color: white; border: none; padding: 5px 10px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; border-radius: 8px; cursor: pointer;'>Share this Site!</button></p>",
+    share: '<button type="button" class="shareButton"><span class="shareIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="6.2" cy="12" r="2.15" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17.2" cy="6.6" r="2.15" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17.2" cy="17.4" r="2.15" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.2 11.1 15.1 7.6M8.3 13.1l6.7 3.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></span><span class="shareCopy"><span class="shareTitle">Share this site</span><span class="shareUrl">lucaohost.github.io</span></span></button>',
     rmy: "Random Music on Youtube:\n<a href='https://lucaohost.github.io/rmy' target='_blank'>https://lucaohost.github.io/rmy</a>",
     rms: "Random Music on Spotify:\n<a href='https://lucaohost.github.io/rms' target='_blank'>https://lucaohost.github.io/rms</a>",
     rmym: "Random Music on Youtube Music:\n<a href='https://lucaohost.github.io/rmym' target='_blank'>https://lucaohost.github.io/rmym</a>",
@@ -122,6 +134,7 @@ const commands = {
             'lucaohost', "Explains my username.",
             'social', "Social networks.",
             'share', "Share this site.",
+            'install', "Add this site to your home screen.",
             'music', "Random Liked Song.",
             'music song', "Play a Spotify song by name.",
             'list', "Randomized songs. Play from the list.",
@@ -177,9 +190,13 @@ const commands = {
         if (typeof SiteSession === 'undefined' || !SiteSession.email()) return 'Not signed in.';
         return SiteSession.signOut().then(function () {
             playedMusicState = null;
+            musicStoreKey = '';
             syncTerminalIdentity();
             return 'Signed out.';
         });
+    },
+    install: function () {
+        return installSite();
     },
     rick: function () {
         pauseEveryPlayer();
@@ -297,6 +314,10 @@ document.addEventListener('click', function(event) {
 
 
 async function processCommand(input) {
+    if (typeof SiteSession !== 'undefined' && SiteSession.whenReady && !SiteSession.settled()) {
+        await SiteSession.whenReady();
+        syncTerminalIdentity();
+    }
     if (awaitingPassword) {
         var secret = passwordDraft || input;
         passwordDraft = '';
@@ -562,6 +583,17 @@ function bindTerminalChrome() {
     bar.querySelector('.term-close').addEventListener('click', function () {
         commands.exit();
     });
+    const installButton = bar.querySelector('.term-install');
+    if (installButton) {
+        installButton.addEventListener('click', function () {
+            const result = installSite();
+            if (result && typeof result.then === 'function') {
+                result.then(function (text) { if (text) appendOutput(text); });
+                return;
+            }
+            if (result) appendOutput(result);
+        });
+    }
     function syncMaxIcon() {
         const maximized = cli.classList.contains('is-max');
         maxButton.setAttribute('aria-label', maximized ? 'Restore' : 'Maximize');
@@ -714,6 +746,7 @@ function commandPromptHtml() {
 }
 
 function syncTerminalIdentity() {
+    if (typeof rememberMusicStore === 'function') rememberMusicStore();
     var signed = signedInTerminal();
     var prompt = document.querySelector('.input-line .path');
     if (prompt) prompt.textContent = (signed ? 'lucas@bash:~$' : 'lucaohost@bash:~$') + '\u00a0';
@@ -721,7 +754,20 @@ function syncTerminalIdentity() {
     if (title) title.textContent = signed ? 'lucas@bash: ~' : 'lucaohost@bash: ~';
 }
 
-if (typeof SiteSession !== 'undefined') SiteSession.watch(syncTerminalIdentity);
+if (typeof SiteSession !== 'undefined') {
+    SiteSession.watch(syncTerminalIdentity);
+    if (SiteSession.whenReady) SiteSession.whenReady().then(syncTerminalIdentity);
+}
+
+function runEnteredCommand(input) {
+    var command = input;
+    if (!command && signedInTerminal()) command = 'music';
+    appendOutput(commandPromptHtml() + (command ? ' ' + command : ''));
+    if (command) {
+        pushHistory(command);
+        processCommand(command);
+    }
+}
 
 function onEnter(event) {
     if (commandInputLocked) {
@@ -740,17 +786,138 @@ function onEnter(event) {
             return;
         }
         const input = readCommand().trim();
-        appendOutput(commandPromptHtml() + (input ? ' ' + input : ''));
         clearCommand();
-        if (input !== '') {
-            pushHistory(input);
-            processCommand(input);
+        if (typeof SiteSession !== 'undefined' && SiteSession.whenReady && !SiteSession.settled()) {
+            SiteSession.whenReady().then(function () {
+                syncTerminalIdentity();
+                runEnteredCommand(input);
+            });
+            return;
         }
+        runEnteredCommand(input);
     }
 }
 
 bindInputEvents();
 inputEventsReady = true;
+
+function terminalTypingTarget(node) {
+    if (!node) return false;
+    if (node === inputField) return true;
+    return !!(node.closest && node.closest('.input-line'));
+}
+
+function foreignTypingTarget(node) {
+    if (!node || node === document.body || node === document.documentElement) return false;
+    const tag = node.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    return !!(node.isContentEditable && node !== inputField);
+}
+
+function revealTerminalCursor() {
+    const view = typeof cliView === 'function' ? cliView() : null;
+    if (view) view.scrollTop = view.scrollHeight;
+    const line = document.querySelector('.input-line');
+    if (line && typeof line.scrollIntoView === 'function') {
+        try { line.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (error) {
+            try { line.scrollIntoView(); } catch (ignore) {}
+        }
+    }
+    if (inputField && typeof inputField.focus === 'function') {
+        try { inputField.focus({ preventScroll: true }); } catch (error) {
+            try { inputField.focus(); } catch (ignore) {}
+        }
+    }
+    if (typeof placeBlockCaret === 'function') placeBlockCaret();
+}
+
+function insertTerminalChar(char) {
+    if (!inputField || !char) return;
+    if (inputField.tagName === 'INPUT') {
+        inputField.value += char;
+    } else {
+        inputField.textContent = (inputField.textContent || '') + char;
+        placeCaretAtEnd(inputField);
+    }
+    syncMobileInputWidth();
+    notePasswordEdit();
+    placeBlockCaret();
+}
+
+function deleteTerminalChar() {
+    if (!inputField) return;
+    if (inputField.tagName === 'INPUT') {
+        inputField.value = inputField.value.slice(0, -1);
+    } else {
+        inputField.textContent = (inputField.textContent || '').slice(0, -1);
+        placeCaretAtEnd(inputField);
+    }
+    syncMobileInputWidth();
+    notePasswordEdit();
+    placeBlockCaret();
+}
+
+document.addEventListener('keydown', function (event) {
+    if (event.defaultPrevented || commandInputLocked) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (terminalTypingTarget(event.target) || foreignTypingTarget(event.target)) return;
+    const key = event.key;
+    if (!key || (key.length !== 1 && key !== 'Enter' && key !== 'Backspace')) return;
+    event.preventDefault();
+    revealTerminalCursor();
+    if (key === 'Enter') {
+        onEnter({ key: 'Enter', preventDefault: function () {} });
+        return;
+    }
+    if (key === 'Backspace') {
+        deleteTerminalChar();
+        return;
+    }
+    insertTerminalChar(key);
+}, true);
+
+window.addEventListener('blur', function () {
+    setTimeout(function () {
+        const active = document.activeElement;
+        if (!active || active.tagName !== 'IFRAME') return;
+        try { active.blur(); } catch (error) {}
+        revealTerminalCursor();
+    }, 0);
+});
+
+var deferredInstall = null;
+
+window.addEventListener('beforeinstallprompt', function (event) {
+    if (event && event.preventDefault) event.preventDefault();
+    deferredInstall = event;
+});
+
+function installSite() {
+    const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    if (standalone || window.navigator.standalone) return 'This site is already on your home screen.';
+    if (deferredInstall && typeof deferredInstall.prompt === 'function') {
+        const pending = deferredInstall;
+        deferredInstall = null;
+        return Promise.resolve().then(function () {
+            return pending.prompt();
+        }).then(function () {
+            return pending.userChoice || { outcome: 'dismissed' };
+        }).then(function (choice) {
+            if (choice && choice.outcome === 'accepted') return 'Added to your home screen.';
+            return 'Install dismissed.';
+        }).catch(function () {
+            return 'Open the browser menu and choose Install app or Add to Home Screen.';
+        });
+    }
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent || '')) {
+        return 'On iPhone or iPad: tap Share, then Add to Home Screen.';
+    }
+    return 'Open the browser menu and choose Install app or Add to Home Screen.';
+}
+
+if (navigator.serviceWorker && typeof navigator.serviceWorker.register === 'function') {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+}
 
 document.addEventListener('beforeinput', function (event) {
     if (!commandInputLocked) return;
@@ -939,6 +1106,7 @@ function bindMobileKeyboard() {
             inputField.value = inputField.value.slice(0, -1);
             syncMobileInputWidth();
             notePasswordEdit();
+            keyboardTap();
             delay = Math.max(30, delay - 8);
             repeatTimer = setTimeout(tick, delay);
         };
@@ -993,11 +1161,18 @@ function bindMobileKeyboard() {
         return best;
     }
 
+    function keyboardTap() {
+        const vibrate = navigator.vibrate;
+        if (typeof vibrate !== 'function') return;
+        try { vibrate.call(navigator, 15); } catch (error) {}
+    }
+
     function pressKey(keyButton, allowRepeat) {
         clearTimeout(releaseTimer);
         if (pressedButton && pressedButton !== keyButton) pressedButton.classList.remove('is-pressed');
         pressedButton = keyButton;
         keyButton.classList.add('is-pressed');
+        keyboardTap();
         typeKey(keyButton, allowRepeat);
     }
 
@@ -1124,14 +1299,26 @@ var HASH_STORAGE_KEY = 'spotifyPlaylistQueryHash';
 var PLAYED_MUSIC_URL = 'https://snooker-scoreboard2-default-rtdb.firebaseio.com/seasons/cli/playedMusic';
 var VISITOR_MUSIC_URL = 'https://snooker-scoreboard2-default-rtdb.firebaseio.com/seasons/cli/visitorMusic';
 var musicStoreKey = '';
+var musicReadTicket = 0;
 
 function musicStoreUrl() {
     const url = (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) ? PLAYED_MUSIC_URL : VISITOR_MUSIC_URL;
     if (musicStoreKey !== url) {
         musicStoreKey = url;
         playedMusicState = null;
+        musicReadTicket++;
     }
     return url;
+}
+
+function rememberMusicStore() {
+    if (!musicStoreKey) return;
+    const url = (typeof SiteSession !== 'undefined' && SiteSession.isOperator()) ? PLAYED_MUSIC_URL : VISITOR_MUSIC_URL;
+    if (musicStoreKey !== url) {
+        musicStoreKey = '';
+        playedMusicState = null;
+        musicReadTicket++;
+    }
 }
 var spotifyPlayers = new Set();
 var spotifyApi = null;
@@ -1183,9 +1370,19 @@ function guardedPressButton(target) {
 }
 
 function startNextMusic() {
-    appendOutput(`<span class="path">lucaohost@bash:~$</span> next music`);
-    processCommand('next music');
-    clearCommand();
+    const run = function () {
+        appendOutput(commandPromptHtml() + ' next music');
+        processCommand('next music');
+        clearCommand();
+    };
+    if (typeof SiteSession !== 'undefined' && SiteSession.whenReady && !SiteSession.settled()) {
+        SiteSession.whenReady().then(function () {
+            syncTerminalIdentity();
+            run();
+        });
+        return;
+    }
+    run();
 }
 
 document.addEventListener('pointerdown', function (event) {
@@ -2063,20 +2260,22 @@ async function fetchPlaylistPage(token, hash, offset, limit) {
     return { tracks: tracks, total: content.totalCount || tracks.length };
 }
 
-async function pickRandomLikedTrackId() {
+async function pickRandomLikedTrackId(attempt) {
     const catalog = await loadLikedCatalog();
     const ids = catalog.map(function (track) { return track.id; }).filter(Boolean);
     if (!ids.length) return null;
+    const store = musicStoreUrl();
     const state = await readPlayedMusic(false);
+    if (!state || state.storeUrl !== store) {
+        if (attempt) return null;
+        return pickRandomLikedTrackId(1);
+    }
     const generation = state.generation || 1;
     let remaining = ids.filter(function (id) { return state.cycle[id] !== generation; });
+    let bumped = false;
     if (!remaining.length) {
         state.generation = generation + 1;
-        fetch(musicStoreUrl() + '/generation.json', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: String(state.generation)
-        }).catch(function () {});
+        bumped = true;
         remaining = ids;
     }
     const trackId = remaining[Math.floor(Math.random() * remaining.length)];
@@ -2090,18 +2289,12 @@ async function pickRandomLikedTrackId() {
     };
     state.cycle[trackId] = state.generation || 1;
     state.tracks[trackId] = record;
+    const stack = pushPlayedStack(state, trackId);
     writeLocalCycle(state);
-    const headers = { 'Content-Type': 'application/json' };
-    fetch(musicStoreUrl() + '/tracks/' + trackId + '.json', {
-        method: 'PUT',
-        headers: headers,
-        body: JSON.stringify(record)
-    }).catch(function () {});
-    fetch(musicStoreUrl() + '/cycle/' + trackId + '.json', {
-        method: 'PUT',
-        headers: headers,
-        body: String(state.generation || 1)
-    }).catch(function () {});
+    if (bumped) writeMusicJson(store + '/generation.json', 'PUT', state.generation).catch(function () {});
+    await writeMusicJson(store + '/tracks/' + trackId + '.json', 'PUT', record);
+    await writeMusicJson(store + '/cycle/' + trackId + '.json', 'PUT', state.generation || 1);
+    await writeMusicJson(store + '/stack.json', 'PUT', stack);
     return trackId;
 }
 
@@ -2123,29 +2316,24 @@ function withoutLegacyKeys(value) {
     return { kept: kept, removed: removed };
 }
 
-function deletePlayedKey(id) {
-    fetch(musicStoreUrl() + '/tracks/' + id + '.json', { method: 'DELETE' }).catch(function () {});
-    fetch(musicStoreUrl() + '/cycle/' + id + '.json', { method: 'DELETE' }).catch(function () {});
+function deletePlayedKey(store, id) {
+    writeMusicJson(store + '/tracks/' + id + '.json', 'DELETE').catch(function () {});
+    writeMusicJson(store + '/cycle/' + id + '.json', 'DELETE').catch(function () {});
 }
 
-function readLocalCycle() {
+function cycleStorageKey(url) {
+    return url === PLAYED_MUSIC_URL ? 'playedPositions:lucas' : 'playedPositions:visitor';
+}
+
+function readLocalCycle(url) {
     try {
-        const stored = JSON.parse(localStorage.getItem('playedPositions'));
-        if (!stored || typeof stored !== 'object') return {};
-        if (Array.isArray(stored)) {
-            localStorage.removeItem('playedPositions');
-            return {};
-        }
+        const stored = JSON.parse(localStorage.getItem(cycleStorageKey(url)));
+        if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
         const cycle = {};
-        let legacy = false;
         Object.keys(stored).forEach(function (id) {
-            if (isLegacyPositionKey(id)) {
-                legacy = true;
-                return;
-            }
-            cycle[id] = true;
+            if (isLegacyPositionKey(id)) return;
+            cycle[id] = typeof stored[id] === 'number' ? stored[id] : 0;
         });
-        if (legacy) localStorage.setItem('playedPositions', JSON.stringify(cycle));
         return cycle;
     } catch (error) {}
     return {};
@@ -2156,24 +2344,35 @@ function writeLocalCycle(state) {
     const generation = state.generation || 1;
     Object.keys(state.cycle || {}).forEach(function (id) {
         if (isLegacyPositionKey(id)) return;
-        if (state.cycle[id] === generation) pruned[id] = true;
+        if (state.cycle[id] === generation) {
+            const seq = state.tracks[id] && state.tracks[id].seq;
+            pruned[id] = typeof seq === 'number' && seq > 0 ? seq : 1;
+        }
     });
-    localStorage.setItem('playedPositions', JSON.stringify(pruned));
+    localStorage.setItem(cycleStorageKey(state.storeUrl), JSON.stringify(pruned));
 }
 
 function emptyPlayedState() {
     return { tracks: {}, cycle: {}, generation: 1 };
 }
 
-async function readPlayedMusic(force) {
-    if (playedMusicState && !force) return playedMusicState;
+async function readPlayedMusic(force, attempt) {
+    const url = musicStoreUrl();
+    if (playedMusicState && playedMusicState.storeUrl === url && !force) return playedMusicState;
+    const ticket = ++musicReadTicket;
     const state = emptyPlayedState();
+    state.storeUrl = url;
     const removed = [];
     try {
-        const response = await fetch(musicStoreUrl() + '.json');
+        const response = await fetch(url + '.json');
+        if (ticket !== musicReadTicket) {
+            if ((attempt || 0) >= 2) return playedMusicState || state;
+            return readPlayedMusic(true, (attempt || 0) + 1);
+        }
         if (response.ok) {
             const data = await response.json();
             if (data && data.generation) state.generation = data.generation;
+            if (data && data.stack) state.stack = data.stack;
             const tracks = withoutLegacyKeys(data && data.tracks);
             const cycle = withoutLegacyKeys(data && data.cycle);
             state.tracks = tracks.kept;
@@ -2183,34 +2382,108 @@ async function readPlayedMusic(force) {
             });
         }
     } catch (error) {}
-    const local = readLocalCycle();
-    const missing = {};
-    Object.keys(local).forEach(function (id) {
-        if (!state.tracks[id]) {
-            state.tracks[id] = { name: '', artist: '', playedOn: '', seq: 0 };
-            missing[id] = true;
-        }
-        if (state.cycle[id] !== state.generation) {
-            state.cycle[id] = state.generation;
-            missing[id] = true;
-        }
-    });
+    if (ticket !== musicReadTicket) {
+        if ((attempt || 0) >= 2) return playedMusicState || state;
+        return readPlayedMusic(true, (attempt || 0) + 1);
+    }
+    overlayLocalPlays(state);
     playedMusicState = state;
-    removed.forEach(deletePlayedKey);
-    const headers = { 'Content-Type': 'application/json' };
-    Object.keys(missing).forEach(function (id) {
-        fetch(musicStoreUrl() + '/tracks/' + id + '.json', {
-            method: 'PUT',
-            headers: headers,
-            body: JSON.stringify(state.tracks[id])
-        }).catch(function () {});
-        fetch(musicStoreUrl() + '/cycle/' + id + '.json', {
-            method: 'PUT',
-            headers: headers,
-            body: String(state.generation)
-        }).catch(function () {});
-    });
+    removed.forEach(function (id) { deletePlayedKey(url, id); });
     return state;
+}
+
+function stackList(state) {
+    const raw = state && state.stack;
+    let ids = [];
+    if (Array.isArray(raw)) ids = raw.slice();
+    else if (raw && typeof raw === 'object') {
+        ids = Object.keys(raw).filter(function (key) {
+            return /^\d+$/.test(key);
+        }).sort(function (a, b) {
+            return Number(a) - Number(b);
+        }).map(function (key) {
+            return raw[key];
+        });
+    }
+    return ids.filter(function (id) {
+        return id && !isLegacyPositionKey(id);
+    });
+}
+
+function tracksByNewest(state) {
+    return Object.keys(state.tracks || {}).filter(function (id) {
+        return !isLegacyPositionKey(id) && state.tracks[id] && typeof state.tracks[id] === 'object';
+    }).map(function (id) {
+        return Object.assign({ id: id }, state.tracks[id]);
+    }).sort(function (a, b) {
+        return (b.seq || 0) - (a.seq || 0) || trackLabel(a).localeCompare(trackLabel(b));
+    });
+}
+
+function fullStack(state) {
+    const seen = {};
+    const ids = [];
+    stackList(state).forEach(function (id) {
+        if (seen[id] || !state.tracks[id] || isLegacyPositionKey(id)) return;
+        seen[id] = true;
+        ids.push(id);
+    });
+    tracksByNewest(state).forEach(function (row) {
+        if (seen[row.id]) return;
+        seen[row.id] = true;
+        ids.push(row.id);
+    });
+    return ids;
+}
+
+function pushPlayedStack(state, trackId) {
+    const next = [trackId].concat(fullStack(state).filter(function (id) { return id !== trackId; }));
+    state.stack = next;
+    return next;
+}
+
+function orderedPlayedRows(state) {
+    const rows = tracksByNewest(state);
+    const stack = stackList(state);
+    if (!stack.length) return rows;
+    const byId = {};
+    rows.forEach(function (row) { byId[row.id] = row; });
+    const seen = {};
+    const ordered = [];
+    stack.forEach(function (id) {
+        if (seen[id] || !byId[id]) return;
+        seen[id] = true;
+        ordered.push(byId[id]);
+    });
+    if (ordered.length !== rows.length) return rows;
+    return ordered;
+}
+
+function insertPlayedId(state, id) {
+    const seq = (state.tracks[id] && state.tracks[id].seq) || 0;
+    const ids = fullStack(state).filter(function (item) { return item !== id; });
+    let index = 0;
+    while (index < ids.length && ((state.tracks[ids[index]] && state.tracks[ids[index]].seq) || 0) > seq) index += 1;
+    ids.splice(index, 0, id);
+    state.stack = ids;
+}
+
+function overlayLocalPlays(state) {
+    const local = readLocalCycle(state.storeUrl);
+    const missing = [];
+    Object.keys(local).forEach(function (id) {
+        if (isLegacyPositionKey(id)) return;
+        if (!state.tracks[id]) {
+            const seq = typeof local[id] === 'number' ? local[id] : 0;
+            state.tracks[id] = { name: '', artist: '', playedOn: '', seq: seq };
+            missing.push(id);
+        }
+        if (state.cycle[id] !== state.generation) state.cycle[id] = state.generation;
+    });
+    missing.sort(function (a, b) {
+        return ((state.tracks[a] && state.tracks[a].seq) || 0) - ((state.tracks[b] && state.tracks[b].seq) || 0);
+    });
+    missing.forEach(function (id) { insertPlayedId(state, id); });
 }
 
 function applyCatalogNames(state, catalog) {
@@ -2220,10 +2493,9 @@ function applyCatalogNames(state, catalog) {
         if (!saved || saved.name || !track.name) return;
         saved.name = track.name;
         saved.artist = track.artist || saved.artist || '';
-        fetch(musicStoreUrl() + '/tracks/' + track.id + '.json', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: saved.name, artist: saved.artist })
+        writeMusicJson((state.storeUrl || musicStoreUrl()) + '/tracks/' + track.id + '.json', 'PATCH', {
+            name: saved.name,
+            artist: saved.artist
         }).catch(function () {});
     });
     return catalog.length;
@@ -2274,13 +2546,7 @@ async function renderPlayedMusic() {
 }
 
 function markupPlayedList(state, total) {
-    const rows = Object.keys(state.tracks).filter(function (id) {
-        return !isLegacyPositionKey(id) && state.tracks[id] && typeof state.tracks[id] === 'object';
-    }).map(function (id) {
-        return Object.assign({ id: id }, state.tracks[id]);
-    }).sort(function (a, b) {
-        return (b.seq || 0) - (a.seq || 0) || trackLabel(a).localeCompare(trackLabel(b));
-    });
+    const rows = orderedPlayedRows(state);
     const totalLabel = total ? String(total) : '?';
     const heading = '<div class="trackHeading"><span>Randomized songs</span><span class="trackCount">' + rows.length + '/' + escapeHtml(totalLabel) + '</span></div>';
     if (!rows.length) return '<div class="musicList trackBlock">' + heading + '<p class="trackEmpty">None yet.</p></div>';
@@ -2304,6 +2570,20 @@ function currentMusicTrackId() {
     return '';
 }
 
+async function writeMusicJson(url, method, body) {
+    let target = url;
+    if (typeof SiteSession !== 'undefined' && SiteSession.isOperator && SiteSession.isOperator() && SiteSession.idToken && url.indexOf(PLAYED_MUSIC_URL) === 0) {
+        const token = await SiteSession.idToken();
+        if (token) target += (target.indexOf('?') === -1 ? '?' : '&') + 'auth=' + encodeURIComponent(token);
+    }
+    const request = { method: method };
+    if (body !== undefined) {
+        request.headers = { 'Content-Type': 'application/json' };
+        request.body = typeof body === 'string' ? body : JSON.stringify(body);
+    }
+    return fetch(target, request);
+}
+
 async function firebaseJsonUrl(base) {
     let url = base + '.json';
     if (typeof SiteSession === 'undefined' || typeof SiteSession.idToken !== 'function') return url;
@@ -2320,6 +2600,7 @@ async function clearPlayedMusic() {
     if (!response.ok) return "Couldn't clear the randomized songs.";
     playedMusicState = emptyPlayedState();
     localStorage.removeItem('playedPositions');
+    localStorage.removeItem('playedPositions:lucas');
     return 'Randomized songs cleared.';
 }
 
@@ -2329,6 +2610,8 @@ async function clearVisitorMusic() {
     }
     const response = await fetch(await firebaseJsonUrl(VISITOR_MUSIC_URL), { method: 'DELETE' });
     if (!response.ok) return "Couldn't clear visitor randomized songs.";
+    localStorage.removeItem('playedPositions:visitor');
+    if (musicStoreKey === VISITOR_MUSIC_URL) playedMusicState = emptyPlayedState();
     return 'Visitor randomized songs cleared.';
 }
 
@@ -2794,7 +3077,7 @@ function addEvents(command) {
     if (command === "rick") {
         document.querySelectorAll(`.rickRolledExplanation`).forEach(element => {
             element.addEventListener('click', function() {
-                appendOutput(`<span class="path">lucaohost@bash:~$</span> rickrolled?`);
+                appendOutput(commandPromptHtml() + ' rickrolled?');
                 processCommand(`rickrolled?`);
                 clearCommand();
             });
@@ -2803,7 +3086,7 @@ function addEvents(command) {
     if (command === "lucaohost") {
         document.querySelectorAll(`.localhostExplanation`).forEach(element => {
             element.addEventListener('click', function() {
-                appendOutput(`<span class="path">lucaohost@bash:~$</span> localhost?`);
+                appendOutput(commandPromptHtml() + ' localhost?');
                 processCommand(`localhost?`);
                 clearCommand();
             });

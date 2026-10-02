@@ -25,6 +25,9 @@
               ".write": "newData.hasChildren(['name', 'artist', 'playedOn', 'seq']) || (!newData.exists() && auth.token.email == 'lucas@lucaohost.app')"
             }
           },
+          "stack": {
+            ".write": "newData.hasChildren() || (!newData.exists() && auth.token.email == 'lucas@lucaohost.app')"
+          },
           "cycle": {
             "$trackId": {
               ".write": "newData.isNumber() || (!newData.exists() && auth.token.email == 'lucas@lucaohost.app')"

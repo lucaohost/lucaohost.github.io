@@ -146,6 +146,7 @@ test('firebase rules keep passwords unreadable and limit deletes to Lucas', () =
     const text = JSON.stringify(rules);
     assert.match(text, /lucas@lucaohost\.app/);
     assert.match(text, /visitorMusic/);
+    assert.match(text, /"stack"/);
     assert.match(text, /!newData\.exists\(\) && auth\.token\.email == 'lucas@lucaohost\.app'/);
     assert.equal(text.includes('snooker.lucaohost.app'), false);
     assert.doesNotMatch(text, /"pins":\{"\.read":true/);

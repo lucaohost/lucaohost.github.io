@@ -323,6 +323,57 @@ iframe {
     background: #1c2a1e;
 }
 
+.shareButton {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: min(100%, 420px);
+    margin: 12px 0;
+    padding: 10px 12px;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    background: #141414;
+    border: 0;
+    border-left: 3px solid #4CAF50;
+    border-radius: 0 12px 12px 0;
+    cursor: pointer;
+}
+
+.shareButton:hover,
+.shareButton:focus-visible {
+    background: #1c2a1e;
+    outline: none;
+}
+
+.shareIcon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: #4CAF50;
+}
+
+.shareIcon svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+}
+
+.shareCopy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.shareTitle {
+    color: #d7ffe0;
+    font-weight: 600;
+}
+
+.shareUrl {
+    color: #8f8f8f;
+    font-size: 12px;
+}
+
 .loginForm {
     display: flex;
     flex-wrap: wrap;

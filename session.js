@@ -51,10 +51,85 @@ var SiteSession = (function () {
         return firebase.auth();
     }
 
-    function email() {
+    var heldEmail = '';
+    var readyPromise = null;
+    var sessionSettled = false;
+    var authHoldBound = false;
+
+    function liveEmail() {
         var client = auth();
         var user = client && client.currentUser;
         return user && user.email ? user.email : '';
+    }
+
+    function email() {
+        var live = liveEmail();
+        if (live) {
+            heldEmail = live;
+            return live;
+        }
+        return heldEmail || '';
+    }
+
+    function bindAuthHold() {
+        if (authHoldBound) return;
+        var client = auth();
+        if (!client || typeof client.onAuthStateChanged !== 'function') return;
+        authHoldBound = true;
+        client.onAuthStateChanged(function (user) {
+            var live = user && user.email ? user.email : '';
+            if (live) {
+                heldEmail = live;
+                return;
+            }
+            if (!heldEmail) return;
+            setTimeout(function () {
+                if (liveEmail()) return;
+                heldEmail = '';
+            }, 1000);
+        });
+    }
+
+    function whenReady() {
+        if (readyPromise) return readyPromise;
+        var client = auth();
+        if (!client || typeof client.onAuthStateChanged !== 'function') {
+            sessionSettled = true;
+            readyPromise = Promise.resolve('');
+            return readyPromise;
+        }
+        bindAuthHold();
+        if (client.setPersistence && firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+            client.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function () {});
+        }
+        readyPromise = new Promise(function (resolve) {
+            var done = false;
+            function finish(value) {
+                if (done) return;
+                done = true;
+                sessionSettled = true;
+                resolve(value || '');
+            }
+            client.onAuthStateChanged(function (user) {
+                var live = user && user.email ? user.email : '';
+                if (live) {
+                    heldEmail = live;
+                    finish(live);
+                    return;
+                }
+                setTimeout(function () {
+                    finish(liveEmail() || heldEmail || '');
+                }, 400);
+            });
+            setTimeout(function () {
+                finish(liveEmail() || heldEmail || '');
+            }, 2500);
+        });
+        return readyPromise;
+    }
+
+    function settled() {
+        return sessionSettled;
     }
 
     function signedInId() {
@@ -114,6 +189,7 @@ var SiteSession = (function () {
     }
 
     function signOut() {
+        heldEmail = '';
         var client = auth();
         if (!client) return Promise.resolve();
         return client.signOut();
@@ -150,12 +226,30 @@ var SiteSession = (function () {
     }
 
     function watch(fn) {
+        bindAuthHold();
         var client = auth();
-        if (!client) {
+        if (!client || typeof client.onAuthStateChanged !== 'function') {
             fn(null);
             return function () {};
         }
-        return client.onAuthStateChanged(fn);
+        return client.onAuthStateChanged(function (user) {
+            var live = user && user.email ? user.email : '';
+            if (live) {
+                heldEmail = live;
+                fn(user);
+                return;
+            }
+            if (heldEmail) {
+                fn({ email: heldEmail });
+                setTimeout(function () {
+                    if (liveEmail()) return;
+                    heldEmail = '';
+                    fn(null);
+                }, 1000);
+                return;
+            }
+            fn(user || null);
+        });
     }
 
     return {
@@ -174,6 +268,8 @@ var SiteSession = (function () {
         signInPlayer: signInPlayer,
         signOut: signOut,
         setPlayerPassword: setPlayerPassword,
-        watch: watch
+        watch: watch,
+        whenReady: whenReady,
+        settled: settled
     };
 })();

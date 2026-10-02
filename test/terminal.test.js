@@ -121,6 +121,44 @@ function livePlayer(page) {
     return players[players.length - 1];
 }
 
+function installPageAuth(window, authSettings) {
+    let user = null;
+    const listeners = [];
+    const api = {
+        setPersistence() { return Promise.resolve(); },
+        signInWithEmailAndPassword() { return Promise.resolve({ user: user }); },
+        signOut() {
+            user = null;
+            listeners.slice().forEach((fn) => fn(null));
+            return Promise.resolve();
+        },
+        get currentUser() { return user; },
+        onAuthStateChanged(fn) {
+            listeners.push(fn);
+            const delay = authSettings.delay == null ? 0 : authSettings.delay;
+            setTimeout(() => {
+                user = authSettings.user || null;
+                fn(user);
+            }, delay);
+            return function () {
+                const index = listeners.indexOf(fn);
+                if (index >= 0) listeners.splice(index, 1);
+            };
+        }
+    };
+    function auth() { return api; }
+    auth.Auth = { Persistence: { LOCAL: 'local' } };
+    window.firebase = {
+        apps: [],
+        initializeApp() {
+            const app = { name: '[DEFAULT]' };
+            this.apps.push(app);
+            return app;
+        },
+        auth: auth
+    };
+}
+
 function boot(options) {
     const settings = options || {};
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
@@ -181,6 +219,7 @@ function boot(options) {
         }
         return jsonResponse(null);
     };
+    if (settings.auth) installPageAuth(window, settings.auth);
     function run(source) {
         const script = window.document.createElement('script');
         script.textContent = source;
@@ -635,8 +674,11 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.6\.4 - 2026-10-01/);
-    assert.match(top, /starts that song's radio/);
+    assert.match(top, /^2\.7\.0 - 2026-10-01/);
+    assert.match(top, /vibrates on each key/);
+    assert.match(top, /home screen/);
+    assert.match(top, /newest one at the top/);
+    assert.match(changelog, /starts that song's radio/);
     assert.match(changelog, /radio playlist/);
     assert.match(changelog, /similar songs queued/);
     assert.match(changelog, /password is incorrect/);
@@ -1461,17 +1503,22 @@ test('enter with nothing typed skips a line and keeps the prompt', async () => {
     });
 });
 
-test('enter with nothing typed keeps Lucas on the new line', async () => {
-    await withPage({}, async (page) => {
+test('enter with nothing typed plays music for Lucas', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
         page.window.SiteSession.isOperator = function () { return true; };
         page.window.syncTerminalIdentity();
         pressEnter(page, '');
-        pressEnter(page, 'whoami');
+        await delay(40);
         const lines = [...output(page).children];
         assert.equal(lines[0].querySelector('.path').textContent, 'lucas@bash:~$');
-        assert.equal(lines[1].querySelector('.path').textContent, 'lucas@bash:~$');
-        assert.match(lines[1].textContent, /whoami/);
+        assert.match(lines[0].textContent, /music/);
+        assert.ok(output(page).querySelector('.spotifyHost'));
+        pressEnter(page, 'whoami');
+        await delay(20);
+        assert.match(output(page).textContent, /whoami/);
         assert.match(page.document.querySelector('.input-line .path').textContent, /lucas@bash/);
+        assert.ok(page.fetches.some((entry) => entry.method === 'PUT' && entry.href.includes('playedMusic/tracks/')));
+        assert.equal(page.fetches.some((entry) => entry.href.includes('visitorMusic')), false);
     });
 });
 
@@ -1486,5 +1533,207 @@ test('exit closes the tab instead of a blank page', async () => {
         assert.deepEqual(calls, ['close']);
         assert.equal(page.window.location.href, before);
         assert.equal(page.window.location.href.includes('about:blank'), false);
+    });
+});
+
+test('list reads the stack from the top down', async () => {
+    await withPage({
+        catalog: tracks(['a', 'b', 'c']),
+        played: {
+            tracks: {
+                a: { name: 'Song a', artist: 'Artist a', playedOn: '2026-09-01', seq: 50 },
+                b: { name: 'Song b', artist: 'Artist b', playedOn: '2026-09-02', seq: 1 },
+                c: { name: 'Song c', artist: 'Artist c', playedOn: '2026-09-03', seq: 9 }
+            },
+            stack: ['b', 'c', 'a'],
+            cycle: {},
+            generation: 1
+        }
+    }, async (page) => {
+        await runCommand(page, 'list');
+        const names = [...output(page).querySelectorAll('.musicList .trackName')].map((node) => node.textContent);
+        assert.deepEqual(names, ['Song b', 'Song c', 'Song a']);
+        assert.equal(output(page).querySelector('.musicList .spotifyHost').dataset.spotifyUri, 'spotify:track:b');
+    });
+});
+
+test('music saves the new song only on the signed-out list and puts it on top', async () => {
+    await withPage({
+        catalog: tracks(['a', 'b']),
+        played: {
+            tracks: {
+                b: { name: 'Song b', artist: 'Artist b', playedOn: '2026-09-01', seq: 5 }
+            },
+            cycle: { b: 1 },
+            stack: ['b'],
+            generation: 1
+        }
+    }, async (page) => {
+        page.window.localStorage.setItem('playedPositions', JSON.stringify({ z: true }));
+        page.window.localStorage.setItem('playedPositions:lucas', JSON.stringify({ z: true }));
+        await runCommand(page, 'music');
+        await delay(30);
+        assert.equal(page.fetches.some((entry) => entry.href.includes('playedMusic')), false);
+        assert.equal(page.fetches.some((entry) => entry.href.includes('/tracks/z.json')), false);
+        const trackPut = page.fetches.find((entry) => entry.method === 'PUT' && entry.href.includes('visitorMusic/tracks/'));
+        assert.ok(trackPut);
+        const record = JSON.parse(trackPut.body);
+        assert.equal(record.seq > 5, true);
+        const playedId = trackPut.href.split('/tracks/')[1].split('.json')[0];
+        const stackPut = page.fetches.find((entry) => entry.method === 'PUT' && entry.href.includes('visitorMusic/stack.json'));
+        assert.ok(stackPut);
+        assert.equal(JSON.parse(stackPut.body)[0], playedId);
+        await runCommand(page, 'list');
+        assert.equal(output(page).querySelector('.musicList .trackName').textContent, 'Song ' + playedId);
+    });
+});
+
+test('a saved Lucas session is used before music chooses a list', async () => {
+    await withPage({
+        auth: { user: { email: 'lucas@lucaohost.app' }, delay: 40 },
+        catalog: tracks(['a']),
+        played: { tracks: {}, cycle: {}, generation: 1 }
+    }, async (page) => {
+        assert.match(page.document.querySelector('.input-line .path').textContent, /lucaohost@bash/);
+        const pending = runCommand(page, 'music');
+        await delay(10);
+        assert.equal(page.fetches.some((entry) => entry.href.includes('visitorMusic') || entry.href.includes('playedMusic')), false);
+        await pending;
+        await delay(20);
+        assert.ok(page.fetches.some((entry) => entry.method === 'PUT' && entry.href.includes('playedMusic/tracks/')));
+        assert.equal(page.fetches.some((entry) => entry.href.includes('visitorMusic')), false);
+        assert.match(page.document.querySelector('.input-line .path').textContent, /lucas@bash/);
+        assert.match(page.document.querySelector('.terminal-title').textContent, /lucas@bash/);
+    });
+});
+
+test('a signed-out list does not show Lucas songs', async () => {
+    await withPage({
+        catalog: tracks(['a']),
+        played: {
+            tracks: { a: { name: 'Song a', artist: 'Artist a', playedOn: '2026-09-01', seq: 2 } },
+            stack: ['a'],
+            cycle: {},
+            generation: 1
+        },
+        operator: {
+            tracks: { z: { name: 'Lucas only', artist: 'Lucas', playedOn: '2026-09-02', seq: 9 } },
+            stack: ['z'],
+            cycle: {},
+            generation: 1
+        }
+    }, async (page) => {
+        await runCommand(page, 'list');
+        const names = [...output(page).querySelectorAll('.trackName')].map((node) => node.textContent);
+        assert.deepEqual(names, ['Song a']);
+        assert.equal(page.fetches.some((entry) => entry.href.includes('playedMusic')), false);
+    });
+});
+
+test('the on-screen keyboard vibrates on each key', async () => {
+    await withPage({}, async (page) => {
+        usePhone(page);
+        page.window.installMobileInput();
+        const pulses = [];
+        page.window.navigator.vibrate = function (value) {
+            pulses.push(value);
+            return true;
+        };
+        page.document.querySelector('#mobile-keyboard button[data-key="a"]').click();
+        assert.equal(page.document.getElementById('input').value, 'a');
+        assert.equal(pulses[0], 15);
+    });
+});
+
+test('share shows the site card and shares the address', async () => {
+    await withPage({}, async (page) => {
+        const shares = [];
+        page.window.navigator.share = function (payload) {
+            shares.push(payload);
+            return Promise.resolve();
+        };
+        await runCommand(page, 'share');
+        const button = output(page).querySelector('.shareButton');
+        assert.equal(button.getAttribute('style'), null);
+        assert.equal(button.querySelector('.shareTitle').textContent, 'Share this site');
+        assert.equal(button.querySelector('.shareUrl').textContent, 'lucaohost.github.io');
+        assert.equal(shares[0].url, 'https://lucaohost.github.io');
+        const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+        assert.match(css, /\.shareButton\s*\{[^}]*border-left:\s*3px solid #4CAF50/);
+    });
+});
+
+test('install asks the browser to add the site, and explains it on an iPhone', async () => {
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const manifest = fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8');
+    const worker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+    assert.match(html, /manifest\.webmanifest/);
+    assert.match(html, /term-install/);
+    assert.match(manifest, /icon-192\.png/);
+    assert.match(manifest, /"display": "standalone"/);
+    assert.match(worker, /addEventListener\('fetch'/);
+    await withPage({}, async (page) => {
+        await runCommand(page, 'help');
+        assert.equal(commandNames(page).includes('install'), true);
+        output(page).replaceChildren();
+        let prompted = 0;
+        const event = new page.window.Event('beforeinstallprompt', { bubbles: true, cancelable: true });
+        event.prompt = function () {
+            prompted += 1;
+            return Promise.resolve();
+        };
+        event.userChoice = Promise.resolve({ outcome: 'accepted' });
+        page.window.dispatchEvent(event);
+        await runCommand(page, 'install');
+        assert.equal(prompted, 1);
+        assert.match(output(page).textContent, /Added to your home screen/);
+        output(page).replaceChildren();
+        Object.defineProperty(page.window.navigator, 'userAgent', {
+            configurable: true,
+            value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'
+        });
+        await runCommand(page, 'install');
+        assert.match(output(page).textContent, /Add to Home Screen/);
+        page.document.querySelector('.term-install').click();
+        await delay(20);
+        assert.match(output(page).textContent, /Add to Home Screen/);
+    });
+});
+
+test('a hardware key on the phone still types into the command', async () => {
+    await withPage({}, async (page) => {
+        usePhone(page);
+        page.window.installMobileInput();
+        const input = page.document.getElementById('input');
+        input.focus();
+        input.dispatchEvent(new page.window.KeyboardEvent('keydown', {
+            key: 'm',
+            bubbles: true,
+            cancelable: true
+        }));
+        assert.equal(input.value, 'm');
+    });
+});
+
+test('a key pressed away from the terminal is typed at the cursor', async () => {
+    await withPage({}, async (page) => {
+        const input = page.document.getElementById('input');
+        const line = page.document.querySelector('.input-line');
+        let scrolled = 0;
+        line.scrollIntoView = function () { scrolled += 1; };
+        page.document.body.dispatchEvent(new page.window.KeyboardEvent('keydown', {
+            key: 'q',
+            bubbles: true,
+            cancelable: true
+        }));
+        assert.equal(input.textContent, 'q');
+        assert.equal(page.document.activeElement, input);
+        assert.equal(scrolled > 0, true);
+        const frame = page.document.createElement('iframe');
+        output(page).appendChild(frame);
+        frame.focus();
+        page.window.dispatchEvent(new page.window.Event('blur'));
+        await delay(20);
+        assert.equal(page.document.activeElement, input);
     });
 });
