@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.8.0 - 2026-10-03
+
+### Added
+- Pressing Enter with nothing typed plays a random liked song for a visitor, the same as it does for Lucas.
+- `help` says, under `music`, that an empty Enter plays a song.
+
+### Changed
+- The Enter key shows a return arrow with a small music note.
+- The site icon is a terminal prompt with a music note.
+
+### Fixed
+- On a phone, `music` shows the whole Loading Spotify message while the player is still opening.
+
 ## 2.7.0 - 2026-10-01
 
 ### Added

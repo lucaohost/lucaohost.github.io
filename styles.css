@@ -867,6 +867,11 @@ body.is-commandLocked .mobile-keyboard {
         color: #111;
     }
 
+    .mobile-keyboard button[data-key="enter"] svg {
+        width: 26px;
+        height: 22px;
+    }
+
     .mobile-keyboard button[data-key="enter"].is-pressed,
     .mobile-keyboard button[data-key="enter"]:active {
         background-color: #3e8e41;

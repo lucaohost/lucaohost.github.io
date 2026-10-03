@@ -598,6 +598,54 @@ test('another song can start while the previous one is still loading', async () 
     });
 });
 
+test('help says an empty Enter plays music', async () => {
+    await withPage({}, async (page) => {
+        await runCommand(page, 'help');
+        const music = [...output(page).querySelectorAll('tr')].find((row) => {
+            const cell = row.querySelector('td');
+            return cell && cell.textContent.trim() === 'music';
+        });
+        assert.ok(music);
+        assert.match(music.textContent, /Press Enter with nothing typed to play one/);
+        assert.match(music.innerHTML, /<br>/i);
+    });
+});
+
+test('music shows the full loading message before Spotify finishes opening', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        const view = page.document.getElementById('terminal-body');
+        Object.defineProperty(view, 'scrollHeight', { configurable: true, get() { return 640; } });
+        await runCommand(page, 'music');
+        const host = output(page).querySelector('.musicPlay .spotifyHost');
+        const frame = host.querySelector('iframe');
+        assert.equal(host.classList.contains('spotifyPending'), true);
+        assert.equal(host.querySelector('.spotifyLoading').textContent, 'Loading Spotify…');
+        assert.notEqual(frame && frame.dataset.loaded, '1');
+        assert.equal(view.scrollTop, 640);
+    });
+});
+
+test('the enter key mixes a return arrow with a music note', () => {
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const button = html.slice(html.indexOf('data-key="enter"'), html.indexOf('data-key="enter"') + 900);
+    assert.match(button, /enterNote/);
+    assert.match(button, /<circle /);
+    assert.match(button, /Plays music if nothing is typed/);
+    const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+    assert.match(css, /button\[data-key="enter"\] svg\s*\{[^}]*width:\s*26px/);
+});
+
+test('the site icon is a small vector prompt with a music note', () => {
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const svg = fs.readFileSync(path.join(root, 'images', 'favicon.svg'), 'utf8');
+    assert.match(html, /images\/favicon\.svg/);
+    assert.match(svg, /<svg[\s\S]*viewBox="0 0 32 32"/);
+    assert.match(svg, /#4CAF50/);
+    assert.match(svg, /<circle /);
+    assert.equal(svg.includes('<image'), false);
+    assert.ok(Buffer.byteLength(svg) < 1200);
+});
+
 test('help lists list and liked and omits clear music', async () => {
     await withPage({}, async (page) => {
         await runCommand(page, 'help');
@@ -674,10 +722,13 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.7\.0 - 2026-10-01/);
-    assert.match(top, /vibrates on each key/);
-    assert.match(top, /home screen/);
-    assert.match(top, /newest one at the top/);
+    assert.match(top, /^2\.8\.0 - 2026-10-03/);
+    assert.match(top, /nothing typed/);
+    assert.match(top, /music note/);
+    assert.match(top, /Loading Spotify/);
+    assert.match(changelog, /vibrates on each key/);
+    assert.match(changelog, /home screen/);
+    assert.match(changelog, /newest one at the top/);
     assert.match(changelog, /starts that song's radio/);
     assert.match(changelog, /radio playlist/);
     assert.match(changelog, /similar songs queued/);
@@ -1480,26 +1531,28 @@ test('the radio link follows the song now in the player', async () => {
     });
 });
 
-test('enter with nothing typed skips a line and keeps the prompt', async () => {
-    await withPage({}, async (page) => {
+test('enter with nothing typed plays music for a visitor', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
         pressEnter(page, '');
+        await delay(40);
         pressEnter(page, '   ');
-        const lines = [...output(page).children];
+        await delay(40);
+        const lines = [...output(page).children].filter((line) => line.querySelector('.path'));
         assert.equal(lines.length, 2);
         lines.forEach((line) => {
             assert.equal(line.querySelector('.path').textContent, 'lucaohost@bash:~$');
-            assert.equal(line.textContent.trim(), 'lucaohost@bash:~$');
+            assert.match(line.textContent, /music/);
         });
-        const input = page.document.getElementById('input');
-        assert.equal(input.textContent, '');
-        assert.equal(input.innerText, '');
+        assert.equal(output(page).querySelectorAll('.spotifyHost').length, 2);
+        assert.ok(page.fetches.some((entry) => entry.method === 'PUT' && entry.href.includes('visitorMusic/tracks/')));
+        assert.equal(page.fetches.some((entry) => entry.method === 'PUT' && entry.href.includes('playedMusic')), false);
         assert.match(page.document.querySelector('.input-line .path').textContent, /lucaohost@bash/);
         page.document.getElementById('input').dispatchEvent(new page.window.KeyboardEvent('keydown', {
             key: 'ArrowUp',
             bubbles: true,
             cancelable: true
         }));
-        assert.equal(page.document.getElementById('input').textContent, '');
+        assert.equal(page.document.getElementById('input').textContent, 'music');
     });
 });
 

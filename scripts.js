@@ -135,7 +135,7 @@ const commands = {
             'social', "Social networks.",
             'share', "Share this site.",
             'install', "Add this site to your home screen.",
-            'music', "Random Liked Song.",
+            'music', "Random Liked Song.<br>Press Enter with nothing typed to play one.",
             'music song', "Play a Spotify song by name.",
             'list', "Randomized songs. Play from the list.",
             'liked', "100 newest liked songs, one after another.",
@@ -760,13 +760,10 @@ if (typeof SiteSession !== 'undefined') {
 }
 
 function runEnteredCommand(input) {
-    var command = input;
-    if (!command && signedInTerminal()) command = 'music';
-    appendOutput(commandPromptHtml() + (command ? ' ' + command : ''));
-    if (command) {
-        pushHistory(command);
-        processCommand(command);
-    }
+    var command = input || 'music';
+    appendOutput(commandPromptHtml() + ' ' + command);
+    pushHistory(command);
+    processCommand(command);
 }
 
 function onEnter(event) {
@@ -1608,14 +1605,14 @@ async function playRandomLikedSong() {
     const row = document.createElement('div');
     row.className = 'musicPlay';
     const host = document.createElement('div');
-    host.className = 'spotifyHost';
+    host.className = 'spotifyHost spotifyPending';
     host.dataset.autoplay = '1';
     host.innerHTML = '<div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div>';
     row.appendChild(host);
     slot.appendChild(row);
     terminalOutput.appendChild(slot);
     mountSpotifyHost(host);
-    scrollCliToEnd();
+    followCliScroll(slot);
     try {
         const trackId = await pickRandomLikedTrackId();
         if (!slot.isConnected) return;
@@ -1862,7 +1859,10 @@ function updateSpotifyLoading(host) {
         const current = host.querySelector('iframe');
         const currentSrc = current ? (current.getAttribute('src') || '') : '';
         const stillReady = !!(current && current.dataset.loaded === '1' && spotifySrcReady(currentSrc));
-        if (!stillReady) host.classList.add('spotifyPending');
+        if (!stillReady) {
+            host.classList.add('spotifyPending');
+            scrollCliToEnd();
+        }
     }, 400);
 }
 
