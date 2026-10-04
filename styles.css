@@ -506,6 +506,7 @@ body.is-commandLocked .mobile-keyboard {
     font-size: 14px;
     line-height: 1.2;
     white-space: nowrap;
+    overflow: hidden;
 }
 
 .spotifyHost.spotifyPending .spotifyLoading::before {
@@ -523,6 +524,27 @@ body.is-commandLocked .mobile-keyboard {
     to {
         transform: rotate(360deg);
     }
+}
+
+.commandRun {
+    display: inline-block;
+    margin: 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: #d9ffe3;
+    font: inherit;
+    line-height: inherit;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+    touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.commandRun:hover,
+.commandRun:focus-visible {
+    color: #4CAF50;
 }
 
 .output table {

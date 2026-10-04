@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.9.0 - 2026-10-04
+
+### Added
+- In `help`, tapping a command name runs that command and keeps it in the history. Scrolling across the name does not run it.
+- Tapping `music song` leaves `music ` ready to type.
+
+### Changed
+- The snooker ranking, match history, and reports use a snooker icon.
+
+### Fixed
+- On a phone, the Spotify loading message is the width of the player, with the radio and next buttons already beside it.
+- `exit` and the terminal close button close the browser tab.
+
 ## 2.8.0 - 2026-10-03
 
 ### Added

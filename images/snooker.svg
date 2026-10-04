@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Sinuca">
+  <rect width="32" height="32" rx="8" fill="#12873d"/>
+  <circle cx="10.2" cy="21" r="4.35" fill="#f6f3ec"/>
+  <circle cx="8.7" cy="19.5" r="1.25" fill="#ffffff"/>
+  <circle cx="18.5" cy="14.3" r="4.35" fill="#e10600"/>
+  <circle cx="17.05" cy="12.85" r="1.15" fill="#ff9d98"/>
+  <path d="M29.2 4.4 22.7 10.9" fill="none" stroke="#f3d7a2" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M22.7 10.9 22 11.5" fill="none" stroke="#1c140e" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

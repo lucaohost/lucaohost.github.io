@@ -722,10 +722,14 @@ test('changelog renders versions, sections, and items', async () => {
 test('the changelog records list playback and single-song changes', () => {
     const changelog = fs.readFileSync(path.join(root, 'changelog.md'), 'utf8');
     const top = changelog.split(/^## /m)[1];
-    assert.match(top, /^2\.8\.0 - 2026-10-03/);
-    assert.match(top, /nothing typed/);
-    assert.match(top, /music note/);
-    assert.match(top, /Loading Spotify/);
+    assert.match(top, /^2\.9\.0 - 2026-10-04/);
+    assert.match(top, /command name/);
+    assert.match(top, /snooker icon/);
+    assert.match(top, /next buttons/);
+    assert.match(top, /close button/);
+    assert.match(changelog, /nothing typed/);
+    assert.match(changelog, /music note/);
+    assert.match(changelog, /Loading Spotify/);
     assert.match(changelog, /vibrates on each key/);
     assert.match(changelog, /home screen/);
     assert.match(changelog, /newest one at the top/);
@@ -1788,5 +1792,110 @@ test('a key pressed away from the terminal is typed at the cursor', async () => 
         page.window.dispatchEvent(new page.window.Event('blur'));
         await delay(20);
         assert.equal(page.document.activeElement, input);
+    });
+});
+
+test('the Spotify loading message already leaves room for the radio and next buttons', async () => {
+    await withPage({ catalog: tracks(['a']), played: { tracks: {}, cycle: {}, generation: 1 } }, async (page) => {
+        let release;
+        const gate = new Promise((resolve) => { release = resolve; });
+        const pick = page.window.pickRandomLikedTrackId;
+        page.window.pickRandomLikedTrackId = function () {
+            return gate.then(function () { return pick(); });
+        };
+        const pending = runCommand(page, 'music');
+        await delay(30);
+        const row = output(page).querySelector('.musicPlay');
+        const host = row.querySelector('.spotifyHost');
+        const rail = row.querySelector('.playRail');
+        assert.equal(host.classList.contains('spotifyPending'), true);
+        assert.equal(host.querySelector('.spotifyLoading').textContent, 'Loading Spotify…');
+        assert.equal(host.nextElementSibling, rail);
+        assert.ok(rail.querySelector('.trackRadio'));
+        assert.ok(rail.querySelector('.nextMusic'));
+        assert.equal(host.dataset.spotifyUri || '', '');
+        release();
+        await pending;
+        assert.equal(host.dataset.spotifyUri, 'spotify:track:a');
+        assert.equal(row.querySelectorAll('.playRail').length, 1);
+    });
+});
+
+test('tapping a help command runs it and keeps it in the history', async () => {
+    await withPage({}, async (page) => {
+        await runCommand(page, 'help');
+        const whoami = output(page).querySelector('.commandRun[data-command="whoami"]');
+        const row = whoami.closest('tr');
+        assert.equal(row.querySelectorAll('td')[1].querySelector('.commandRun'), null);
+        row.querySelectorAll('td')[1].click();
+        await delay(30);
+        assert.equal(output(page).textContent.includes('software engineer'), false);
+        whoami.click();
+        await delay(30);
+        assert.match(output(page).textContent, /software engineer/);
+        const input = page.document.getElementById('input');
+        input.dispatchEvent(new page.window.KeyboardEvent('keydown', {
+            key: 'ArrowUp',
+            bubbles: true,
+            cancelable: true
+        }));
+        assert.equal(input.textContent, 'whoami');
+        const song = output(page).querySelector('.commandRun[data-command="music song"]');
+        song.click();
+        assert.equal(input.textContent, 'music ');
+        assert.equal(output(page).querySelector('.spotifyHost'), null);
+        input.dispatchEvent(new page.window.KeyboardEvent('keydown', {
+            key: 'ArrowUp',
+            bubbles: true,
+            cancelable: true
+        }));
+        assert.equal(input.textContent, 'music song');
+    });
+});
+
+test('scrolling across a help command does not run it', async () => {
+    await withPage({}, async (page) => {
+        await runCommand(page, 'help');
+        const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+        assert.match(css, /\.commandRun\s*\{[^}]*touch-action:\s*pan-y/);
+        const button = output(page).querySelector('.commandRun[data-command="clear"]');
+        const pointer = (type, x) => new page.window.PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            pointerId: 1,
+            clientX: x,
+            clientY: 10
+        });
+        button.dispatchEvent(pointer('pointerdown', 8));
+        page.document.dispatchEvent(pointer('pointermove', 40));
+        page.document.dispatchEvent(pointer('pointerup', 40));
+        button.click();
+        await delay(30);
+        assert.ok(output(page).querySelector('.commandRun[data-command="help"]'));
+        usePhone(page);
+        const whoami = output(page).querySelector('.commandRun[data-command="whoami"]');
+        whoami.dispatchEvent(touchEvent(page, 'touchstart', 10, 10));
+        page.document.dispatchEvent(touchEvent(page, 'touchmove', 10, 42));
+        whoami.dispatchEvent(touchEvent(page, 'touchend', 10, 42));
+        whoami.click();
+        await delay(30);
+        assert.equal(output(page).textContent.includes('software engineer'), false);
+        whoami.dispatchEvent(touchEvent(page, 'touchstart', 12, 12));
+        whoami.dispatchEvent(touchEvent(page, 'touchend', 14, 13));
+        whoami.click();
+        await delay(30);
+        assert.equal(output(page).querySelectorAll('p').length, 1);
+    });
+});
+
+test('the close button closes the tab the same way exit does', async () => {
+    await withPage({}, async (page) => {
+        const calls = [];
+        page.window.close = function () { calls.push('close'); };
+        const before = page.window.location.href;
+        page.document.querySelector('.term-close').click();
+        assert.deepEqual(calls, ['close']);
+        assert.equal(page.window.location.href, before);
+        assert.equal(before.includes('about:blank'), false);
     });
 });

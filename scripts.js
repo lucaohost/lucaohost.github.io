@@ -159,8 +159,8 @@ const commands = {
         return playRandomLikedSong();
     },
     helpDesc: `Type "help" to see all commands.`,
-    exit: function() {
-        window.close();
+    exit: function () {
+        closeBrowserTab();
     },
     liked: function() {
         return renderLikedSongs();
@@ -313,7 +313,15 @@ document.addEventListener('click', function(event) {
 });
 
 
+function closeBrowserTab() {
+    window.close();
+}
+
 async function processCommand(input) {
+    if (!awaitingPassword && String(input || '').trim().toLocaleLowerCase() === 'exit') {
+        closeBrowserTab();
+        return;
+    }
     if (typeof SiteSession !== 'undefined' && SiteSession.whenReady && !SiteSession.settled()) {
         await SiteSession.whenReady();
         syncTerminalIdentity();
@@ -581,7 +589,7 @@ function bindTerminalChrome() {
         syncMaxIcon();
     });
     bar.querySelector('.term-close').addEventListener('click', function () {
-        commands.exit();
+        closeBrowserTab();
     });
     const installButton = bar.querySelector('.term-install');
     if (installButton) {
@@ -954,7 +962,7 @@ document.addEventListener('touchstart', (event) => {
         event.preventDefault();
         return;
     }
-    if (control.classList.contains('trackPlay') || control.classList.contains('nextMusic') || control.classList.contains('socialLink') || control.classList.contains('trackRadio')) {
+    if (control.classList.contains('trackPlay') || control.classList.contains('nextMusic') || control.classList.contains('socialLink') || control.classList.contains('trackRadio') || control.classList.contains('commandRun')) {
         const touch = event.changedTouches[0];
         trackTouch = {
             id: touch.identifier,
@@ -1005,6 +1013,13 @@ document.addEventListener('touchend', function (event) {
         event.preventDefault();
         armSuppressClick(gesture.button);
         startNextMusic();
+        focusCliInput();
+        return;
+    }
+    if (gesture.button.classList.contains('commandRun')) {
+        event.preventDefault();
+        armSuppressClick(gesture.button);
+        runListedCommand(gesture.button.getAttribute('data-command'));
         focusCliInput();
         return;
     }
@@ -1278,9 +1293,10 @@ function buildCommandTable(items, cols = 2) {
         while (rowItems.length < cols) {
             rowItems.push('-'); // Fill the table if necessary
         }
-        rowItems.forEach(item => {
+        rowItems.forEach(function (item, index) {
+            const content = index === 0 && item !== '-' ? commandRunButton(item) : item;
             table += `
-                <td style="border: 2px solid black; padding: 3px; padding-left: 10px; text-align: left; color: white;">${item}</td>`;
+                <td style="border: 2px solid black; padding: 3px; padding-left: 10px; text-align: left; color: white;">${content}</td>`;
         });
         table += '</tr>';
     }
@@ -1362,8 +1378,35 @@ function markTrackDrag() {
     if (trackTouch) trackTouch.dragged = true;
 }
 
+function commandRunButton(name) {
+    const label = escapeHtml(name);
+    return '<button type="button" class="commandRun" data-command="' + label + '">' + label + '</button>';
+}
+
+function settleListedCommand() {
+    if (!inputField || isMobileCli()) return;
+    try { inputField.focus(); } catch (error) {}
+    if (inputField.tagName !== 'INPUT') placeCaretAtEnd(inputField);
+    placeBlockCaret();
+}
+
+function runListedCommand(name) {
+    const command = String(name || '').trim();
+    if (!command || commandInputLocked || awaitingPassword) return;
+    appendOutput(commandPromptHtml() + ' ' + escapeHtml(command));
+    pushHistory(command);
+    if (command === 'music song') {
+        setCommandText('music ');
+        settleListedCommand();
+        return;
+    }
+    clearCommand();
+    settleListedCommand();
+    processCommand(command);
+}
+
 function guardedPressButton(target) {
-    return target && target.closest && target.closest('.trackPlay, .nextMusic, .trackRadio');
+    return target && target.closest && target.closest('.trackPlay, .nextMusic, .trackRadio, .commandRun');
 }
 
 function startNextMusic() {
@@ -1418,6 +1461,17 @@ document.addEventListener('pointercancel', function (event) {
 }, true);
 
 terminalOutput.addEventListener('click', function (event) {
+    const commandButton = event.target.closest('.commandRun');
+    if (commandButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (commandButton.dataset.suppressClick === '1') {
+            delete commandButton.dataset.suppressClick;
+            return;
+        }
+        runListedCommand(commandButton.getAttribute('data-command'));
+        return;
+    }
     const playButton = event.target.closest('.trackPlay');
     if (playButton) {
         if (playButton.dataset.suppressClick === '1') {
@@ -1521,6 +1575,11 @@ function syncTrackRadio(host) {
     armTrackRadio(radio, host.dataset.spotifyUri || radio.dataset.trackId || '');
 }
 
+function dropPlayRail(row) {
+    const rail = row && row.querySelector('.playRail');
+    if (rail) rail.remove();
+}
+
 function playRailMarkup(trackId, withNext) {
     return '<div class="playRail">' + radioControl(trackId) + (withNext ? nextMusicButton() : '') + '</div>';
 }
@@ -1609,6 +1668,7 @@ async function playRandomLikedSong() {
     host.dataset.autoplay = '1';
     host.innerHTML = '<div class="spotifyLoading" role="status">Loading Spotify…</div><div class="spotifyMount"></div>';
     row.appendChild(host);
+    row.insertAdjacentHTML('beforeend', playRailMarkup('', true));
     slot.appendChild(row);
     terminalOutput.appendChild(slot);
     mountSpotifyHost(host);
@@ -1618,17 +1678,18 @@ async function playRandomLikedSong() {
         if (!slot.isConnected) return;
         if (!trackId) {
             discardSpotifyHost(host);
+            dropPlayRail(row);
             slot.appendChild(document.createTextNode("Couldn't load a liked song right now."));
             scrollCliToEnd();
             return;
         }
         host.dataset.spotifyUri = 'spotify:track:' + trackId;
-        row.insertAdjacentHTML('beforeend', playRailMarkup(trackId, true));
         activateEmbeddedMedia(slot);
         scrollCliToEnd();
     } catch (error) {
         if (!slot.isConnected || host.dataset.mounted) return;
         discardSpotifyHost(host);
+        dropPlayRail(row);
         slot.appendChild(document.createTextNode("Couldn't load a liked song right now."));
         scrollCliToEnd();
     }
@@ -3093,3 +3154,5 @@ function addEvents(command) {
         });
     }
 }
+
+bindTerminalChrome();

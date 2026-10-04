@@ -212,6 +212,30 @@ test('a confirmed match automatically shares as soon as saving finishes', async 
     }
 });
 
+test('the snooker pages use their own vector icon', () => {
+    const svg = fs.readFileSync(path.join(root, 'images', 'snooker.svg'), 'utf8');
+    const terminal = fs.readFileSync(path.join(root, 'images', 'favicon.svg'), 'utf8');
+    const png = fs.readFileSync(path.join(root, 'images', 'snooker.png'));
+    const apple = fs.readFileSync(path.join(root, 'images', 'snooker-180.png'));
+    assert.notEqual(svg, terminal);
+    assert.match(svg, /viewBox="0 0 32 32"/);
+    assert.match(svg, /#12873d/);
+    assert.match(svg, /<circle /);
+    assert.equal(svg.includes('<image'), false);
+    assert.ok(Buffer.byteLength(svg) < 1200);
+    assert.equal(png[0], 0x89);
+    assert.equal(png.readUInt32BE(16), 32);
+    assert.equal(apple.readUInt32BE(16), 180);
+    for (const name of ['index.html', 'history.html', 'reports.html']) {
+        const html = fs.readFileSync(path.join(root, 'snooker', name), 'utf8');
+        assert.match(html, /images\/snooker\.svg/);
+        assert.match(html, /images\/snooker\.png/);
+        assert.match(html, /images\/snooker-180\.png/);
+        assert.equal(html.includes('favicon.svg'), false);
+        assert.equal(html.includes('favicon3.png'), false);
+    }
+});
+
 test('a visitor cannot start a backup download or read backup data', async () => {
     const page = await bootSnooker({ operator: false });
     try {
